@@ -159,7 +159,7 @@ export default function SettingsScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={[styles.title, { fontFamily: font }]}>Settings ⚙️</Text>
-      <Text style={[styles.subtitle, { fontFamily: font }]}>Make our love nest feel completely like ours 🔥</Text>
+      <Text style={[styles.subtitle, { fontFamily: font }]}>Make this space feel completely like ours 🛠️</Text>
       <Text style={styles.loveNote}>Make our space feel like home. 🏡</Text>
 
       <View style={styles.card}>
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
   content: { padding: 24, paddingBottom: 60, alignItems: 'center' },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
   subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12, textAlign: 'center' },
-  card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.9)' },
+  card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
   cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
   label: { fontSize: 13, fontWeight: '600', marginTop: 8, marginBottom: 4 },
   input: { borderWidth: 1, borderColor: 'rgba(120,120,120,0.4)', borderRadius: 8, padding: 8, minHeight: 40, marginBottom: 8 },

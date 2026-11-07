@@ -169,7 +169,7 @@ export default function HomeScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <AvatarChips active={currentUser} onChange={setCurrentUser} />
       <Text style={[styles.header, { fontFamily: font }]}>Home Is Where the Heart Is 💗</Text>
-      <Text style={[styles.subtitle, { fontFamily: font }]}>Our love, live and in color 💋</Text>
+      <Text style={[styles.subtitle, { fontFamily: font }]}>Our shared space, updated live ✨</Text>
       <Text style={styles.subheader}>Daddy 🍆 & Princess 🍑</Text>
 
       {/* Active user selector */}
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 18,
     marginBottom: 16,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 10,
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
   userBtnActive: { backgroundColor: 'rgba(100,150,255,0.4)' },
   userBtnText: { fontWeight: '600' },
   sectionTitle: { fontSize: 20, fontWeight: '700', marginVertical: 10, color: '#111' },
-  photoCard: { marginBottom: 16, borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.9)', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  photoCard: { marginBottom: 16, borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   photo: { width: '100%', height: 180 },
   captionRow: { padding: 10 },
   caption: { fontSize: 14, marginBottom: 8 },

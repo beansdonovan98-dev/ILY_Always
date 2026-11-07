@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   content: { padding: 24, paddingBottom: 60, alignItems: 'center' },
   title: { fontSize: 28, fontWeight: 'bold', marginBottom: 4 },
   subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 16, textAlign: 'center' },
-  card: { borderRadius: 16, padding: 18, marginBottom: 16, backgroundColor: 'rgba(255,255,255,0.95)', width: '100%' },
+  card: { borderRadius: 16, padding: 18, marginBottom: 16, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', width: '100%' },
   cardTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
   body: { fontSize: 16, marginBottom: 6 },
   input: { borderWidth: 1, borderColor: 'rgba(120,120,120,0.4)', borderRadius: 8, padding: 8, minHeight: 40, marginBottom: 8, width: '100%' },

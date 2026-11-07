@@ -59,7 +59,7 @@ export default function AIEditorScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={[styles.title, { fontFamily: font }]}>AI Photo Editor 📷</Text>
-      <Text style={[styles.subtitle, { fontFamily: font }]}>Make our memories even more beautiful 💋</Text>
+      <Text style={[styles.subtitle, { fontFamily: font }]}>Transforming our favorite moments into magic 🎨</Text>
       <Text style={styles.loveNote}>Create something beautiful together. ✨</Text>
       <Text style={[styles.body, { fontFamily: font }]}>Pick a photo, describe the edit, and let AI create it.</Text>
 
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   btnText: { fontWeight: '600' },
   input: { borderWidth: 1, borderColor: 'rgba(120,120,120,0.4)', borderRadius: 8, padding: 8, minHeight: 60, marginBottom: 12 },
   photo: { width: '100%', height: 220, marginBottom: 12 },
-  card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.9)' },
+  card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
   cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
   muted: { fontSize: 12, opacity: 0.6 },
   loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, marginBottom: 12, textAlign: 'center' },

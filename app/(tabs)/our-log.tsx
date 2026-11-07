@@ -116,7 +116,7 @@ export default function OurLogScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={[styles.title, { fontFamily: font }]}>Our Log 📜</Text>
-      <Text style={[styles.subtitle, { fontFamily: font }]}>Every little thing we do, together 💋</Text>
+      <Text style={[styles.subtitle, { fontFamily: font }]}>A moment, a plan, a feeling, or a little memory 💭</Text>
       <Text style={styles.loveNote}>Every moment together, written with love. 💕</Text>
       <Text style={[styles.muted, { fontFamily: font }]}>{dateKey}</Text>
 
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 4 },
   subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12, textAlign: 'center' },
   muted: { fontSize: 12, opacity: 0.6, marginBottom: 12 },
-  card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(120,120,120,0.12)' },
+  card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
   cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
   label: { fontSize: 13, fontWeight: '600', marginTop: 8, marginBottom: 4 },
   input: { borderWidth: 1, borderColor: 'rgba(120,120,120,0.4)', borderRadius: 8, padding: 8, minHeight: 40, marginBottom: 8 },
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   smallBtnText: { fontWeight: '600', fontSize: 12 },
   entryTime: { fontSize: 11, opacity: 0.6 },
   entryEvent: { fontSize: 15, fontWeight: '700', marginVertical: 2 },
-  entryCard: { padding: 12, marginBottom: 10, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.9)' },
+  entryCard: { padding: 12, marginBottom: 10, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
   entryText: { fontSize: 14 },
   loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, marginBottom: 12, textAlign: 'center' },
 });

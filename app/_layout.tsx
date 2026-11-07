@@ -63,7 +63,7 @@ function RootLayoutNav() {
       <ThemeProvider>
         <AnimatedGradientBackground>
           <NavThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <Stack>
+            <Stack screenOptions={{ contentStyle: { backgroundColor: 'transparent' } }}>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
             </Stack>
