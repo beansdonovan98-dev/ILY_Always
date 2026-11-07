@@ -1,6 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy';
 
-import { supabase } from '@/lib/supabase';
+import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 
 function mimeForUri(uri: string): string {
   const ext = uri.split('?')[0].split('.').pop()?.toLowerCase();
@@ -11,6 +11,13 @@ function mimeForUri(uri: string): string {
   return 'image/jpeg';
 }
 
+const FRIENDLY: Record<number, string> = {
+  401: 'Your OpenAI API key is invalid or missing.',
+  403: 'The AI provider blocked this request (permissions).',
+  429: 'The AI provider is rate-limited — wait a minute and try again.',
+  502: 'The AI provider hit an error — try again in a bit.',
+};
+
 export async function editImageWithAI(imageUrl: string, prompt: string): Promise<string> {
   const mimeType = mimeForUri(imageUrl);
 
@@ -19,30 +26,44 @@ export async function editImageWithAI(imageUrl: string, prompt: string): Promise
     imageBase64 = await FileSystem.readAsStringAsync(imageUrl, {
       encoding: FileSystem.EncodingType.Base64,
     });
-  } catch (e) {
+  } catch {
     throw new Error('Could not read the picked photo. Try picking it again.');
   }
-
   if (!imageBase64) throw new Error('The picked photo came back empty.');
 
-  const { data, error } = await supabase.functions.invoke('ai-image-edit', {
-    body: { imageBase64, prompt, mimeType },
-  });
+  let res: Response;
+  try {
+    // Direct fetch (not supabase.functions.invoke) so we can always read the
+    // real error body instead of the generic "non-2xx status code" message.
+    res = await fetch(`${supabaseUrl}/functions/v1/ai-image-edit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+      },
+      body: JSON.stringify({ imageBase64, prompt, mimeType }),
+    });
+  } catch {
+    throw new Error('Could not reach the AI editor — check your connection.');
+  }
 
-  if (error) {
-    const ctx = (error as { context?: Response }).context;
-    let detail = '';
-    if (ctx?.status === 404) {
+  const text = await res.text();
+  let parsed: { b64?: string; error?: string } | null = null;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    parsed = null;
+  }
+
+  if (!res.ok) {
+    if (res.status === 404) {
       throw new Error('The AI editor backend is not deployed yet. (supabase functions deploy ai-image-edit)');
     }
-    try {
-      const body = (await ctx?.clone().json()) as { error?: string } | undefined;
-      detail = body?.error ? `: ${body.error}` : '';
-    } catch {
-      // non-JSON body — generic message below
-    }
-    throw new Error(`The AI editor could not run${detail || '. Check your connection and try again.'}`);
+    const detail = parsed?.error || (text && text.length < 300 ? text : null);
+    throw new Error(detail || FRIENDLY[res.status] || `The AI editor failed (HTTP ${res.status}).`);
   }
-  if (!data?.b64) throw new Error('The AI came back without an edited image. Try a different prompt.');
-  return `data:image/png;base64,${data.b64}`;
+
+  if (!parsed?.b64) throw new Error('The AI came back without an edited image. Try a different prompt.');
+  return `data:image/png;base64,${parsed.b64}`;
 }
