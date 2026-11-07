@@ -26,7 +26,7 @@ jobs:
           gem install cocoapods fastlane
 
       - name: Expo prebuild (iOS)
-        run: npx expo prebuild --platform ios --no-install
+        run: pnpm exec expo prebuild --platform ios --no-install
 
       - name: Copy fastlane config
         run: cp -r fastlane ios/fastlane

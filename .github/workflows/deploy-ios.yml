@@ -39,7 +39,7 @@ jobs:
         run: node scripts/set-build-number.mjs ${{ github.run_number }}
 
       - name: Expo prebuild (iOS)
-        run: npx expo prebuild --platform ios --no-install
+        run: pnpm exec expo prebuild --platform ios --no-install
 
       - name: Copy fastlane config
         run: cp -r fastlane ios/fastlane
