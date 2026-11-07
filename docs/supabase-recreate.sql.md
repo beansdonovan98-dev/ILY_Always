@@ -124,6 +124,41 @@ create table if not exists health_period_days (
 );
 create unique index if not exists health_period_days_unique
   on health_period_days (couple_id, user_key, date_key);
+
+-- Daily health list — same fixed list for both, never resets.
+-- One row per person per task per day; `completed` is the cross-out.
+create table if not exists health_daily_checks (
+  id          uuid primary key default gen_random_uuid(),
+  couple_id   text not null,
+  user_key    text not null check (user_key in ('daddy','princess')),
+  task_id     text not null,
+  date_key    date not null,
+  completed   boolean not null default false,
+  updated_at  timestamptz default now()
+);
+create unique index if not exists health_daily_checks_unique
+  on health_daily_checks (couple_id, user_key, task_id, date_key);
+
+-- Water tracker — cups per person per day (goal: 4).
+create table if not exists health_water (
+  id          uuid primary key default gen_random_uuid(),
+  couple_id   text not null,
+  user_key    text not null check (user_key in ('daddy','princess')),
+  date_key    date not null,
+  cups        int not null default 0,
+  updated_at  timestamptz default now()
+);
+create unique index if not exists health_water_unique
+  on health_water (couple_id, user_key, date_key);
+
+-- Push tokens — one Expo push token per partner phone.
+create table if not exists push_tokens (
+  couple_id       text not null,
+  user_key        text not null check (user_key in ('daddy','princess')),
+  expo_push_token text not null,
+  updated_at      timestamptz default now(),
+  primary key (couple_id, user_key)
+);
 ```
 
 ## 3. Permissive RLS (matches the current no-auth app)
@@ -137,6 +172,9 @@ alter table health_med_logs     enable row level security;
 alter table health_fitness      enable row level security;
 alter table health_period_state enable row level security;
 alter table health_period_days  enable row level security;
+alter table health_daily_checks enable row level security;
+alter table health_water        enable row level security;
+alter table push_tokens         enable row level security;
 
 drop policy if exists "couple_settings_all" on couple_settings;
 create policy "couple_settings_all" on couple_settings
@@ -170,6 +208,18 @@ drop policy if exists "health_period_days_all" on health_period_days;
 create policy "health_period_days_all" on health_period_days
   for all using (true) with check (true);
 
+drop policy if exists "health_daily_checks_all" on health_daily_checks;
+create policy "health_daily_checks_all" on health_daily_checks
+  for all using (true) with check (true);
+
+drop policy if exists "health_water_all" on health_water;
+create policy "health_water_all" on health_water
+  for all using (true) with check (true);
+
+drop policy if exists "push_tokens_all" on push_tokens;
+create policy "push_tokens_all" on push_tokens
+  for all using (true) with check (true);
+
 -- Let the anon key (the app) read/write these tables.
 grant select, insert, update, delete on
   couple_settings,
@@ -179,9 +229,23 @@ grant select, insert, update, delete on
   health_med_logs,
   health_fitness,
   health_period_state,
-  health_period_days
+  health_period_days,
+  health_daily_checks,
+  health_water,
+  push_tokens
 to anon, authenticated;
 ```
+
+## Push notifications (optional but recommended)
+
+The app pings your partner when you log in, add a daily cover photo, or post
+in Playtime. For that to work:
+
+1. Run the `push_tokens` SQL above.
+2. In the repo, run once: `supabase functions deploy send-push`
+   (needs the Supabase CLI: `npm i -g supabase` + `supabase login` + `supabase link --project-ref <ref>`).
+   The function lives at `supabase/functions/send-push/index.ts` and uses the
+   project's service-role key automatically.
 
 ## If `health_meds` already exists with the old shape
 

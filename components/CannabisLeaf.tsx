@@ -40,7 +40,7 @@ export function CannabisLeaf({ size = 14, color = '#2E7D4F', opacity = 0.9, styl
   );
 }
 
-/** Two little leaf clusters sitting on the top edge of a glass card. */
+/** Leaf clusters on the top corners, with a few small leaves trailing along the top edge. */
 export function LeafBorder({ color = '#2E7D4F', size = 24 }: { color?: string; size?: number }) {
   return (
     <>
@@ -53,6 +53,14 @@ export function LeafBorder({ color = '#2E7D4F', size = 24 }: { color?: string; s
         <CannabisLeaf size={size * 0.72} color={color} opacity={0.55} style={styles.tiltLeft} />
         <CannabisLeaf size={size} color={color} opacity={0.95} />
         <CannabisLeaf size={size * 0.72} color={color} opacity={0.55} style={styles.tiltRight} />
+      </View>
+      <View pointerEvents="none" style={styles.trailLeft}>
+        <CannabisLeaf size={size * 0.55} color={color} opacity={0.4} style={styles.tiltRight} />
+        <CannabisLeaf size={size * 0.45} color={color} opacity={0.3} />
+      </View>
+      <View pointerEvents="none" style={styles.trailRight}>
+        <CannabisLeaf size={size * 0.45} color={color} opacity={0.3} />
+        <CannabisLeaf size={size * 0.55} color={color} opacity={0.4} style={styles.tiltLeft} />
       </View>
     </>
   );
@@ -77,6 +85,22 @@ const styles = {
   },
   tiltLeft: { transform: [{ rotate: '-18deg' }] },
   tiltRight: { transform: [{ rotate: '18deg' }] },
+  trailLeft: {
+    position: 'absolute' as const,
+    top: -11,
+    left: 76,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+  },
+  trailRight: {
+    position: 'absolute' as const,
+    top: -11,
+    right: 76,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+  },
 };
 
 export default CannabisLeaf;

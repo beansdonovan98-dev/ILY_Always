@@ -5,6 +5,7 @@ import { useFocusEffect } from 'expo-router';
 
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
+import { Celebration } from '@/components/Celebration';
 import { WeightChart, ChartPoint } from '@/components/WeightChart';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUsage } from '@/contexts/UsageContext';
@@ -18,6 +19,8 @@ import {
   BODY_FIELDS,
   BodyField,
   BodyMetrics,
+  DAILY_HEALTH_TASKS,
+  DailyTaskId,
   EMPTY_BODY,
   EMPTY_PERIOD,
   FitnessEntry,
@@ -27,16 +30,19 @@ import {
   PERIOD_SYMPTOMS,
   PeriodDay,
   PeriodState,
+  WATER_GOAL,
   WeightEntry,
   addFitness as addFitnessEntry,
   addMed as addMedRow,
   addWeight as addWeightEntry,
   bodyResetLabel,
   loadBody,
+  loadDailyChecks,
   loadFitness,
   loadMedLogs,
   loadMeds,
   loadPeriod,
+  loadWater,
   loadWeights,
   logMedDose,
   periodLength,
@@ -45,9 +51,14 @@ import {
   removeMedLog,
   removeWeight as removeWeightEntry,
   updateWeight as updateWeightEntry,
+  isPerfectWeek,
+  lastSevenDays,
   saveBody,
   savePeriod,
+  setWaterCups,
   shiftDateKey,
+  streakEndingToday,
+  toggleDailyCheck,
   updateMed as updateMedRow,
 } from '@/lib/health';
 
@@ -113,6 +124,11 @@ export default function HealthScreen() {
   const [meds, setMeds] = useState<Med[]>([]);
   const [medLogs, setMedLogs] = useState<MedLog[]>([]);
   const [fitness, setFitness] = useState<FitnessEntry[]>([]);
+  const [myDaily, setMyDaily] = useState<Record<string, boolean>>({});
+  const [theirDaily, setTheirDaily] = useState<Record<string, boolean>>({});
+  const [myWater, setMyWater] = useState<Record<string, number>>({});
+  const [theirWater, setTheirWater] = useState<Record<string, number>>({});
+  const [celebration, setCelebration] = useState<{ mode: 'small' | 'big'; message: string } | null>(null);
   const [period, setPeriod] = useState<PeriodState>({ ...EMPTY_PERIOD });
   const [pain, setPain] = useState(0);
   const [symptoms, setSymptoms] = useState<string[]>([]);
@@ -141,6 +157,10 @@ export default function HealthScreen() {
     setMeds(loadedMeds);
     setMedLogs(await loadMedLogs(cid));
     setFitness(await loadFitness(cid, me));
+    setMyDaily(await loadDailyChecks(cid, me));
+    setTheirDaily(await loadDailyChecks(cid, partner));
+    setMyWater(await loadWater(cid, me));
+    setTheirWater(await loadWater(cid, partner));
     setRevealed(await getItem<boolean>('periodRevealed', false));
 
     const nextPeriod = await loadPeriod(cid, me);
@@ -261,6 +281,45 @@ export default function HealthScreen() {
     setFitness(await removeFitness(coupleId, me, id));
   };
 
+  /* --------------------- daily health list --------------------- */
+
+  const dailyDone = (checks: Record<string, boolean>, taskId: string, dateKey: string) =>
+    Boolean(checks[`${taskId}|${dateKey}`]);
+
+  const toggleTask = async (taskId: DailyTaskId) => {
+    const today = localDateKey();
+    const next = await toggleDailyCheck(coupleId, me, myDaily, taskId, today);
+    setMyDaily(next);
+    if (dailyDone(next, taskId, today)) {
+      const doneForDay = (d: string) => dailyDone(next, taskId, d);
+      const task = DAILY_HEALTH_TASKS.find((t) => t.id === taskId);
+      if (isPerfectWeek(doneForDay)) {
+        setCelebration({ mode: 'big', message: `${task?.emoji ?? ''} ${task?.label ?? ''} — 7 days in a row! 🔥` });
+      } else {
+        setCelebration({ mode: 'small', message: `${task?.emoji ?? ''} ${task?.label ?? ''} — crossed off! ✔️` });
+      }
+    }
+  };
+
+  /* --------------------------- water --------------------------- */
+
+  const waterCupsToday = (water: Record<string, number>) => water[localDateKey()] ?? 0;
+  const waterDoneDay = (water: Record<string, number>) => (d: string) => (water[d] ?? 0) >= WATER_GOAL;
+
+  const setWater = async (cups: number) => {
+    const today = localDateKey();
+    const before = waterCupsToday(myWater);
+    const next = await setWaterCups(coupleId, me, myWater, today, cups);
+    setMyWater(next);
+    if (cups >= WATER_GOAL && next[today] >= WATER_GOAL && before < WATER_GOAL) {
+      if (isPerfectWeek(waterDoneDay(next))) {
+        setCelebration({ mode: 'big', message: '💧 Hydration hero — 4 cups, 7 days in a row! 🔥' });
+      } else {
+        setCelebration({ mode: 'small', message: '💧 4 cups down — goal smashed! ✔️' });
+      }
+    }
+  };
+
   /* ----------------------------- period --------------------------- */
 
   const startPeriod = async () => {
@@ -295,6 +354,47 @@ export default function HealthScreen() {
   const lastSeven = Array.from({ length: 7 }, (_, i) => shiftDateKey(localDateKey(), i - 6));
   const periodDays = periodLength(period);
   const todayChecked = period.days.some((d) => d.dateKey === localDateKey() && d.completed);
+
+  /* ---------------------- 7-day streak trackers --------------------- */
+
+  const renderStreakDots = (doneForDay: (d: string) => boolean) => (
+    <View style={styles.streakRow}>
+      {lastSevenDays().map((d) => (
+        <View key={d} style={styles.dayWrap}>
+          <View
+            style={[
+              styles.dayDot,
+              doneForDay(d)
+                ? { backgroundColor: theme.accentColor, borderColor: theme.accentColor }
+                : { backgroundColor: 'rgba(255,255,255,0.5)', borderColor: theme.borderColor },
+            ]}>
+            <Text style={[styles.dayDotText, doneForDay(d) && { color: '#FFFFFF' }]}>
+              {doneForDay(d) ? '✓' : '·'}
+            </Text>
+          </View>
+          <Text style={styles.dayLabel}>{d.slice(8)}</Text>
+        </View>
+      ))}
+    </View>
+  );
+
+  const renderBubble = (person: HealthUser, done: boolean, onPress: () => void) => {
+    const isMe = person === me;
+    return (
+      <Pressable
+        onPress={onPress}
+        disabled={!isMe}
+        style={[
+          styles.bubble,
+          isMe ? { borderColor: theme.accentColor } : { borderColor: theme.borderColor },
+          done
+            ? { backgroundColor: theme.accentSoft }
+            : { backgroundColor: 'rgba(255,255,255,0.5)' },
+        ]}>
+        <Text style={styles.bubbleMark}>{done ? '✓' : '○'}</Text>
+      </Pressable>
+    );
+  };
 
   /* ----------------------------- render --------------------------- */
 
@@ -565,6 +665,105 @@ export default function HealthScreen() {
         ))}
       </View>
 
+      {/* Daily health list */}
+      <View style={[styles.card, theme.cardStyle]}>
+        <LeafBorder color={theme.leafColor} />
+        <Text style={styles.cardTitle}>Daily Health List 🌿</Text>
+        <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
+          Cross off our little rituals together, darling — every tick is a promise we keep to each other 💚
+        </Text>
+
+        <View style={styles.bubbleHeader}>
+          <Text style={styles.bubbleHeaderLabel}>Daddy 🍆</Text>
+          <Text style={styles.bubbleHeaderLabel}>Princess 🍑</Text>
+        </View>
+
+        {DAILY_HEALTH_TASKS.map((task) => {
+          const myDone = dailyDone(myDaily, task.id, localDateKey());
+          const theirDone = dailyDone(theirDaily, task.id, localDateKey());
+          const myStreak = streakEndingToday((d) => dailyDone(myDaily, task.id, d));
+          return (
+            <View key={task.id}>
+              <View style={styles.bubbleRow}>
+                {renderBubble('daddy', me === 'daddy' ? myDone : theirDone, () =>
+                  me === 'daddy' ? toggleTask(task.id) : undefined
+                )}
+                <View style={styles.bubbleLabel}>
+                  <Text style={styles.bubbleName}>
+                    {task.emoji} {task.label}
+                  </Text>
+                </View>
+                {renderBubble('princess', me === 'princess' ? myDone : theirDone, () =>
+                  me === 'princess' ? toggleTask(task.id) : undefined
+                )}
+              </View>
+              {me && (
+                <View style={styles.streakWithCount}>
+                  {renderStreakDots((d) => dailyDone(myDaily, task.id, d))}
+                  <Text style={styles.streakCount}>
+                    {myStreak > 0 ? `🔥 ${myStreak}-day streak` : 'Start your streak today 💪'}
+                  </Text>
+                </View>
+              )}
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Water tracker */}
+      <View style={[styles.card, theme.cardStyle]}>
+        <LeafBorder color={theme.leafColor} />
+        <Text style={styles.cardTitle}>Water Tracker 💧</Text>
+        <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
+          Four cups a day keeps the thirst away — and keeps you glowing for me, sweetheart 💦
+        </Text>
+
+        <Text style={styles.label}>{USERS[me].label} — {waterCupsToday(myWater)}/{WATER_GOAL} cups</Text>
+        <View style={styles.cupRow}>
+          {Array.from({ length: WATER_GOAL }, (_, i) => (
+            <Pressable
+              key={i}
+              onPress={() => setWater(waterCupsToday(myWater) === i + 1 ? i : i + 1)}
+              style={[
+                styles.cup,
+                { borderColor: theme.borderColor },
+                waterCupsToday(myWater) > i && { backgroundColor: theme.accentSoft, borderColor: theme.accentColor },
+              ]}>
+              <Text style={styles.cupEmoji}>{waterCupsToday(myWater) > i ? '💧' : '🤍'}</Text>
+            </Pressable>
+          ))}
+          <Text style={styles.streakCount}>
+            🔥 {streakEndingToday(waterDoneDay(myWater))}-day streak
+          </Text>
+        </View>
+        {renderStreakDots(waterDoneDay(myWater))}
+
+        <Text style={[styles.label, { marginTop: 16 }]}>{USERS[partner].label} — {waterCupsToday(theirWater)}/{WATER_GOAL} cups</Text>
+        <View style={styles.cupRow}>
+          {Array.from({ length: WATER_GOAL }, (_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.cup,
+                { borderColor: theme.borderColor },
+                waterCupsToday(theirWater) > i && { backgroundColor: theme.accentSoft, borderColor: theme.accentColor },
+              ]}>
+              <Text style={styles.cupEmoji}>{waterCupsToday(theirWater) > i ? '💧' : '🤍'}</Text>
+            </View>
+          ))}
+          <Text style={styles.streakCount}>
+            🔥 {streakEndingToday(waterDoneDay(theirWater))}-day streak
+          </Text>
+        </View>
+        {renderStreakDots(waterDoneDay(theirWater))}
+      </View>
+
+      <Celebration
+        mode={celebration?.mode ?? null}
+        message={celebration?.message ?? ''}
+        onDone={() => setCelebration(null)}
+      />
+
       {/* Period tracker */}
       {revealed && (
         <View style={[styles.card, theme.cardStyle]}>
@@ -748,6 +947,34 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.55)',
   },
   label: { fontSize: 13, fontWeight: '700', marginTop: 14, marginBottom: 2, opacity: 0.8 },
+  bubbleHeader: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6, marginBottom: 4 },
+  bubbleHeaderLabel: { fontSize: 12, fontWeight: '800', opacity: 0.7 },
+  bubbleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10 },
+  bubble: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bubbleMark: { fontSize: 20, fontWeight: '800' },
+  bubbleLabel: { flex: 1, alignItems: 'center' },
+  bubbleName: { fontSize: 15, fontWeight: '700', textAlign: 'center' },
+  streakRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
+  streakWithCount: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 2 },
+  streakCount: { fontSize: 12, fontWeight: '700', opacity: 0.75 },
+  cupRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8, flexWrap: 'wrap' },
+  cup: {
+    width: 52,
+    height: 62,
+    borderRadius: 14,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.45)',
+  },
+  cupEmoji: { fontSize: 24 },
   list: { marginTop: 10, gap: 6 },
   listRow: {
     flexDirection: 'row',

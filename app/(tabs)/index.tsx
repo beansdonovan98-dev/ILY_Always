@@ -10,6 +10,7 @@ import { daySeed, FACTS_OF_THE_DAY, RELATIONSHIP_START, todayKey, USERS, WORDS_O
 import { getItem, setItem } from '@/lib/storage';
 import { useUsage } from '@/contexts/UsageContext';
 import { getCoupleId } from '@/lib/couple';
+import { notifyPartner } from '@/lib/push';
 import { getCoupleSettings, upsertCoupleSettings } from '@/lib/appearance';
 import { getSignedUrl, MediaRow, resolveMime, updateCaption, uploadMedia, validateSize } from '@/lib/media';
 import { supabase } from '@/lib/supabase';
@@ -126,6 +127,7 @@ export default function HomeScreen() {
           dailyDate: today,
         });
         setCoverMedia((prev) => [row, ...prev]);
+        void notifyPartner(cid, currentUser, 'cover');
         try {
           const url = await getSignedUrl(row);
           setCoverUrls((prev) => ({ ...prev, [row.id]: url }));

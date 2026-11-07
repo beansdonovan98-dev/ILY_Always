@@ -695,3 +695,171 @@ export function periodLength(state: PeriodState): number {
     : new Date(`${localDateKey()}T12:00:00`).getTime();
   return Math.max(1, Math.round((end - start) / (24 * 60 * 60 * 1000)) + 1);
 }
+
+/* ------------------------------------------------------------------ */
+/* Daily health list — same fixed list for both, never resets          */
+/* ------------------------------------------------------------------ */
+
+export const DAILY_HEALTH_TASKS = [
+  { id: 'vitamins', label: 'Vitamins', emoji: '💊' },
+  { id: 'skincare', label: 'Skincare', emoji: '✨' },
+  { id: 'stretch', label: 'Stretch', emoji: '🧘' },
+  { id: 'walk', label: 'Walk', emoji: '🚶' },
+  { id: 'greens', label: 'Greens', emoji: '🥬' },
+] as const;
+
+export type DailyTaskId = (typeof DAILY_HEALTH_TASKS)[number]['id'];
+
+const dailyKey = (coupleId: string, user: HealthUser) => `health:daily:${coupleId}:${user}`;
+const dayTaskId = (taskId: string, dateKey: string) => `${taskId}|${dateKey}`;
+
+export async function loadDailyChecks(coupleId: string, user: HealthUser): Promise<Record<string, boolean>> {
+  const cached = await getItem<Record<string, boolean>>(dailyKey(coupleId, user), {});
+  const since = shiftDateKey(localDateKey(), -60);
+
+  if (hasSupabaseEnv && coupleId) {
+    try {
+      const { data, error } = await supabase
+        .from('health_daily_checks')
+        .select('task_id,date_key,completed')
+        .eq('couple_id', coupleId)
+        .eq('user_key', user)
+        .gte('date_key', since);
+      if (error) throw error;
+      const next: Record<string, boolean> = {};
+      for (const row of data || []) {
+        next[dayTaskId(row.task_id as string, row.date_key as string)] = Boolean(row.completed);
+      }
+      await setItem(dailyKey(coupleId, user), next);
+      return next;
+    } catch {
+      // fall through to cache
+    }
+  }
+
+  return cached;
+}
+
+export async function toggleDailyCheck(
+  coupleId: string,
+  user: HealthUser,
+  checks: Record<string, boolean>,
+  taskId: string,
+  dateKey: string
+): Promise<Record<string, boolean>> {
+  const key = dayTaskId(taskId, dateKey);
+  const next = { ...checks, [key]: !checks[key] };
+  await setItem(dailyKey(coupleId, user), next);
+
+  if (hasSupabaseEnv && coupleId) {
+    try {
+      const { error } = await supabase.from('health_daily_checks').upsert(
+        {
+          couple_id: coupleId,
+          user_key: user,
+          task_id: taskId,
+          date_key: dateKey,
+          completed: next[key],
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'couple_id,user_key,task_id,date_key' }
+      );
+      if (error) throw error;
+    } catch (e) {
+      console.warn('[health] toggleDailyCheck fell back to local cache', e);
+    }
+  }
+
+  return next;
+}
+
+/* ------------------------------------------------------------------ */
+/* Water tracker — 4 cups a day, per person                            */
+/* ------------------------------------------------------------------ */
+
+export const WATER_GOAL = 4;
+
+const waterKey = (coupleId: string, user: HealthUser) => `health:water:${coupleId}:${user}`;
+
+export async function loadWater(coupleId: string, user: HealthUser): Promise<Record<string, number>> {
+  const cached = await getItem<Record<string, number>>(waterKey(coupleId, user), {});
+  const since = shiftDateKey(localDateKey(), -60);
+
+  if (hasSupabaseEnv && coupleId) {
+    try {
+      const { data, error } = await supabase
+        .from('health_water')
+        .select('date_key,cups')
+        .eq('couple_id', coupleId)
+        .eq('user_key', user)
+        .gte('date_key', since);
+      if (error) throw error;
+      const next: Record<string, number> = {};
+      for (const row of data || []) {
+        next[row.date_key as string] = Number(row.cups ?? 0);
+      }
+      await setItem(waterKey(coupleId, user), next);
+      return next;
+    } catch {
+      // fall through to cache
+    }
+  }
+
+  return cached;
+}
+
+export async function setWaterCups(
+  coupleId: string,
+  user: HealthUser,
+  water: Record<string, number>,
+  dateKey: string,
+  cups: number
+): Promise<Record<string, number>> {
+  const clamped = Math.max(0, Math.min(cups, WATER_GOAL));
+  const next = { ...water, [dateKey]: clamped };
+  await setItem(waterKey(coupleId, user), next);
+
+  if (hasSupabaseEnv && coupleId) {
+    try {
+      const { error } = await supabase.from('health_water').upsert(
+        {
+          couple_id: coupleId,
+          user_key: user,
+          date_key: dateKey,
+          cups: clamped,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'couple_id,user_key,date_key' }
+      );
+      if (error) throw error;
+    } catch (e) {
+      console.warn('[health] setWaterCups fell back to local cache', e);
+    }
+  }
+
+  return next;
+}
+
+/* ------------------------------------------------------------------ */
+/* 7-day streak helpers (shared by daily list + water)                 */
+/* ------------------------------------------------------------------ */
+
+export function lastSevenDays(): string[] {
+  return Array.from({ length: 7 }, (_, i) => shiftDateKey(localDateKey(), i - 6));
+}
+
+export function streakEndingToday(doneForDay: (dateKey: string) => boolean): number {
+  let streak = 0;
+  let cursor = localDateKey();
+  // If today isn't done yet, the streak can still run through yesterday.
+  if (!doneForDay(cursor)) cursor = shiftDateKey(cursor, -1);
+  while (doneForDay(cursor)) {
+    streak += 1;
+    cursor = shiftDateKey(cursor, -1);
+  }
+  return streak;
+}
+
+export function isPerfectWeek(doneForDay: (dateKey: string) => boolean): boolean {
+  return lastSevenDays().every(doneForDay);
+}

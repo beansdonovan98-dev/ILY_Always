@@ -8,6 +8,8 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUsage } from '@/contexts/UsageContext';
 import { USERS, UserKey } from '@/constants/content';
 import { hasPin, setPin, verifyPin } from '@/lib/auth';
+import { notifyPartner, registerPushToken } from '@/lib/push';
+import { getCoupleId } from '@/lib/couple';
 
 export default function LoginScreen() {
   const theme = useAppTheme();
@@ -60,6 +62,9 @@ export default function LoginScreen() {
         await setPin(selected, value);
       }
       login(selected);
+      const cid = await getCoupleId();
+      void registerPushToken(cid, selected);
+      void notifyPartner(cid, selected, 'login');
     } finally {
       setBusy(false);
     }

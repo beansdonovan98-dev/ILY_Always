@@ -28,17 +28,15 @@ const DEFAULT_TABS = [
   { id: 'days-of-old', label: 'The Days of Old 🧙‍♂️', order: 6 },
 ];
 
-const GRADIENT_PRESETS = [
-  { name: 'Sunrise', colors: ['#FF8FAB', '#FFC1CC', '#F9C6E0', '#FFB5A7'] },
-  { name: 'Sunset', colors: ['#FF5E3A', '#FF2E63', '#9D4EDD', '#FFB347'] },
-  { name: 'Ocean', colors: ['#4D96FF', '#2EC4B6', '#A8DADC', '#457B9D'] },
-  { name: 'Forest', colors: ['#B7E4C7', '#95D5B2', '#40916C', '#D8F3DC'] },
-  { name: 'Lavender', colors: ['#B388FF', '#9B5DE5', '#D9B4FF', '#E0AAFF'] },
-  { name: 'Neon', colors: ['#F72585', '#B5179E', '#7209B7', '#FFD60A'] },
-  { name: 'Cannabis', colors: ['#2E7D32', '#66BB6A', '#A5D6A7', '#7B1FA2'] },
-  { name: 'Cotton Candy', colors: ['#FF8FAB', '#FFAFCC', '#BDE0FE', '#FFC8DD'] },
-  { name: 'Purple Haze', colors: ['#7B1FA2', '#9C27B0', '#BA68C8', '#4A148C'] },
+const STRAIN_PRESETS = [
+  { name: 'Jack Herer', colors: ['#FF9F1C', '#F4A259', '#BC4B51', '#2E7D32'] },
+  { name: 'Granddaddy Purple', colors: ['#4A148C', '#6A1B9A', '#9D4EDD', '#66BB6A'] },
+  { name: 'Purple Haze', colors: ['#3A0CA3', '#5A189A', '#F48C06', '#FF9F1C'] },
+  { name: 'Tropicana Cherry', colors: ['#800000', '#DC143C', '#7B1FA2', '#E0FBFC'] },
+  { name: 'Pink Runts', colors: ['#FF8FAB', '#F15BB5', '#9B5DE5', '#FFF0F5'] },
 ];
+
+const GRADIENT_PRESETS = STRAIN_PRESETS;
 
 import { useAppFont } from '@/hooks/useAppFont';
 

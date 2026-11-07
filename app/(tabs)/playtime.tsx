@@ -12,6 +12,7 @@ import { getItem, setItem } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 import { USERS, UserKey } from '@/constants/content';
 import { useUsage } from '@/contexts/UsageContext';
+import { notifyPartner } from '@/lib/push';
 import {
   getSignedUrl,
   MAX_MEDIA_BYTES,
@@ -105,7 +106,8 @@ export default function PlaytimeScreen() {
     const next = [...messages, msg];
     await persistMessages(next);
     setDraftMessage('');
-  }, [draftMessage, activeUser, messages, persistMessages]);
+    if (coupleId) void notifyPartner(coupleId, activeUser, 'playtime');
+  }, [draftMessage, activeUser, messages, persistMessages, coupleId]);
 
   const pickPhotos = useCallback(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
