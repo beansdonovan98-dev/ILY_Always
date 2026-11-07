@@ -65,7 +65,7 @@ export async function getDayLogEntries(coupleId: string, date = localDateKey()):
   const day = await getDay(coupleId, date);
   const payload = (day?.payload || {}) as Record<string, unknown>;
   const logs = (payload.logs as LogEntry[]) || [];
-  return logs;
+  return [...logs].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 }
 
 export async function addLogEntry(coupleId: string, entry: LogEntry, date = localDateKey()): Promise<LogEntry[]> {
@@ -73,15 +73,16 @@ export async function addLogEntry(coupleId: string, entry: LogEntry, date = loca
   const payload = (day.payload || {}) as Record<string, unknown>;
   const logs = ((payload.logs as LogEntry[]) || []).slice();
   logs.push(entry);
-  const nextPayload = { ...payload, logs };
+  const sorted = logs.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  const nextPayload = { ...payload, logs: sorted };
   await saveDay(coupleId, date, nextPayload);
-  return logs;
+  return sorted;
 }
 
 export async function updateLogEntry(coupleId: string, date: string, entryId: string, patch: Partial<LogEntry>): Promise<LogEntry[]> {
   const day = await getDay(coupleId, date);
   const payload = (day?.payload || {}) as Record<string, unknown>;
-  const logs = ((payload.logs as LogEntry[]) || []).map((e) => (e.id === entryId ? { ...e, ...patch } : e));
+  const logs = ((payload.logs as LogEntry[]) || []).map((e) => (e.id === entryId ? { ...e, ...patch } : e)).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
   const nextPayload = { ...payload, logs };
   await saveDay(coupleId, date, nextPayload);
   return logs;

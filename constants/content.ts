@@ -9,25 +9,27 @@ export const RELATIONSHIP_START = new Date(2019, 7, 9); // 08/09/19 -> Aug 9, 20
 
 export interface WordEntry {
   word: string;
+  pronunciation: string;
   definition: string;
+  example: string;
 }
 
 export const WORDS_OF_THE_DAY: WordEntry[] = [
-  { word: 'Serendipity', definition: 'The occurrence of happy or beneficial events by chance.' },
-  { word: 'Ephemeral', definition: 'Lasting for a very short time.' },
-  { word: 'Luminescence', definition: 'Emission of light by a substance without heat.' },
-  { word: 'Resilience', definition: 'The ability to recover quickly from difficulties.' },
-  { word: 'Aurora', definition: 'A natural light display in the sky, especially near the poles.' },
-  { word: 'Euphoria', definition: 'A feeling of intense excitement and happiness.' },
-  { word: 'Solitude', definition: 'The state of being alone without being lonely.' },
-  { word: 'Harmony', definition: 'A pleasing arrangement of parts in a whole.' },
-  { word: 'Velocity', definition: 'The speed of something in a given direction.' },
-  { word: 'Mellifluous', definition: 'Sweet or musical; pleasant to hear.' },
-  { word: 'Petrichor', definition: 'The pleasant smell after rain.' },
-  { word: 'Sonder', definition: 'The realization that each passerby has a life as vivid as your own.' },
-  { word: 'Vellichor', definition: 'The strange wistfulness of used bookshops.' },
-  { word: 'Chrysalism', definition: 'The amniotic tranquility of being indoors during a storm.' },
-  { word: 'Eunoia', definition: 'Beautiful thinking; a well mind.' },
+  { word: 'Serendipity', pronunciation: '/ˌser.ənˈdɪp.ə.ti/', definition: 'The occurrence of happy or beneficial events by chance.', example: 'Finding you was pure serendipity — the best kind of accident.' },
+  { word: 'Ephemeral', pronunciation: '/ɪˈfem.ər.əl/', definition: 'Lasting for a very short time.', example: 'Our first date felt ephemeral, but the memory lasts forever.' },
+  { word: 'Luminescence', pronunciation: '/ˌluː.mɪˈnes.əns/', definition: 'Emission of light by a substance without heat.', example: 'Your smile has a luminescence that lights up my whole day.' },
+  { word: 'Resilience', pronunciation: '/rɪˈzɪl.i.əns/', definition: 'The ability to recover quickly from difficulties.', example: 'We grow stronger together — our resilience is our superpower.' },
+  { word: 'Aurora', pronunciation: '/əˈrɔːr.ə/', definition: 'A natural light display in the sky, especially near the poles.', example: 'Watching the aurora with you would be a dream come true.' },
+  { word: 'Euphoria', pronunciation: '/juːˈfɔːr.i.ə/', definition: 'A feeling of intense excitement and happiness.', example: 'Every time you walk in, I feel euphoria.' },
+  { word: 'Solitude', pronunciation: '/ˈsɒl.ɪ.tjuːd/', definition: 'The state of being alone without being lonely.', example: 'Even in solitude, I feel your presence.' },
+  { word: 'Harmony', pronunciation: '/ˈhɑːr.mə.ni/', definition: 'A pleasing arrangement of parts in a whole.', example: 'Our lives in harmony — that’s all I ever wanted.' },
+  { word: 'Velocity', pronunciation: '/vəˈlɒs.ə.ti/', definition: 'The speed of something in a given direction.', example: 'My heart beats at the velocity of love when you’re near.' },
+  { word: 'Mellifluous', pronunciation: '/melˈɪf.lu.əs/', definition: 'Sweet or musical; pleasant to hear.', example: 'Your voice is mellifluous — I could listen forever.' },
+  { word: 'Petrichor', pronunciation: '/ˈpet.rɪ.kɔːr/', definition: 'The pleasant smell after rain.', example: 'Petrichor reminds me of our rainy-day cuddles.' },
+  { word: 'Sonder', pronunciation: '/ˈsɒn.dər/', definition: 'The realization that each passerby has a life as vivid as your own.', example: 'Sonder makes me grateful our stories intertwined.' },
+  { word: 'Vellichor', pronunciation: '/ˈvel.ɪ.kɔːr/', definition: 'The strange wistfulness of used bookshops.', example: 'Vellichor and you — my two favorite cozy things.' },
+  { word: 'Chrysalism', pronunciation: '/ˈkrɪs.ə.lɪ.zəm/', definition: 'The amniotic tranquility of being indoors during a storm.', example: 'Chrysalism with you is my happy place.' },
+  { word: 'Eunoia', pronunciation: '/juːˈnɔɪ.ə/', definition: 'Beautiful thinking; a well mind.', example: 'Eunoia is what I feel when I’m with you.' },
 ];
 
 export const FACTS_OF_THE_DAY: string[] = [

@@ -9,16 +9,17 @@ import { getCoupleId } from '@/lib/couple';
 import { getCoupleSettings, upsertCoupleSettings, CoupleSettings } from '@/lib/appearance';
 import { FONT_OPTIONS } from '@/lib/fonts';
 import { Sentry } from '@/lib/sentry';
-import { setItem } from '@/lib/storage';
+import { getItem, setItem } from '@/lib/storage';
 import { EVENT_COLORS } from '@/lib/log';
 
 const DEFAULT_TABS = [
   { id: 'home', label: 'Home 🏠', order: 0 },
   { id: 'our-log', label: 'Our Log 📜', order: 1 },
-  { id: 'days-of-old', label: 'The Days of Old 🧙‍♂️', order: 2 },
+  { id: 'playtime', label: 'Playtime 😓', order: 2 },
   { id: 'ai-editor', label: 'AI Photo Editor 📷', order: 3 },
-  { id: 'playtime', label: 'Playtime 😓', order: 4 },
+  { id: 'health', label: 'Health 🩺', order: 4 },
   { id: 'settings', label: 'Settings ⚙️', order: 5 },
+  { id: 'days-of-old', label: 'The Days of Old 🧙‍♂️', order: 6 },
 ];
 
 const GRADIENT_PRESETS = [
@@ -44,6 +45,9 @@ export default function SettingsScreen() {
   const [fontId, setFontId] = useState('sans');
   const [tabConfig, setTabConfig] = useState(DEFAULT_TABS);
   const [playtimeRevealed, setPlaytimeRevealed] = useState(false);
+  const [periodRevealed, setPeriodRevealed] = useState(false);
+  const [avatarDaddy, setAvatarDaddy] = useState('🍆');
+  const [avatarPrincess, setAvatarPrincess] = useState('🍑');
   const [status, setStatus] = useState('');
   const [taps, setTaps] = useState(0);
 
@@ -60,6 +64,9 @@ export default function SettingsScreen() {
         setAccentColor(s.accent_color || '');
         setFontId(s.font_id || 'sans');
         setPlaytimeRevealed(!!s.playtime_revealed);
+        setPeriodRevealed(await getItem<boolean>('periodRevealed', false));
+        setAvatarDaddy(s.avatar_daddy || '🍆');
+        setAvatarPrincess(s.avatar_princess || '🍑');
         if (s.tab_config && Array.isArray(s.tab_config)) setTabConfig(s.tab_config);
       }
     })();
@@ -240,6 +247,13 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.card}>
+        <Text style={[styles.cardTitle, { fontFamily: font }]}>Period Tracker Reveal</Text>
+        <View style={styles.row}>
+          <Text style={styles.label}>Show Period Tracker in Health</Text>
+          <Switch value={periodRevealed} onValueChange={async (v) => { setPeriodRevealed(v); await setItem('periodRevealed', v); }} />
+        </View>
+      </View>
+      <View style={styles.card}>
         <Text style={[styles.cardTitle, { fontFamily: font }]}>Lock Screen</Text>
         <Pressable style={styles.btn} onPress={setLockBackground}>
           <Text style={styles.btnText}>Set Background Picture</Text>
@@ -251,6 +265,17 @@ export default function SettingsScreen() {
       </Pressable>
 
       {status ? <Text style={styles.muted}>{status}</Text> : null}
+
+      <View style={styles.card}>
+        <Text style={[styles.cardTitle, { fontFamily: font }]}>Partner Avatars / Emojis</Text>
+        <Text style={styles.label}>Daddy emoji</Text>
+        <TextInput value={avatarDaddy} onChangeText={setAvatarDaddy} style={styles.input} />
+        <Text style={styles.label}>Princess emoji</Text>
+        <TextInput value={avatarPrincess} onChangeText={setAvatarPrincess} style={styles.input} />
+        <Pressable style={styles.btn} onPress={() => saveSettings({ avatar_daddy: avatarDaddy, avatar_princess: avatarPrincess })}>
+          <Text style={styles.btnText}>Save Avatars</Text>
+        </Pressable>
+      </View>
 
       <Pressable onPress={handleSecretTap} style={styles.secret}>
         <Text style={styles.secretText}>v1.0.0</Text>

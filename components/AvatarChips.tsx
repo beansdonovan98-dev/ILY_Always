@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { USERS } from '@/constants/content';
+import { getCoupleId } from '@/lib/couple';
+import { getCoupleSettings } from '@/lib/appearance';
 
 interface Props {
   active: 'daddy' | 'princess';
@@ -8,14 +10,28 @@ interface Props {
 }
 
 export default function AvatarChips({ active, onChange }: Props) {
+  const [daddyEmoji, setDaddyEmoji] = useState('🍆');
+  const [princessEmoji, setPrincessEmoji] = useState('🍑');
+
+  useEffect(() => {
+    (async () => {
+      const cid = await getCoupleId();
+      const s = await getCoupleSettings(cid);
+      if (s?.avatar_daddy) setDaddyEmoji(s.avatar_daddy);
+      if (s?.avatar_princess) setPrincessEmoji(s.avatar_princess);
+    })();
+  }, []);
+
+  const items = [
+    { key: 'daddy' as const, emoji: daddyEmoji, name: 'Daddy' },
+    { key: 'princess' as const, emoji: princessEmoji, name: 'Princess' },
+  ];
+
   return (
     <View style={styles.row}>
-      {(['daddy', 'princess'] as const).map((k) => (
-        <Pressable
-          key={k}
-          onPress={() => onChange?.(k)}
-          style={[styles.chip, active === k && styles.chipActive]}>
-          <Text style={styles.chipText}>{USERS[k].emoji} {USERS[k].name}</Text>
+      {items.map((it) => (
+        <Pressable key={it.key} onPress={() => onChange?.(it.key)} style={[styles.chip, active === it.key && styles.chipActive]}>
+          <Text style={styles.chipText}>{it.emoji} {it.name}</Text>
         </Pressable>
       ))}
     </View>

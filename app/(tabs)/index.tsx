@@ -14,8 +14,9 @@ import { COVER_PHOTO_POOL, daySeed, pickDailyItems, todayKey } from '@/constants
 import { getItem, setItem } from '@/lib/storage';
 import { useUsage } from '@/contexts/UsageContext';
 import AvatarChips from '@/components/AvatarChips';
-import { formatDuration } from '@/hooks/useDailyUsage';
 import { getCoupleId } from '@/lib/couple';
+import { getCoupleSettings, upsertCoupleSettings } from '@/lib/appearance';
+import { formatDuration } from '@/hooks/useDailyUsage';
 import { getSignedUrl, MediaRow, resolveMime, updateCaption, uploadMedia, validateSize } from '@/lib/media';
 import { supabase } from '@/lib/supabase';
 
@@ -36,6 +37,18 @@ export default function HomeScreen() {
   const { usage, currentUser, setCurrentUser, ready } = useUsage();
 
   const [coupleId, setCoupleId] = useState('');
+  const [loveNotes, setLoveNotes] = useState<Array<{ id: string; author: string; text: string; created_at: string }>>([]);
+  const [noteDraft, setNoteDraft] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      const cid = await getCoupleId();
+      setCoupleId(cid);
+      const s = await getCoupleSettings(cid);
+      setLoveNotes(s?.love_notes || []);
+    })();
+  }, []);
+
   const [coverMedia, setCoverMedia] = useState<MediaRow[]>([]);
   const [coverUrls, setCoverUrls] = useState<Record<string, string>>({});
   const [editingCaptionId, setEditingCaptionId] = useState<string | null>(null);
@@ -190,8 +203,10 @@ export default function HomeScreen() {
       <View style={styles.card}>
         <Text style={[styles.cardTitle, { fontFamily: font }]}>Word of the Day 📖</Text>
         <Text style={[styles.big, { fontFamily: font }]}>{wordOfDay.word}</Text>
+        <Text style={[styles.body, { fontFamily: font }]}>{wordOfDay.pronunciation}</Text>
         <Text style={[styles.body, { fontFamily: font }]}>{wordOfDay.definition}</Text>
-        <Text style={styles.loveNote}>Learning new words with you is my favorite thing. 💕</Text>
+        <Text style={[styles.loveNote, { fontFamily: font }]}>{wordOfDay.example}</Text>
+        <Text style={[styles.muted, { fontFamily: font }]}>Learning and loving new words together 📖💕</Text>
       </View>
       <View style={styles.card}>
         <Text style={[styles.cardTitle, { fontFamily: font }]}>Fact of the Day 🧠</Text>
@@ -209,8 +224,39 @@ export default function HomeScreen() {
       </View>
 
       {/* Cover photos (shared, reset daily) */}
-      <Text style={styles.sectionTitle}>Cover Photos 🖼️ (reset daily)</Text>
+      <View style={styles.card}>
+        <Text style={[styles.cardTitle, { fontFamily: font }]}>Love Notes 💌</Text>
+        <Text style={[styles.muted, { fontFamily: font }]}>Little whispers for your heart 💌</Text>
+        {loveNotes.map((n) => (
+          <View key={n.id} style={styles.noteCard}>
+            <Text style={[styles.body, { fontFamily: font }]}>{n.text}</Text>
+            <Text style={[styles.muted, { fontFamily: font }]}>{n.author} • {new Date(n.created_at).toLocaleString()}</Text>
+          </View>
+        ))}
+        <TextInput
+          value={noteDraft}
+          onChangeText={setNoteDraft}
+          placeholder="Leave a sweet note..."
+          style={styles.input}
+          multiline
+        />
+        <Pressable
+          style={styles.smallBtn}
+          onPress={async () => {
+            if (!noteDraft.trim()) return;
+            const note = { id: `${Date.now()}`, author: currentUser, text: noteDraft.trim(), created_at: new Date().toISOString() };
+            const next = [...loveNotes, note];
+            setLoveNotes(next);
+            setNoteDraft('');
+            const s = await getCoupleSettings(coupleId);
+            await upsertCoupleSettings({ couple_id: coupleId, love_notes: next, updated_at: new Date().toISOString() });
+          }}>
+          <Text style={[styles.smallBtnText, { fontFamily: font }]}>Send Note</Text>
+        </Pressable>
+      </View>
       <Text style={styles.loveNote}>Our favorite faces, every single day. 💕</Text>
+      <Text style={[styles.sectionTitle, { fontFamily: font }]}>Cover Photos 🖼️ (reset daily)</Text>
+      <Text style={[styles.muted, { fontFamily: font }]}>Our favorite snap right now 📸✨</Text>
       <Pressable style={styles.smallBtn} onPress={uploadCover}><Text style={styles.smallBtnText}>Upload Cover (max 60MB)</Text></Pressable>
       {coverMedia.map((photo) => (
         <View key={photo.id} style={styles.photoCard}>
@@ -227,6 +273,7 @@ export default function HomeScreen() {
             ) : (
               <View style={{ flex: 1 }}>
                 <Text style={styles.caption}>{(photo.captions && photo.captions[currentUser]) || photo.caption || 'No caption yet'}</Text>
+                <Text style={[styles.muted, { fontFamily: font }]}>Status: Today's cover 📸</Text>
                 <Text style={[styles.muted, { fontFamily: font }]}>Partner: {(photo.captions && photo.captions[currentUser === 'daddy' ? 'princess' : 'daddy']) || ''}</Text>
                 <Pressable onPress={() => { setEditingCaptionId(photo.id); setCaptionDraft((photo.captions && photo.captions[currentUser]) || photo.caption || ''); }} style={styles.smallBtn}><Text style={styles.smallBtnText}>Edit My Caption</Text></Pressable>
               </View>
@@ -263,6 +310,7 @@ const styles = StyleSheet.create({
   big: { fontSize: 26, fontWeight: 'bold', color: '#111' },
   loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, textAlign: 'center' },
   muted: { fontSize: 13, opacity: 0.6, marginTop: 4, color: '#444' },
+  noteCard: { padding: 10, marginBottom: 8, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.8)' },
   row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 6 },
   userBtn: {
     paddingVertical: 8,

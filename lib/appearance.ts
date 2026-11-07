@@ -13,6 +13,9 @@ export interface CoupleSettings {
   daily_rotation: boolean;
   tab_config: Array<{ id: string; label: string; order: number }> | null;
   playtime_revealed: boolean;
+  avatar_daddy: string | null;
+  avatar_princess: string | null;
+  love_notes: Array<{ id: string; author: string; text: string; created_at: string }> | null;
   updated_at: string;
 }
 

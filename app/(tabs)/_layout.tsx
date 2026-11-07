@@ -15,11 +15,13 @@ export default function TabLayout() {
         tabBarStyle: { display: 'none' },
         headerRight: () => <TabDropdown />,
       }}>
-      <Tabs.Screen name="ai-editor" options={{ title: 'AI Photo Editor 📷' }} />
+      <Tabs.Screen name="index" options={{ title: 'Home Is Where the Heart Is 💗' }} />
       <Tabs.Screen name="our-log" options={{ title: 'Our Log 📜' }} />
-      <Tabs.Screen name="days-of-old" options={{ title: 'The Days of Old 🧙‍♂️' }} />
       <Tabs.Screen name="playtime" options={{ title: 'Playtime 😓' }} />
-      <Tabs.Screen name="settings" options={{ title: 'Settings ⚙️', tabBarLabel: 'Settings ⚙️' }} />
+      <Tabs.Screen name="ai-editor" options={{ title: 'AI Photo Editor 📷' }} />
+      <Tabs.Screen name="health" options={{ title: 'Health 🩺' }} />
+      <Tabs.Screen name="settings" options={{ title: 'Settings ⚙️' }} />
+      <Tabs.Screen name="days-of-old" options={{ title: 'The Days of Old 🧙‍♂️' }} />
     </Tabs>
   );
 }

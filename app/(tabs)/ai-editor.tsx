@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, Share } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Image as ExpoImage } from 'expo-image';
 
@@ -85,6 +85,9 @@ export default function AIEditorScreen() {
         <View style={styles.card}>
           <Text style={[styles.cardTitle, { fontFamily: font }]}>Result</Text>
           <ExpoImage source={{ uri: resultUri }} style={styles.photo} contentFit="contain" />
+          <Pressable style={styles.btn} onPress={() => Share.share({ url: resultUri, message: 'AI edited image' })}>
+            <Text style={styles.btnText}>Save / Download</Text>
+          </Pressable>
         </View>
       ) : null}
 
