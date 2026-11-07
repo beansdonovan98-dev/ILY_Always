@@ -121,9 +121,11 @@ export default function HealthScreen() {
   const [myBody, setMyBody] = useState<BodyMetrics>({ ...EMPTY_BODY });
   const [theirBody, setTheirBody] = useState<BodyMetrics>({ ...EMPTY_BODY });
   const [weights, setWeights] = useState<WeightEntry[]>([]);
+  const [theirWeights, setTheirWeights] = useState<WeightEntry[]>([]);
   const [meds, setMeds] = useState<Med[]>([]);
   const [medLogs, setMedLogs] = useState<MedLog[]>([]);
   const [fitness, setFitness] = useState<FitnessEntry[]>([]);
+  const [theirFitness, setTheirFitness] = useState<FitnessEntry[]>([]);
   const [myDaily, setMyDaily] = useState<Record<string, boolean>>({});
   const [theirDaily, setTheirDaily] = useState<Record<string, boolean>>({});
   const [myWater, setMyWater] = useState<Record<string, number>>({});
@@ -153,10 +155,12 @@ export default function HealthScreen() {
     setMyBody(await loadBody(cid, me));
     setTheirBody(await loadBody(cid, partner));
     setWeights(await loadWeights(cid, me));
+    setTheirWeights(await loadWeights(cid, partner));
     const loadedMeds = await loadMeds(cid);
     setMeds(loadedMeds);
     setMedLogs(await loadMedLogs(cid));
     setFitness(await loadFitness(cid, me));
+    setTheirFitness(await loadFitness(cid, partner));
     setMyDaily(await loadDailyChecks(cid, me));
     setTheirDaily(await loadDailyChecks(cid, partner));
     setMyWater(await loadWater(cid, me));
@@ -212,11 +216,12 @@ export default function HealthScreen() {
     }
   };
 
-  const chartData: ChartPoint[] = weights.map((w) => ({
-    id: w.id,
-    value: w.value,
-    label: w.dateKey.slice(5).replace('-', '/'),
-  }));
+  const toChartData = (list: WeightEntry[]): ChartPoint[] =>
+    list.map((w) => ({
+      id: w.id,
+      value: w.value,
+      label: w.dateKey.slice(5).replace('-', '/'),
+    }));
 
   /* --------------------------- medicine --------------------------- */
 
@@ -355,6 +360,149 @@ export default function HealthScreen() {
   const periodDays = periodLength(period);
   const todayChecked = period.days.some((d) => d.dateKey === localDateKey() && d.completed);
 
+  /* --------------------- weight + fitness panels --------------------- */
+
+  const renderWeightPanel = (person: HealthUser) => {
+    const isMe = person === me;
+    const list = isMe ? weights : theirWeights;
+    const label = person === 'daddy' ? 'Him 👨' : 'Her 👩';
+
+    return (
+      <View style={[styles.subCard, { borderColor: theme.borderColor }]}>
+        <View style={styles.subHeader}>
+          <Text style={styles.subTitle}>{label}</Text>
+          <Text style={[styles.tag, isMe ? styles.tagYou : styles.tagLock]}>
+            {isMe ? 'You ✏️' : 'View only 🔒'}
+          </Text>
+        </View>
+
+        <WeightChart data={toChartData(list)} accentColor={theme.accentColor} textColor={theme.textColor} />
+
+        {isMe && (
+          <>
+            <View style={styles.row}>
+              <TextInput
+                value={wVal}
+                onChangeText={setWVal}
+                placeholder="Weight (kg/lbs)"
+                placeholderTextColor="rgba(58,42,46,0.4)"
+                keyboardType="decimal-pad"
+                style={[styles.input, styles.flex, { borderColor: theme.borderColor, color: theme.textColor }]}
+              />
+              <Pill label={editingWeightId ? 'Save Weight' : 'Log Weight'} onPress={addWeight} />
+            </View>
+
+            {editingWeightId ? (
+              <GhostPill
+                label="Cancel edit"
+                onPress={() => {
+                  setEditingWeightId(null);
+                  setWVal('');
+                }}
+              />
+            ) : null}
+          </>
+        )}
+
+        {list.length > 0 && (
+          <View style={styles.list}>
+            {[...list]
+              .reverse()
+              .slice(0, 5)
+              .map((w) => (
+                <View key={w.id} style={styles.listRow}>
+                  <Text style={styles.listText}>
+                    {w.value} — {w.dateKey}
+                  </Text>
+                  {isMe && (
+                    <>
+                      <GhostPill
+                        label="Edit"
+                        onPress={() => {
+                          setEditingWeightId(w.id);
+                          setWVal(String(w.value));
+                        }}
+                      />
+                      <GhostPill label="Delete" onPress={() => deleteWeight(w.id)} />
+                    </>
+                  )}
+                </View>
+              ))}
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const renderFitnessPanel = (person: HealthUser) => {
+    const isMe = person === me;
+    const list = isMe ? fitness : theirFitness;
+    const label = person === 'daddy' ? 'Him 👨' : 'Her 👩';
+
+    return (
+      <View style={[styles.subCard, { borderColor: theme.borderColor }]}>
+        <View style={styles.subHeader}>
+          <Text style={styles.subTitle}>{label}</Text>
+          <Text style={[styles.tag, isMe ? styles.tagYou : styles.tagLock]}>
+            {isMe ? 'You ✏️' : 'View only 🔒'}
+          </Text>
+        </View>
+
+        {isMe && (
+          <>
+            <TextInput
+              value={fEx}
+              onChangeText={setFEx}
+              placeholder="Exercise (squats, run, yoga...)"
+              placeholderTextColor="rgba(58,42,46,0.4)"
+              style={[styles.input, { borderColor: theme.borderColor, color: theme.textColor }]}
+            />
+            <View style={styles.row}>
+              <TextInput
+                value={fSets}
+                onChangeText={setFSets}
+                placeholder="Sets"
+                placeholderTextColor="rgba(58,42,46,0.4)"
+                keyboardType="numeric"
+                style={[styles.input, styles.flex, { borderColor: theme.borderColor, color: theme.textColor }]}
+              />
+              <TextInput
+                value={fReps}
+                onChangeText={setFReps}
+                placeholder="Reps"
+                placeholderTextColor="rgba(58,42,46,0.4)"
+                keyboardType="numeric"
+                style={[styles.input, styles.flex, { borderColor: theme.borderColor, color: theme.textColor }]}
+              />
+              <TextInput
+                value={fMin}
+                onChangeText={setFMin}
+                placeholder="Min"
+                placeholderTextColor="rgba(58,42,46,0.4)"
+                keyboardType="numeric"
+                style={[styles.input, styles.flex, { borderColor: theme.borderColor, color: theme.textColor }]}
+              />
+            </View>
+            <Pill label="+ Log Workout" onPress={addFitness} />
+          </>
+        )}
+
+        {list.length === 0 && <Text style={styles.empty}>No workouts logged today yet.</Text>}
+
+        {list.map((f) => (
+          <View key={f.id} style={styles.listRow}>
+            <Text style={styles.listText}>
+              {f.exercise}
+              {f.sets || f.reps ? ` • ${f.sets || '-'}×${f.reps || '-'}` : ''}
+              {f.minutes ? ` • ${f.minutes} min` : ''}
+            </Text>
+            {isMe && <GhostPill label="✕" onPress={() => deleteFitness(f.id)} />}
+          </View>
+        ))}
+      </View>
+    );
+  };
+
   /* ---------------------- 7-day streak trackers --------------------- */
 
   const renderStreakDots = (doneForDay: (d: string) => boolean) => (
@@ -466,52 +614,8 @@ export default function HealthScreen() {
         <Text style={styles.cardTitle}>Weight Tracker ⚖️</Text>
         <Text style={styles.cardHint}>Every number on this scale matters just as much as every number in the bedroom 😏⚖️ (only you can edit yours)</Text>
 
-        <WeightChart data={chartData} accentColor={theme.accentColor} textColor={theme.textColor} />
-
-        <View style={styles.row}>
-          <TextInput
-            value={wVal}
-            onChangeText={setWVal}
-            placeholder="Weight (kg/lbs)"
-            placeholderTextColor="rgba(58,42,46,0.4)"
-            keyboardType="decimal-pad"
-            style={[styles.input, styles.flex, { borderColor: theme.borderColor, color: theme.textColor }]}
-          />
-          <Pill label={editingWeightId ? 'Save Weight' : 'Log Weight'} onPress={addWeight} />
-        </View>
-
-        {editingWeightId ? (
-          <GhostPill
-            label="Cancel edit"
-            onPress={() => {
-              setEditingWeightId(null);
-              setWVal('');
-            }}
-          />
-        ) : null}
-
-        {weights.length > 0 && (
-          <View style={styles.list}>
-            {[...weights]
-              .reverse()
-              .slice(0, 5)
-              .map((w) => (
-                <View key={w.id} style={styles.listRow}>
-                  <Text style={styles.listText}>
-                    {w.value} — {w.dateKey}
-                  </Text>
-                  <GhostPill
-                    label="Edit"
-                    onPress={() => {
-                      setEditingWeightId(w.id);
-                      setWVal(String(w.value));
-                    }}
-                  />
-                  <GhostPill label="Delete" onPress={() => deleteWeight(w.id)} />
-                </View>
-              ))}
-          </View>
-        )}
+        {renderWeightPanel('daddy')}
+        {renderWeightPanel('princess')}
       </View>
 
       {/* Medicine */}
@@ -613,56 +717,11 @@ export default function HealthScreen() {
         <LeafBorder color={theme.leafColor} />
         <Text style={styles.cardTitle}>Fitness Log 🏋️</Text>
         <Text style={styles.cardHint}>
-          Working out keeps us looking dangerous and feeling even dirtier 🏋️💦 Logging as {USERS[me].name} — resets daily 🌅
+          Working out keeps us looking dangerous and feeling even dirtier 🏋️💦
         </Text>
 
-        <TextInput
-          value={fEx}
-          onChangeText={setFEx}
-          placeholder="Exercise (squats, run, yoga...)"
-          placeholderTextColor="rgba(58,42,46,0.4)"
-          style={[styles.input, { borderColor: theme.borderColor, color: theme.textColor }]}
-        />
-        <View style={styles.row}>
-          <TextInput
-            value={fSets}
-            onChangeText={setFSets}
-            placeholder="Sets"
-            placeholderTextColor="rgba(58,42,46,0.4)"
-            keyboardType="numeric"
-            style={[styles.input, styles.flex, { borderColor: theme.borderColor, color: theme.textColor }]}
-          />
-          <TextInput
-            value={fReps}
-            onChangeText={setFReps}
-            placeholder="Reps"
-            placeholderTextColor="rgba(58,42,46,0.4)"
-            keyboardType="numeric"
-            style={[styles.input, styles.flex, { borderColor: theme.borderColor, color: theme.textColor }]}
-          />
-          <TextInput
-            value={fMin}
-            onChangeText={setFMin}
-            placeholder="Min"
-            placeholderTextColor="rgba(58,42,46,0.4)"
-            keyboardType="numeric"
-            style={[styles.input, styles.flex, { borderColor: theme.borderColor, color: theme.textColor }]}
-          />
-        </View>
-        <Pill label="+ Log Workout" onPress={addFitness} />
-
-        {fitness.length === 0 && <Text style={styles.empty}>No workouts logged today yet.</Text>}
-
-        {fitness.map((f) => (
-          <View key={f.id} style={styles.listRow}>
-            <Text style={styles.listText}>
-              {f.exercise}
-              {f.sets || f.reps ? ` • ${f.sets || '-'}×${f.reps || '-'}` : ''}
-              {f.minutes ? ` • ${f.minutes} min` : ''}
-            </Text>
-            <GhostPill label="✕" onPress={() => deleteFitness(f.id)} />
-          </View>
-        ))}
+        {renderFitnessPanel('daddy')}
+        {renderFitnessPanel('princess')}
       </View>
 
       {/* Daily health list */}
