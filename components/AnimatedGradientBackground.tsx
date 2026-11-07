@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { CannabisLeaf } from '@/components/CannabisLeaf';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const LIGHT_FALLBACK = ['#FFE3EC', '#F7D9FF', '#FFF3D6', '#FFD9E8'];
@@ -142,6 +143,22 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
     ],
   };
 
+  const leafColor = '#2E7D32';
+  const leafDriftA = {
+    transform: [
+      { translateY: drift.interpolate({ inputRange: [0, 1], outputRange: [0, -18] }) },
+      { translateX: drift2.interpolate({ inputRange: [0, 1], outputRange: [0, 12] }) },
+      { rotate: drift.interpolate({ inputRange: [0, 1], outputRange: ['-6deg', '8deg'] }) },
+    ],
+  };
+  const leafDriftB = {
+    transform: [
+      { translateY: drift2.interpolate({ inputRange: [0, 1], outputRange: [0, 16] }) },
+      { translateX: drift.interpolate({ inputRange: [0, 1], outputRange: [0, -10] }) },
+      { rotate: drift2.interpolate({ inputRange: [0, 1], outputRange: ['8deg', '-8deg'] }) },
+    ],
+  };
+
   return (
     <View style={[styles.root, { backgroundColor: base }]}>
       <LinearGradient colors={gradientColors(palette)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
@@ -173,6 +190,20 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
         />
       </Animated.View>
 
+      {/* Drifting leaf layer — low opacity so it reads as a gentle vine, not clutter */}
+      <Animated.View style={[styles.leafLayer, leafDriftA]}>
+        <View style={styles.leafA1}><CannabisLeaf size={30} color={leafColor} opacity={0.14} /></View>
+        <View style={styles.leafA2}><CannabisLeaf size={20} color={leafColor} opacity={0.1} /></View>
+        <View style={styles.leafA3}><CannabisLeaf size={24} color={leafColor} opacity={0.12} style={styles.tiltLeft} /></View>
+        <View style={styles.leafA4}><CannabisLeaf size={16} color={leafColor} opacity={0.09} /></View>
+      </Animated.View>
+      <Animated.View style={[styles.leafLayer, leafDriftB]}>
+        <View style={styles.leafB1}><CannabisLeaf size={26} color={leafColor} opacity={0.12} style={styles.tiltRight} /></View>
+        <View style={styles.leafB2}><CannabisLeaf size={18} color={leafColor} opacity={0.1} /></View>
+        <View style={styles.leafB3}><CannabisLeaf size={22} color={leafColor} opacity={0.11} /></View>
+        <View style={styles.leafB4}><CannabisLeaf size={14} color={leafColor} opacity={0.08} style={styles.tiltLeft} /></View>
+      </Animated.View>
+
       <View style={styles.content}>{children}</View>
     </View>
   );
@@ -183,4 +214,15 @@ const styles = StyleSheet.create({
   sheet: { position: 'absolute', width: '160%', height: '160%', left: '-30%', top: '-30%' },
   fill: { flex: 1 },
   content: { flex: 1 },
+  leafLayer: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
+  tiltLeft: { transform: [{ rotate: '-18deg' }] },
+  tiltRight: { transform: [{ rotate: '18deg' }] },
+  leafA1: { position: 'absolute', top: '6%', left: '8%' },
+  leafA2: { position: 'absolute', top: '24%', left: '-6%' },
+  leafA3: { position: 'absolute', top: '52%', left: '90%' },
+  leafA4: { position: 'absolute', top: '78%', left: '4%' },
+  leafB1: { position: 'absolute', top: '12%', left: '82%' },
+  leafB2: { position: 'absolute', top: '38%', left: '6%' },
+  leafB3: { position: 'absolute', top: '64%', left: '-4%' },
+  leafB4: { position: 'absolute', top: '86%', left: '88%' },
 });

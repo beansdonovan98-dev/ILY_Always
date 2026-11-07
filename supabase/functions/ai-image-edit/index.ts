@@ -1,9 +1,34 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+function json(status: number, payload: Record<string, unknown>) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   try {
     const { imageBase64, prompt, mimeType } = await req.json();
-    if (!imageBase64 || !prompt) return new Response('Missing imageBase64/prompt', { status: 400 });
+    if (!imageBase64 || !prompt) {
+      return json(400, { error: 'Missing imageBase64 or prompt.' });
+    }
+
+    const openaiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openaiKey) {
+      return json(500, {
+        error: 'OPENAI_API_KEY is not set on the Supabase project. Run: supabase secrets set OPENAI_API_KEY=sk-...',
+      });
+    }
 
     const mime = mimeType || 'image/png';
     const ext = mime.includes('png') ? 'png' : mime.includes('jpeg') || mime.includes('jpg') ? 'jpg' : 'png';
@@ -19,17 +44,23 @@ serve(async (req) => {
 
     const res = await fetch('https://api.openai.com/v1/images/edits', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${Deno.env.get('OPENAI_API_KEY')}` },
+      headers: { Authorization: `Bearer ${openaiKey}` },
       body: form,
     });
 
-    const json = await res.json();
-    if (!res.ok) return new Response(JSON.stringify(json), { status: res.status, headers: { 'Content-Type': 'application/json' } });
+    const jsonRes = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const message = jsonRes?.error?.message || 'OpenAI rejected the request.';
+      const code = jsonRes?.error?.code || res.status;
+      return json(502, { error: `AI provider error (${code}): ${message}` });
+    }
 
-    const b64 = json?.data?.[0]?.b64_json;
-    if (!b64) return new Response('No image returned', { status: 500 });
-    return new Response(JSON.stringify({ b64 }), { headers: { 'Content-Type': 'application/json' } });
+    const b64 = jsonRes?.data?.[0]?.b64_json;
+    if (!b64) {
+      return json(502, { error: 'The AI came back without an image.' });
+    }
+    return json(200, { b64 });
   } catch (e) {
-    return new Response(String(e), { status: 500 });
+    return json(500, { error: `AI editor crashed: ${String(e)}` });
   }
 });

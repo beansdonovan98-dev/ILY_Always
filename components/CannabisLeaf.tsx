@@ -62,6 +62,14 @@ export function LeafBorder({ color = '#2E7D4F', size = 24 }: { color?: string; s
         <CannabisLeaf size={size * 0.45} color={color} opacity={0.3} />
         <CannabisLeaf size={size * 0.55} color={color} opacity={0.4} style={styles.tiltLeft} />
       </View>
+      <View pointerEvents="none" style={styles.bottomLeft}>
+        <CannabisLeaf size={size * 0.6} color={color} opacity={0.35} style={styles.tiltRight} />
+        <CannabisLeaf size={size * 0.45} color={color} opacity={0.25} />
+      </View>
+      <View pointerEvents="none" style={styles.bottomRight}>
+        <CannabisLeaf size={size * 0.45} color={color} opacity={0.25} />
+        <CannabisLeaf size={size * 0.6} color={color} opacity={0.35} style={styles.tiltLeft} />
+      </View>
     </>
   );
 }
@@ -100,6 +108,22 @@ const styles = {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     gap: 6,
+  },
+  bottomLeft: {
+    position: 'absolute' as const,
+    bottom: -11,
+    left: 12,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+  },
+  bottomRight: {
+    position: 'absolute' as const,
+    bottom: -11,
+    right: 12,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
   },
 };
 

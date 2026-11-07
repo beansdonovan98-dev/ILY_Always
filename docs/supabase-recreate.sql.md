@@ -159,6 +159,16 @@ create table if not exists push_tokens (
   updated_at      timestamptz default now(),
   primary key (couple_id, user_key)
 );
+
+-- Daily health list — the editable, shared task list (same for both).
+create table if not exists health_daily_list (
+  couple_id   text not null,
+  task_id     text not null,
+  label       text not null,
+  emoji       text not null default '🌿',
+  created_at  timestamptz default now(),
+  primary key (couple_id, task_id)
+);
 ```
 
 ## 3. Permissive RLS (matches the current no-auth app)
@@ -173,6 +183,7 @@ alter table health_fitness      enable row level security;
 alter table health_period_state enable row level security;
 alter table health_period_days  enable row level security;
 alter table health_daily_checks enable row level security;
+alter table health_daily_list   enable row level security;
 alter table health_water        enable row level security;
 alter table push_tokens         enable row level security;
 
@@ -212,6 +223,10 @@ drop policy if exists "health_daily_checks_all" on health_daily_checks;
 create policy "health_daily_checks_all" on health_daily_checks
   for all using (true) with check (true);
 
+drop policy if exists "health_daily_list_all" on health_daily_list;
+create policy "health_daily_list_all" on health_daily_list
+  for all using (true) with check (true);
+
 drop policy if exists "health_water_all" on health_water;
 create policy "health_water_all" on health_water
   for all using (true) with check (true);
@@ -231,6 +246,7 @@ grant select, insert, update, delete on
   health_period_state,
   health_period_days,
   health_daily_checks,
+  health_daily_list,
   health_water,
   push_tokens
 to anon, authenticated;

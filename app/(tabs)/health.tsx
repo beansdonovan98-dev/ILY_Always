@@ -19,8 +19,7 @@ import {
   BODY_FIELDS,
   BodyField,
   BodyMetrics,
-  DAILY_HEALTH_TASKS,
-  DailyTaskId,
+  DailyTask,
   EMPTY_BODY,
   EMPTY_PERIOD,
   FitnessEntry,
@@ -33,11 +32,13 @@ import {
   WATER_GOAL,
   WeightEntry,
   addFitness as addFitnessEntry,
+  addDailyTask,
   addMed as addMedRow,
   addWeight as addWeightEntry,
   bodyResetLabel,
   loadBody,
   loadDailyChecks,
+  loadDailyTasks,
   loadFitness,
   loadMedLogs,
   loadMeds,
@@ -47,6 +48,7 @@ import {
   logMedDose,
   periodLength,
   removeFitness,
+  removeDailyTask,
   removeMed as removeMedRow,
   removeMedLog,
   removeWeight as removeWeightEntry,
@@ -93,6 +95,9 @@ function GhostPill({ label, onPress }: { label: string; onPress: () => void }) {
   );
 }
 
+type PersonLabel = 'His 🍆' | 'Hers 🍑';
+const personLabel = (person: HealthUser): PersonLabel => (person === 'daddy' ? 'His 🍆' : 'Hers 🍑');
+
 function DosePill({ label, onPress }: { label: string; onPress: () => void }) {
   const theme = useAppTheme();
   return (
@@ -128,6 +133,9 @@ export default function HealthScreen() {
   const [theirFitness, setTheirFitness] = useState<FitnessEntry[]>([]);
   const [myDaily, setMyDaily] = useState<Record<string, boolean>>({});
   const [theirDaily, setTheirDaily] = useState<Record<string, boolean>>({});
+  const [tasks, setTasks] = useState<DailyTask[]>([]);
+  const [newTaskEmoji, setNewTaskEmoji] = useState('🌿');
+  const [newTaskLabel, setNewTaskLabel] = useState('');
   const [myWater, setMyWater] = useState<Record<string, number>>({});
   const [theirWater, setTheirWater] = useState<Record<string, number>>({});
   const [celebration, setCelebration] = useState<{ mode: 'small' | 'big'; message: string } | null>(null);
@@ -163,6 +171,7 @@ export default function HealthScreen() {
     setTheirFitness(await loadFitness(cid, partner));
     setMyDaily(await loadDailyChecks(cid, me));
     setTheirDaily(await loadDailyChecks(cid, partner));
+    setTasks(await loadDailyTasks(cid));
     setMyWater(await loadWater(cid, me));
     setTheirWater(await loadWater(cid, partner));
     setRevealed(await getItem<boolean>('periodRevealed', false));
@@ -291,19 +300,30 @@ export default function HealthScreen() {
   const dailyDone = (checks: Record<string, boolean>, taskId: string, dateKey: string) =>
     Boolean(checks[`${taskId}|${dateKey}`]);
 
-  const toggleTask = async (taskId: DailyTaskId) => {
+  const toggleTask = async (task: DailyTask) => {
     const today = localDateKey();
-    const next = await toggleDailyCheck(coupleId, me, myDaily, taskId, today);
+    const next = await toggleDailyCheck(coupleId, me, myDaily, task.id, today);
     setMyDaily(next);
-    if (dailyDone(next, taskId, today)) {
-      const doneForDay = (d: string) => dailyDone(next, taskId, d);
-      const task = DAILY_HEALTH_TASKS.find((t) => t.id === taskId);
+    if (dailyDone(next, task.id, today)) {
+      const doneForDay = (d: string) => dailyDone(next, task.id, d);
       if (isPerfectWeek(doneForDay)) {
-        setCelebration({ mode: 'big', message: `${task?.emoji ?? ''} ${task?.label ?? ''} — 7 days in a row! 🔥` });
+        setCelebration({ mode: 'big', message: `${task.emoji} ${task.label} — 7 days in a row! 🔥` });
       } else {
-        setCelebration({ mode: 'small', message: `${task?.emoji ?? ''} ${task?.label ?? ''} — crossed off! ✔️` });
+        setCelebration({ mode: 'small', message: `${task.emoji} ${task.label} — crossed off! ✔️` });
       }
     }
+  };
+
+  const createTask = async () => {
+    if (!newTaskLabel.trim()) return;
+    const next = await addDailyTask(coupleId, newTaskLabel.trim(), newTaskEmoji.trim());
+    setTasks(next);
+    setNewTaskEmoji('🌿');
+    setNewTaskLabel('');
+  };
+
+  const deleteTask = async (id: string) => {
+    setTasks(await removeDailyTask(coupleId, id));
   };
 
   /* --------------------------- water --------------------------- */
@@ -365,7 +385,7 @@ export default function HealthScreen() {
   const renderWeightPanel = (person: HealthUser) => {
     const isMe = person === me;
     const list = isMe ? weights : theirWeights;
-    const label = person === 'daddy' ? 'Him 👨' : 'Her 👩';
+    const label = personLabel(person);
 
     return (
       <View style={[styles.subCard, { borderColor: theme.borderColor }]}>
@@ -437,7 +457,7 @@ export default function HealthScreen() {
   const renderFitnessPanel = (person: HealthUser) => {
     const isMe = person === me;
     const list = isMe ? fitness : theirFitness;
-    const label = person === 'daddy' ? 'Him 👨' : 'Her 👩';
+    const label = personLabel(person);
 
     return (
       <View style={[styles.subCard, { borderColor: theme.borderColor }]}>
@@ -549,7 +569,7 @@ export default function HealthScreen() {
   const renderBodyPanel = (person: HealthUser) => {
     const isMe = person === me;
     const metrics = isMe ? myBody : theirBody;
-    const label = person === 'daddy' ? 'Him 👨' : 'Her 👩';
+    const label = personLabel(person);
 
     return (
       <View style={[styles.subCard, { borderColor: theme.borderColor }]}>
@@ -600,7 +620,7 @@ export default function HealthScreen() {
       {/* Body measurements */}
       <View style={[styles.card, theme.cardStyle]}>
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Him &amp; Her Body Measurements 💪</Text>
+        <Text style={styles.cardTitle}>His &amp; Hers Body Measurements 💪</Text>
         <Text style={styles.cardHint}>
           Only you can edit your own numbers — measurements refresh every 3 days 🍃
         </Text>
@@ -733,37 +753,79 @@ export default function HealthScreen() {
         </Text>
 
         <View style={styles.bubbleHeader}>
-          <Text style={styles.bubbleHeaderLabel}>Daddy 🍆</Text>
-          <Text style={styles.bubbleHeaderLabel}>Princess 🍑</Text>
+          <Text style={styles.bubbleHeaderLabel}>His 🍆</Text>
+          <Text style={styles.bubbleHeaderLabel}>Hers 🍑</Text>
         </View>
 
-        {DAILY_HEALTH_TASKS.map((task) => {
+        {tasks.length === 0 && <Text style={styles.empty}>No rituals yet — add your first one below 🌿</Text>}
+
+        {tasks.map((task) => {
           const myDone = dailyDone(myDaily, task.id, localDateKey());
           const theirDone = dailyDone(theirDaily, task.id, localDateKey());
-          const myStreak = streakEndingToday((d) => dailyDone(myDaily, task.id, d));
           return (
-            <View key={task.id}>
-              <View style={styles.bubbleRow}>
-                {renderBubble('daddy', me === 'daddy' ? myDone : theirDone, () =>
-                  me === 'daddy' ? toggleTask(task.id) : undefined
-                )}
-                <View style={styles.bubbleLabel}>
-                  <Text style={styles.bubbleName}>
-                    {task.emoji} {task.label}
-                  </Text>
-                </View>
-                {renderBubble('princess', me === 'princess' ? myDone : theirDone, () =>
-                  me === 'princess' ? toggleTask(task.id) : undefined
-                )}
-              </View>
-              {me && (
-                <View style={styles.streakWithCount}>
-                  {renderStreakDots((d) => dailyDone(myDaily, task.id, d))}
-                  <Text style={styles.streakCount}>
-                    {myStreak > 0 ? `🔥 ${myStreak}-day streak` : 'Start your streak today 💪'}
-                  </Text>
-                </View>
+            <View style={styles.bubbleRow} key={task.id}>
+              {renderBubble('daddy', me === 'daddy' ? myDone : theirDone, () =>
+                me === 'daddy' ? toggleTask(task) : undefined
               )}
+              <View style={styles.bubbleLabel}>
+                <Text style={styles.bubbleName}>
+                  {task.emoji} {task.label}
+                </Text>
+                <GhostPill label="✕" onPress={() => deleteTask(task.id)} />
+              </View>
+              {renderBubble('princess', me === 'princess' ? myDone : theirDone, () =>
+                me === 'princess' ? toggleTask(task) : undefined
+              )}
+            </View>
+          );
+        })}
+
+        <Text style={styles.label}>Add a ritual 🌿</Text>
+        <View style={styles.row}>
+          <TextInput
+            value={newTaskEmoji}
+            onChangeText={setNewTaskEmoji}
+            placeholder="🌿"
+            placeholderTextColor="rgba(58,42,46,0.4)"
+            style={[styles.input, styles.taskEmojiInput, { borderColor: theme.borderColor, color: theme.textColor }]}
+          />
+          <TextInput
+            value={newTaskLabel}
+            onChangeText={setNewTaskLabel}
+            placeholder="e.g. Vitamins"
+            placeholderTextColor="rgba(58,42,46,0.4)"
+            style={[styles.input, styles.flex, { borderColor: theme.borderColor, color: theme.textColor }]}
+          />
+          <Pill label="+ Add" onPress={createTask} />
+        </View>
+      </View>
+
+      {/* 7-day streak tracker */}
+      <View style={[styles.card, theme.cardStyle]}>
+        <LeafBorder color={theme.leafColor} />
+        <Text style={styles.cardTitle}>7-Day Tracker 🏆</Text>
+        <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
+          Seven ticks in a row and you earn the grand celebration, gorgeous — keep the streak alive 🔥
+        </Text>
+
+        {tasks.map((task) => {
+          const hisStreak = streakEndingToday((d) => dailyDone(me === 'daddy' ? myDaily : theirDaily, task.id, d));
+          const hersStreak = streakEndingToday((d) => dailyDone(me === 'princess' ? myDaily : theirDaily, task.id, d));
+          return (
+            <View key={task.id} style={[styles.trackerRow, { borderColor: theme.borderColor }]}>
+              <Text style={styles.trackerName}>
+                {task.emoji} {task.label}
+              </Text>
+              <View style={styles.trackerLine}>
+                <Text style={styles.trackerWho}>His 🍆</Text>
+                <View style={styles.flex}>{renderStreakDots((d) => dailyDone(me === 'daddy' ? myDaily : theirDaily, task.id, d))}</View>
+                <Text style={styles.streakCount}>🔥 {hisStreak}</Text>
+              </View>
+              <View style={styles.trackerLine}>
+                <Text style={styles.trackerWho}>Hers 🍑</Text>
+                <View style={styles.flex}>{renderStreakDots((d) => dailyDone(me === 'princess' ? myDaily : theirDaily, task.id, d))}</View>
+                <Text style={styles.streakCount}>🔥 {hersStreak}</Text>
+              </View>
             </View>
           );
         })}
@@ -777,7 +839,7 @@ export default function HealthScreen() {
           Four cups a day keeps the thirst away — and keeps you glowing for me, sweetheart 💦
         </Text>
 
-        <Text style={styles.label}>{USERS[me].label} — {waterCupsToday(myWater)}/{WATER_GOAL} cups</Text>
+        <Text style={styles.label}>{personLabel(me)} — {waterCupsToday(myWater)}/{WATER_GOAL} cups</Text>
         <View style={styles.cupRow}>
           {Array.from({ length: WATER_GOAL }, (_, i) => (
             <Pressable
@@ -797,7 +859,7 @@ export default function HealthScreen() {
         </View>
         {renderStreakDots(waterDoneDay(myWater))}
 
-        <Text style={[styles.label, { marginTop: 16 }]}>{USERS[partner].label} — {waterCupsToday(theirWater)}/{WATER_GOAL} cups</Text>
+        <Text style={[styles.label, { marginTop: 16 }]}>{personLabel(partner)} — {waterCupsToday(theirWater)}/{WATER_GOAL} cups</Text>
         <View style={styles.cupRow}>
           {Array.from({ length: WATER_GOAL }, (_, i) => (
             <View
@@ -1018,8 +1080,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   bubbleMark: { fontSize: 20, fontWeight: '800' },
-  bubbleLabel: { flex: 1, alignItems: 'center' },
+  bubbleLabel: { flex: 1, alignItems: 'center', gap: 4 },
   bubbleName: { fontSize: 15, fontWeight: '700', textAlign: 'center' },
+  taskEmojiInput: { width: 56 },
+  trackerRow: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderStyle: 'dashed' },
+  trackerName: { fontSize: 14, fontWeight: '800', marginBottom: 6 },
+  trackerLine: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+  trackerWho: { fontSize: 12, fontWeight: '800', opacity: 0.7, width: 62 },
   streakRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
   streakWithCount: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 2 },
   streakCount: { fontSize: 12, fontWeight: '700', opacity: 0.75 },

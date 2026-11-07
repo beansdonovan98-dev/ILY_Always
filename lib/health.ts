@@ -710,6 +710,105 @@ export const DAILY_HEALTH_TASKS = [
 
 export type DailyTaskId = (typeof DAILY_HEALTH_TASKS)[number]['id'];
 
+export interface DailyTask {
+  id: string;
+  label: string;
+  emoji: string;
+}
+
+const listKey = (coupleId: string) => `health:dailyList:${coupleId}`;
+
+const seedTasks = (): DailyTask[] =>
+  DAILY_HEALTH_TASKS.map((t) => ({ id: t.id as string, label: t.label, emoji: t.emoji }));
+
+export async function loadDailyTasks(coupleId: string): Promise<DailyTask[]> {
+  const cached = await getItem<DailyTask[]>(listKey(coupleId), []);
+
+  if (hasSupabaseEnv && coupleId) {
+    try {
+      const { data, error } = await supabase
+        .from('health_daily_list')
+        .select('task_id,label,emoji')
+        .eq('couple_id', coupleId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      let next = (data || []).map((row) => ({
+        id: row.task_id as string,
+        label: (row.label as string) ?? '',
+        emoji: (row.emoji as string) ?? '🌿',
+      }));
+      if (next.length === 0) {
+        const seeded = seedTasks();
+        await supabase.from('health_daily_list').insert(
+          seeded.map((t) => ({
+            couple_id: coupleId,
+            task_id: t.id,
+            label: t.label,
+            emoji: t.emoji,
+            created_at: new Date().toISOString(),
+          }))
+        );
+        next = seeded;
+      }
+      await setItem(listKey(coupleId), next);
+      return next;
+    } catch {
+      // fall through to cache
+    }
+  }
+
+  return cached.length > 0 ? cached : seedTasks();
+}
+
+export async function addDailyTask(coupleId: string, label: string, emoji: string): Promise<DailyTask[]> {
+  const current = await loadDailyTasks(coupleId);
+  const task: DailyTask = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    label,
+    emoji: emoji || '🌿',
+  };
+  const next = [...current, task];
+  await setItem(listKey(coupleId), next);
+
+  if (hasSupabaseEnv && coupleId) {
+    try {
+      const { error } = await supabase.from('health_daily_list').insert({
+        couple_id: coupleId,
+        task_id: task.id,
+        label: task.label,
+        emoji: task.emoji,
+        created_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+    } catch (e) {
+      console.warn('[health] addDailyTask fell back to local cache', e);
+    }
+  }
+
+  return next;
+}
+
+export async function removeDailyTask(coupleId: string, taskId: string): Promise<DailyTask[]> {
+  const current = await loadDailyTasks(coupleId);
+  const next = current.filter((t) => t.id !== taskId);
+  await setItem(listKey(coupleId), next);
+
+  if (hasSupabaseEnv && coupleId) {
+    try {
+      const { error } = await supabase
+        .from('health_daily_list')
+        .delete()
+        .eq('task_id', taskId)
+        .eq('couple_id', coupleId);
+      if (error) throw error;
+    } catch (e) {
+      console.warn('[health] removeDailyTask fell back to local cache', e);
+    }
+  }
+
+  return next;
+}
+
 const dailyKey = (coupleId: string, user: HealthUser) => `health:daily:${coupleId}:${user}`;
 const dayTaskId = (taskId: string, dateKey: string) => `${taskId}|${dateKey}`;
 

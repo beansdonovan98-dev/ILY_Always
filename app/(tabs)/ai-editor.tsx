@@ -44,7 +44,7 @@ export default function AIEditorScreen() {
     try {
       const edited = await editImageWithAI(sourceUri, prompt.trim());
       setResultUri(edited);
-      setStatus('Done! Save it, or it is already uploaded to shared covers.');
+      setStatus('Done! Tap Save to keep it 💞');
     } catch (e) {
       setStatus(`Error: ${String(e)}`);
     } finally {
@@ -54,7 +54,8 @@ export default function AIEditorScreen() {
 
   /** Saves the edited photo to the couple's shared covers (Supabase storage). */
   const saveToCovers = useCallback(async () => {
-    if (!resultUri) return;
+    const uri = resultUri || sourceUri;
+    if (!uri) return;
     setSaving(true);
     setStatus('Saving to shared covers...');
     try {
@@ -62,7 +63,7 @@ export default function AIEditorScreen() {
       const row = await uploadMedia({
         coupleId: cid,
         kind: 'shared',
-        localUri: resultUri,
+        localUri: uri,
         fileName: `ai-edit-${Date.now()}.png`,
         mimeType: 'image/png',
         byteSize: 0,
@@ -76,11 +77,12 @@ export default function AIEditorScreen() {
     } finally {
       setSaving(false);
     }
-  }, [resultUri, currentUser]);
+  }, [resultUri, sourceUri, currentUser]);
 
-  /** Saves the edited photo directly to this device's photo library. */
+  /** Saves the current photo directly to this device's photo library. */
   const saveToDevice = useCallback(async () => {
-    if (!resultUri) return;
+    const uri = resultUri || sourceUri;
+    if (!uri) return;
     setSaving(true);
     try {
       const { status: perm } = await MediaLibrary.requestPermissionsAsync();
@@ -89,14 +91,14 @@ export default function AIEditorScreen() {
         await saveToCovers();
         return;
       }
-      await MediaLibrary.saveToLibraryAsync(resultUri);
+      await MediaLibrary.saveToLibraryAsync(uri);
       setStatus('Saved to your photo library 💾');
     } catch (e) {
       setStatus(`Save failed: ${String(e)}`);
     } finally {
       setSaving(false);
     }
-  }, [resultUri, saveToCovers]);
+  }, [resultUri, sourceUri, saveToCovers]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -145,6 +147,21 @@ export default function AIEditorScreen() {
             <Text style={styles.pillText}>{loading ? 'Working...' : 'AI Edit ✨'}</Text>
           </LinearGradient>
         </Pressable>
+
+        <Pressable onPress={saveToCovers} disabled={saving || !(resultUri || sourceUri)} style={styles.pillPress}>
+          <LinearGradient
+            colors={[appTheme.accentColor, '#C86DD7']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.pill}>
+            <Text style={styles.pillText}>{saving ? 'Saving...' : 'Save to Shared Covers 💞'}</Text>
+          </LinearGradient>
+        </Pressable>
+
+        <Pressable onPress={saveToDevice} disabled={saving || !(resultUri || sourceUri)} style={[styles.ghostPill, { borderColor: appTheme.borderColor }]}>
+          <Text style={styles.ghostPillText}>Save to My Photos 💾</Text>
+        </Pressable>
+        <Text style={styles.hint}>Pick a photo first — Save keeps whichever photo is showing (edited or original).</Text>
       </View>
 
       {resultUri ? (
@@ -219,4 +236,5 @@ const styles = StyleSheet.create({
   photoWrap: { marginTop: 12, borderRadius: 18, overflow: 'hidden', borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.35)' },
   photo: { width: '100%', height: 240 },
   muted: { fontSize: 13, opacity: 0.65, textAlign: 'center' },
+  hint: { fontSize: 12, opacity: 0.6, marginTop: 8, lineHeight: 17 },
 });
