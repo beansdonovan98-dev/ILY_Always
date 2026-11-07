@@ -1,0 +1,69 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Build and upload to TestFlight"
+  lane :beta do
+    setup_ci if ENV["CI"]
+
+    api_key = app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_filepath: File.expand_path("~/private_keys/AuthKey_#{ENV['ASC_KEY_ID']}.p8")
+    )
+
+    match(
+      type: "appstore",
+      readonly: true,
+      api_key: api_key,
+      git_url: ENV["MATCH_GIT_URL"],
+      password: ENV["MATCH_PASSWORD"],
+      git_basic_authorization: ENV["MATCH_GIT_BASIC_AUTHORIZATION"]
+    )
+
+    profile_name = ENV["MATCH_PROVISIONING_PROFILE_MAPPING"] || "match AppStore com.spector.ILYAlways"
+    # Profile name comes from match mapping; do not hardcode a different one.
+
+    update_project_team(
+      teamid: "PKM33XZW3X"
+    )
+
+    # Manual signing with Apple Distribution + matched profile
+    # (Xcode project settings are updated by fastlane at build time)
+
+    build_app(
+      workspace: "ios/ILYAlways.xcworkspace",
+      scheme: "ILYAlways",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: "ios/build",
+      output_name: "ILYAlways.ipa"
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      ipa: "ios/build/ILYAlways.ipa",
+      skip_waiting_for_build_processing: true,
+      distribute_external: false
+    )
+  end
+
+  desc "Bootstrap match (manual only)"
+  lane :bootstrap_match do
+    setup_ci if ENV["CI"]
+
+    api_key = app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_filepath: File.expand_path("~/private_keys/AuthKey_#{ENV['ASC_KEY_ID']}.p8")
+    )
+
+    match(
+      type: "appstore",
+      readonly: false,
+      api_key: api_key,
+      git_url: ENV["MATCH_GIT_URL"],
+      password: ENV["MATCH_PASSWORD"],
+      git_basic_authorization: ENV["MATCH_GIT_BASIC_AUTHORIZATION"]
+    )
+  end
+end

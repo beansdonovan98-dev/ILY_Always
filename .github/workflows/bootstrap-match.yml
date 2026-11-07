@@ -1,0 +1,52 @@
+name: bootstrap-match
+
+on:
+  workflow_dispatch:
+
+jobs:
+  bootstrap:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: Install CocoaPods
+        run: |
+          brew install cocoapods
+          gem install cocoapods fastlane
+
+      - name: Expo prebuild (iOS)
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Copy fastlane config
+        run: cp -r fastlane ios/fastlane
+
+      - name: Pod install
+        run: cd ios && pod install
+
+      - name: Bundle init fastlane
+        run: cd ios && bundle init && bundle add fastlane && bundle install
+
+      - name: Write ASC key
+        run: |
+          mkdir -p ~/private_keys
+          printf '%s' "${{ secrets.ASC_AUTH_KEY }}" > ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+
+      - name: Run fastlane bootstrap_match
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+        run: cd ios && bundle exec fastlane bootstrap_match
