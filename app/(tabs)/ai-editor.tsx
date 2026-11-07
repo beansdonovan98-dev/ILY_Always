@@ -56,6 +56,7 @@ export default function AIEditorScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>AI Photo Editor 📷</Text>
+      <Text style={styles.loveNote}>Create something beautiful together. ✨</Text>
       <Text style={styles.body}>Pick a photo, describe the edit, and let AI create it.</Text>
 
       <Pressable style={styles.btn} onPress={pickSource}>
@@ -90,7 +91,7 @@ export default function AIEditorScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 16, paddingBottom: 40 },
+  content: { padding: 24, paddingBottom: 60, alignItems: 'center' },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
   body: { fontSize: 16, marginBottom: 12 },
   btn: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, backgroundColor: 'rgba(100,150,255,0.4)', marginBottom: 12, alignSelf: 'flex-start' },
@@ -100,4 +101,5 @@ const styles = StyleSheet.create({
   card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.9)' },
   cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
   muted: { fontSize: 12, opacity: 0.6 },
+  loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, marginBottom: 12, textAlign: 'center' },
 });

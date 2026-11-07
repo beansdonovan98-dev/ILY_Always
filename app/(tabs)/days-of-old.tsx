@@ -52,6 +52,7 @@ export default function DaysOfOldScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>The Days of Old 🧙‍♂️</Text>
+      <Text style={styles.loveNote}>Our story, day by day. 📖💕</Text>
       {dates.length === 0 && <Text style={styles.muted}>No past days yet.</Text>}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
         <View style={styles.row}>
@@ -88,9 +89,10 @@ export default function DaysOfOldScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 16, paddingBottom: 40 },
+  content: { padding: 24, paddingBottom: 60, alignItems: 'center' },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
   muted: { fontSize: 12, opacity: 0.6, marginBottom: 8 },
+  loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, marginBottom: 12, textAlign: 'center' },
   row: { flexDirection: 'row', gap: 8 },
   dateChip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 16, backgroundColor: 'rgba(120,120,120,0.2)', marginRight: 6 },
   dateChipSelected: { backgroundColor: 'rgba(100,150,255,0.4)' },

@@ -177,17 +177,22 @@ export default function HomeScreen() {
         <Text style={styles.big}>
           {relationshipElapsed.days}d {relationshipElapsed.hours}h {relationshipElapsed.mins}m {relationshipElapsed.secs}s
         </Text>
+        <Text style={styles.loveNote}>Every second with you is my favorite. 💗</Text>
       </View>
+
+      {/* Word & Fact */}
 
       {/* Word & Fact */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Word of the Day 📖</Text>
         <Text style={styles.big}>{wordOfDay.word}</Text>
         <Text style={styles.body}>{wordOfDay.definition}</Text>
+        <Text style={styles.loveNote}>Learning new words with you is my favorite thing. 💕</Text>
       </View>
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Fact of the Day 🧠</Text>
         <Text style={styles.body}>{factOfDay}</Text>
+        <Text style={styles.loveNote}>Every fact is better when shared with you. 🌸</Text>
       </View>
 
       {/* Usage tracker */}
@@ -196,6 +201,7 @@ export default function HomeScreen() {
         <Text style={styles.body}>Daddy 🍆: {formatDuration(usage.daddy)}</Text>
         <Text style={styles.body}>Princess 🍑: {formatDuration(usage.princess)}</Text>
         <Text style={styles.muted}>Resets at midnight. Active: {USERS[currentUser as keyof typeof USERS].label}</Text>
+        <Text style={styles.loveNote}>Every moment together counts. ⏳❤️</Text>
       </View>
 
       {/* Cover photos (shared, reset daily) */}
@@ -249,6 +255,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8, color: '#111' },
   body: { fontSize: 17, marginBottom: 6, color: '#222', lineHeight: 24 },
   big: { fontSize: 26, fontWeight: 'bold', color: '#111' },
+  loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, textAlign: 'center' },
   muted: { fontSize: 13, opacity: 0.6, marginTop: 4, color: '#444' },
   row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 6 },
   userBtn: {

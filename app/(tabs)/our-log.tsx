@@ -113,6 +113,7 @@ export default function OurLogScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Our Log 📜</Text>
+      <Text style={styles.loveNote}>Every moment together, written with love. 💕</Text>
       <Text style={styles.muted}>{dateKey}</Text>
 
       <Pressable style={styles.btn} onPress={() => setShowForm((v) => !v)}>
@@ -272,7 +273,7 @@ export default function OurLogScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 16, paddingBottom: 40 },
+  content: { padding: 24, paddingBottom: 60, alignItems: 'center' },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 4 },
   muted: { fontSize: 12, opacity: 0.6, marginBottom: 12 },
   card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(120,120,120,0.12)' },
@@ -292,6 +293,7 @@ const styles = StyleSheet.create({
   smallBtnText: { fontWeight: '600', fontSize: 12 },
   entryTime: { fontSize: 11, opacity: 0.6 },
   entryEvent: { fontSize: 15, fontWeight: '700', marginVertical: 2 },
-  entryCard: { padding: 12, marginBottom: 10, borderRadius: 8, backgroundColor: 'rgba(120,120,120,0.12)' },
+  entryCard: { padding: 12, marginBottom: 10, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.9)' },
   entryText: { fontSize: 14 },
+  loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, marginBottom: 12, textAlign: 'center' },
 });

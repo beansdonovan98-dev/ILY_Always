@@ -7,8 +7,9 @@ import { useRouter } from 'expo-router';
 
 import { getCoupleId } from '@/lib/couple';
 import { getCoupleSettings, upsertCoupleSettings, CoupleSettings } from '@/lib/appearance';
-import { setItem } from '@/lib/storage';
 import { Sentry } from '@/lib/sentry';
+import { setItem } from '@/lib/storage';
+import { EVENT_COLORS } from '@/lib/log';
 
 const DEFAULT_TABS = [
   { id: 'home', label: 'Home 🏠', order: 0 },
@@ -139,6 +140,7 @@ export default function SettingsScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Settings ⚙️</Text>
+      <Text style={styles.loveNote}>Make our space feel like home. 🏡</Text>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Animated Gradient Themes</Text>
@@ -158,11 +160,23 @@ export default function SettingsScreen() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Colors</Text>
         <Text style={styles.label}>Font color</Text>
-        <TextInput value={fontColor} onChangeText={setFontColor} placeholder="#111111" style={styles.input} />
+        <View style={styles.row}>
+          {EVENT_COLORS.map((c) => (
+            <Pressable key={c} onPress={() => setFontColor(c)} style={[styles.colorSwatch, { backgroundColor: c }, fontColor === c && styles.colorSwatchSelected]} />
+          ))}
+        </View>
         <Text style={styles.label}>Border color</Text>
-        <TextInput value={borderColor} onChangeText={setBorderColor} placeholder="#cccccc" style={styles.input} />
+        <View style={styles.row}>
+          {EVENT_COLORS.map((c) => (
+            <Pressable key={c} onPress={() => setBorderColor(c)} style={[styles.colorSwatch, { backgroundColor: c }, borderColor === c && styles.colorSwatchSelected]} />
+          ))}
+        </View>
         <Text style={styles.label}>Accent color</Text>
-        <TextInput value={accentColor} onChangeText={setAccentColor} placeholder="#007AFF" style={styles.input} />
+        <View style={styles.row}>
+          {EVENT_COLORS.map((c) => (
+            <Pressable key={c} onPress={() => setAccentColor(c)} style={[styles.colorSwatch, { backgroundColor: c }, accentColor === c && styles.colorSwatchSelected]} />
+          ))}
+        </View>
         <Pressable style={styles.btn} onPress={saveColors}>
           <Text style={styles.btnText}>Save Colors</Text>
         </Pressable>
@@ -218,7 +232,7 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 16, paddingBottom: 40 },
+  content: { padding: 24, paddingBottom: 60, alignItems: 'center' },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
   card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.9)' },
   cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
@@ -232,6 +246,9 @@ const styles = StyleSheet.create({
   tabRow: { flexDirection: 'row', gap: 6, alignItems: 'center', marginBottom: 8 },
   smallBtn: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 6, backgroundColor: 'rgba(100,150,255,0.4)' },
   smallBtnText: { fontWeight: '600', fontSize: 12 },
+  colorSwatch: { width: 24, height: 24, borderRadius: 12, margin: 3 },
+  colorSwatchSelected: { borderWidth: 3, borderColor: '#fff' },
   secret: { position: 'absolute', bottom: 16, right: 16, opacity: 0.3 },
   secretText: { fontSize: 10 },
+  loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, marginBottom: 12, textAlign: 'center' },
 });

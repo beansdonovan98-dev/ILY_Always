@@ -186,6 +186,7 @@ export default function PlaytimeScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <Text style={styles.title}>Playtime 🔞 (18+)</Text>
+      <Text style={styles.loveNote}>Private moments, just for us. 🌹</Text>
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Posting as</Text>
@@ -242,7 +243,7 @@ export default function PlaytimeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 16, paddingBottom: 40 },
+  content: { padding: 24, paddingBottom: 60, alignItems: 'center' },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
   body: { fontSize: 16, marginBottom: 12 },
   card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(120,120,120,0.12)' },
@@ -260,6 +261,7 @@ const styles = StyleSheet.create({
   btn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, backgroundColor: 'rgba(100,150,255,0.4)' },
   btnText: { fontWeight: '600' },
   muted: { fontSize: 12, opacity: 0.6 },
+  loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, marginBottom: 12, textAlign: 'center' },
   photoCard: { marginTop: 12, borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.05)' },
   photo: { width: '100%', height: 220 },
   commentHeader: { padding: 10 },
