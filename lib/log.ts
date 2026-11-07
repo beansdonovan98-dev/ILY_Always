@@ -29,6 +29,54 @@ export const EVENT_COLORS: string[] = [
   '#955251', '#B565A7', '#009B77', '#DD4124', '#D65076', '#45B8AC', '#EFC050', '#5B5EA6',
 ];
 
+/** Accepts "7:30 PM", "07:30pm", "19:30", "7:30" → normalized "HH:MM" (24h, zero-padded). */
+export function parseTimeInput(input: string): string {
+  const raw = input.trim().toLowerCase().replace(/\s+/g, '');
+  const twelve = /^(\d{1,2})(?::(\d{2}))?(am|pm)$/.exec(raw);
+  if (twelve) {
+    let hour = Number(twelve[1]);
+    const minute = Number(twelve[2] || 0);
+    if (hour < 1 || hour > 12 || minute > 59) return input.trim();
+    if (twelve[3] === 'pm' && hour !== 12) hour += 12;
+    if (twelve[3] === 'am' && hour === 12) hour = 0;
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  }
+  const twentyFour = /^(\d{1,2}):(\d{2})$/.exec(raw);
+  if (twentyFour) {
+    const hour = Number(twentyFour[1]);
+    const minute = Number(twentyFour[2]);
+    if (hour > 23 || minute > 59) return input.trim();
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  }
+  return input.trim();
+}
+
+function timeToMinutes(time: string): number {
+  const parsed = parseTimeInput(time);
+  const match = /^(\d{1,2}):(\d{2})$/.exec(parsed);
+  if (!match) return Number.POSITIVE_INFINITY;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+/** Stored "19:30" → display "7:30 PM". */
+export function formatTimeForDisplay(time: string): string {
+  const normalized = parseTimeInput(time);
+  const match = /^(\d{1,2}):(\d{2})$/.exec(normalized);
+  if (!match) return time;
+  const hour24 = Number(match[1]);
+  const suffix = hour24 >= 12 ? 'PM' : 'AM';
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  return `${hour12}:${match[2]} ${suffix}`;
+}
+
+/** Earliest first, comparing actual clock time; unparseable times sink to the end. */
+export function sortEntriesByTime(entries: LogEntry[]): LogEntry[] {
+  return [...entries].sort((a, b) => {
+    const diff = timeToMinutes(a.time) - timeToMinutes(b.time);
+    return diff !== 0 ? diff : a.createdAt - b.createdAt;
+  });
+}
+
 export async function getLogEvents(coupleId: string): Promise<LogEvent[]> {
   const { data, error } = await supabase
     .from('log_events')
@@ -70,7 +118,7 @@ export async function getDayLogEntries(coupleId: string, date = localDateKey()):
   const day = await getDay(coupleId, date);
   const payload = (day?.payload || {}) as Record<string, unknown>;
   const logs = (payload.logs as LogEntry[]) || [];
-  return [...logs].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  return sortEntriesByTime(logs);
 }
 
 export async function addLogEntry(coupleId: string, entry: LogEntry, date = localDateKey()): Promise<LogEntry[]> {
@@ -78,7 +126,7 @@ export async function addLogEntry(coupleId: string, entry: LogEntry, date = loca
   const payload = (day.payload || {}) as Record<string, unknown>;
   const logs = ((payload.logs as LogEntry[]) || []).slice();
   logs.push(entry);
-  const sorted = logs.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  const sorted = sortEntriesByTime(logs);
   const nextPayload = { ...payload, logs: sorted };
   await saveDay(coupleId, date, nextPayload);
   return sorted;
@@ -87,7 +135,7 @@ export async function addLogEntry(coupleId: string, entry: LogEntry, date = loca
 export async function updateLogEntry(coupleId: string, date: string, entryId: string, patch: Partial<LogEntry>): Promise<LogEntry[]> {
   const day = await getDay(coupleId, date);
   const payload = (day?.payload || {}) as Record<string, unknown>;
-  const logs = ((payload.logs as LogEntry[]) || []).map((e) => (e.id === entryId ? { ...e, ...patch } : e)).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  const logs = sortEntriesByTime(((payload.logs as LogEntry[]) || []).map((e) => (e.id === entryId ? { ...e, ...patch } : e)));
   const nextPayload = { ...payload, logs };
   await saveDay(coupleId, date, nextPayload);
   return logs;

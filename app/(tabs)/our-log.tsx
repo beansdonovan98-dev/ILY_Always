@@ -10,10 +10,12 @@ import {
   addLogEntry,
   deleteLogEvent,
   EVENT_COLORS,
+  formatTimeForDisplay,
   getDayLogEntries,
   getLogEvents,
   LogEntry,
   LogEvent,
+  parseTimeInput,
   saveLogEvent,
   updateLogEntry,
   updateLogEvent,
@@ -79,7 +81,7 @@ export default function OurLogScreen() {
       eventName: event?.name || 'Event',
       eventColor: event?.color || '#8E8E93',
       whatHappened: whatHappened.trim(),
-      time: time.trim() || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      time: parseTimeInput(time || '') || new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
     };
 
     if (editingEntryId) {
@@ -168,11 +170,11 @@ export default function OurLogScreen() {
               multiline
             />
 
-            <Text style={styles.label}>Time (HH:MM)</Text>
+            <Text style={styles.label}>Time (e.g. 7:30 PM)</Text>
             <TextInput
               value={time}
               onChangeText={setTime}
-              placeholder="e.g. 19:30"
+              placeholder="e.g. 7:30 PM"
               placeholderTextColor="rgba(58,42,46,0.45)"
               style={[styles.input, { borderColor: appTheme.borderColor, color: appTheme.textColor }]}
             />
@@ -343,7 +345,7 @@ export default function OurLogScreen() {
             key={e.id}
             style={[styles.entryCard, { borderColor: appTheme.borderColor, borderLeftColor: e.eventColor }]}>
             <View style={styles.entryHeader}>
-              <Text style={styles.entryTime}>{e.time}</Text>
+              <Text style={styles.entryTime}>{formatTimeForDisplay(e.time)}</Text>
               <Text style={styles.entryEvent}>
                 {e.eventEmoji} {e.eventName}
               </Text>

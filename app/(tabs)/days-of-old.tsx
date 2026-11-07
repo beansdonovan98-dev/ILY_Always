@@ -7,7 +7,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { getCoupleId } from '@/lib/couple';
 import { getDay, localDateKey } from '@/lib/days';
 import { daySeed } from '@/constants/content';
-import { getDayLogEntries, LogEntry } from '@/lib/log';
+import { getDayLogEntries, LogEntry, formatTimeForDisplay } from '@/lib/log';
 import { getSignedUrl, MediaRow } from '@/lib/media';
 import { supabase } from '@/lib/supabase';
 
@@ -98,7 +98,7 @@ export default function DaysOfOldScreen() {
           {entries.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No log entries.</Text>}
           {entries.map((e) => (
             <View key={e.id} style={[[styles.entryCard, appTheme.cardStyle], { borderLeftColor: e.eventColor, borderLeftWidth: 4 }]}>
-              <Text style={styles.entryTime}>{e.time}</Text>
+              <Text style={styles.entryTime}>{formatTimeForDisplay(e.time)}</Text>
               <Text style={styles.entryEvent}>{e.eventEmoji} {e.eventName}</Text>
               <Text style={styles.entryText}>{e.whatHappened}</Text>
             </View>
