@@ -5,6 +5,10 @@ platform :ios do
   lane :beta do
     setup_ci if ENV["CI"]
 
+    run_number = (ENV["GITHUB_RUN_NUMBER"] || "1").to_i
+    build_number = run_number + 1000
+    app_version = "1.0.#{[run_number - 1, 0].max}"
+
     api_key = app_store_connect_api_key(
       key_id: ENV["ASC_KEY_ID"],
       issuer_id: ENV["ASC_ISSUER_ID"],
@@ -16,7 +20,6 @@ platform :ios do
       readonly: true,
       api_key: api_key,
       git_url: ENV["MATCH_GIT_URL"],
-      password: ENV["MATCH_PASSWORD"],
       git_basic_authorization: ENV["MATCH_GIT_BASIC_AUTHORIZATION"]
     )
 
@@ -31,17 +34,25 @@ platform :ios do
     # (Xcode project settings are updated by fastlane at build time)
 
     build_app(
-      workspace: "ios/ILYAlways.xcworkspace",
+      workspace: "ILYAlways.xcworkspace",
       scheme: "ILYAlways",
       configuration: "Release",
       export_method: "app-store",
-      output_directory: "ios/build",
-      output_name: "ILYAlways.ipa"
+      output_directory: "build",
+      output_name: "ILYAlways.ipa",
+      xcargs: "CURRENT_PROJECT_VERSION=#{build_number} MARKETING_VERSION=#{app_version} CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY='Apple Distribution' PROVISIONING_PROFILE_SPECIFIER='match AppStore com.spector.ILYAlways' DEVELOPMENT_TEAM='PKM33XZW3X'",
+      export_options: {
+        method: "app-store",
+        signingStyle: "manual",
+        provisioningProfiles: {
+          "com.spector.ILYAlways" => "match AppStore com.spector.ILYAlways"
+        }
+      }
     )
 
     upload_to_testflight(
       api_key: api_key,
-      ipa: "ios/build/ILYAlways.ipa",
+      ipa: "build/ILYAlways.ipa",
       skip_waiting_for_build_processing: true,
       distribute_external: false
     )
@@ -62,7 +73,6 @@ platform :ios do
       readonly: false,
       api_key: api_key,
       git_url: ENV["MATCH_GIT_URL"],
-      password: ENV["MATCH_PASSWORD"],
       git_basic_authorization: ENV["MATCH_GIT_BASIC_AUTHORIZATION"]
     )
   end

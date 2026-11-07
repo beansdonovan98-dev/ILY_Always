@@ -182,7 +182,8 @@ export default function HomeScreen() {
       {/* Word & Fact */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Word of the Day 📖</Text>
-        <Text style={styles.big}>{wordOfDay}</Text>
+        <Text style={styles.big}>{wordOfDay.word}</Text>
+        <Text style={styles.body}>{wordOfDay.definition}</Text>
       </View>
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Fact of the Day 🧠</Text>
@@ -232,18 +233,23 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 16, paddingBottom: 40 },
-  header: { fontSize: 28, fontWeight: 'bold', marginBottom: 4 },
-  subheader: { fontSize: 16, marginBottom: 12, opacity: 0.7 },
+  header: { fontSize: 30, fontWeight: 'bold', marginBottom: 8, color: '#111' },
+  subheader: { fontSize: 17, marginBottom: 16, opacity: 0.7, color: '#333' },
   card: {
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
-    backgroundColor: 'rgba(120,120,120,0.12)',
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 16,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
   },
-  cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 6 },
-  body: { fontSize: 15, marginBottom: 4 },
-  big: { fontSize: 22, fontWeight: 'bold' },
-  muted: { fontSize: 12, opacity: 0.6, marginTop: 4 },
+  cardTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8, color: '#111' },
+  body: { fontSize: 17, marginBottom: 6, color: '#222', lineHeight: 24 },
+  big: { fontSize: 26, fontWeight: 'bold', color: '#111' },
+  muted: { fontSize: 13, opacity: 0.6, marginTop: 4, color: '#444' },
   row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 6 },
   userBtn: {
     paddingVertical: 8,
@@ -253,8 +259,8 @@ const styles = StyleSheet.create({
   },
   userBtnActive: { backgroundColor: 'rgba(100,150,255,0.4)' },
   userBtnText: { fontWeight: '600' },
-  sectionTitle: { fontSize: 18, fontWeight: '700', marginVertical: 8 },
-  photoCard: { marginBottom: 16, borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(120,120,120,0.12)' },
+  sectionTitle: { fontSize: 20, fontWeight: '700', marginVertical: 10, color: '#111' },
+  photoCard: { marginBottom: 16, borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.9)', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   photo: { width: '100%', height: 180 },
   captionRow: { padding: 10 },
   caption: { fontSize: 14, marginBottom: 8 },

@@ -11,6 +11,8 @@ export interface CoupleSettings {
   border_color: string | null;
   animated_gradient: boolean;
   daily_rotation: boolean;
+  tab_config: Array<{ id: string; label: string; order: number }> | null;
+  playtime_revealed: boolean;
   updated_at: string;
 }
 

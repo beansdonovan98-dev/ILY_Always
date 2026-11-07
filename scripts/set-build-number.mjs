@@ -31,6 +31,12 @@ for (const file of targets) {
           `ios: {\n    buildNumber: ${buildNumber},`
         );
       }
+      if (/CFBundleVersion\s*:/.test(src)) {
+        src = src.replace(/CFBundleVersion\s*:\s*['"][^'"]*['"]/, `CFBundleVersion: '${buildNumber}'`);
+      }
+      if (/CFBundleShortVersionString\s*:/.test(src)) {
+        src = src.replace(/CFBundleShortVersionString\s*:\s*['"][^'"]*['"]/, `CFBundleShortVersionString: '${version}'`);
+      }
     } else {
       const json = JSON.parse(src);
       if (!json.expo) json.expo = {};

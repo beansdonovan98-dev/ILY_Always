@@ -64,14 +64,15 @@ export async function uploadMedia(params: {
   uploadedBy: string;
   dailyDate?: string | null;
 }): Promise<MediaRow> {
-  validateSize(params.byteSize);
-
   const bucket = MEDIA_BUCKETS[params.kind];
   const safeName = params.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
   const storagePath = `${params.coupleId}/${params.kind}/${Date.now()}-${safeName}`;
 
   const response = await fetch(params.localUri);
   const blob = await response.blob();
+
+  const size = params.byteSize > 0 ? params.byteSize : blob.size;
+  validateSize(size);
 
   const { error: uploadError } = await supabase.storage
     .from(bucket)
@@ -87,7 +88,7 @@ export async function uploadMedia(params: {
       storage_path: storagePath,
       file_name: params.fileName,
       mime_type: params.mimeType,
-      byte_size: params.byteSize,
+      byte_size: size,
       width: params.width ?? null,
       height: params.height ?? null,
       caption: params.caption ?? null,

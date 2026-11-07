@@ -7,10 +7,27 @@ export type UserKey = keyof typeof USERS;
 
 export const RELATIONSHIP_START = new Date(2019, 7, 9); // 08/09/19 -> Aug 9, 2019 (MM/DD/YY)
 
-export const WORDS_OF_THE_DAY: string[] = [
-  'Serendipity', 'Ephemeral', 'Luminescence', 'Resilience', 'Aurora',
-  'Euphoria', 'Solitude', 'Harmony', 'Velocity', 'Mellifluous',
-  'Petrichor', 'Sonder', 'Vellichor', 'Chrysalism', 'Eunoia',
+export interface WordEntry {
+  word: string;
+  definition: string;
+}
+
+export const WORDS_OF_THE_DAY: WordEntry[] = [
+  { word: 'Serendipity', definition: 'The occurrence of happy or beneficial events by chance.' },
+  { word: 'Ephemeral', definition: 'Lasting for a very short time.' },
+  { word: 'Luminescence', definition: 'Emission of light by a substance without heat.' },
+  { word: 'Resilience', definition: 'The ability to recover quickly from difficulties.' },
+  { word: 'Aurora', definition: 'A natural light display in the sky, especially near the poles.' },
+  { word: 'Euphoria', definition: 'A feeling of intense excitement and happiness.' },
+  { word: 'Solitude', definition: 'The state of being alone without being lonely.' },
+  { word: 'Harmony', definition: 'A pleasing arrangement of parts in a whole.' },
+  { word: 'Velocity', definition: 'The speed of something in a given direction.' },
+  { word: 'Mellifluous', definition: 'Sweet or musical; pleasant to hear.' },
+  { word: 'Petrichor', definition: 'The pleasant smell after rain.' },
+  { word: 'Sonder', definition: 'The realization that each passerby has a life as vivid as your own.' },
+  { word: 'Vellichor', definition: 'The strange wistfulness of used bookshops.' },
+  { word: 'Chrysalism', definition: 'The amniotic tranquility of being indoors during a storm.' },
+  { word: 'Eunoia', definition: 'Beautiful thinking; a well mind.' },
 ];
 
 export const FACTS_OF_THE_DAY: string[] = [

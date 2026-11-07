@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 12
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -26,7 +26,7 @@ jobs:
           gem install cocoapods fastlane
 
       - name: Expo prebuild (iOS)
-        run: npx expo prebuild --platform ios --no-install
+        run: pnpm exec expo prebuild --platform ios --no-install
 
       - name: Copy fastlane config
         run: cp -r fastlane ios/fastlane
