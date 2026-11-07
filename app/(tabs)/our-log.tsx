@@ -157,8 +157,25 @@ export default function OurLogScreen() {
       <View style={[styles.card, appTheme.cardStyle]}>
         <LeafBorder color={appTheme.leafColor} />
 
-        <Text style={styles.cardTitle}>New Entry</Text>
-        <Text style={styles.cardHint}>{prettyDate} • Spill the dirty little details here, baby 😏✍️</Text>
+        <Text style={styles.cardTitle}>{editingEntryId ? 'Edit Entry ✏️' : 'New Entry'}</Text>
+        <Text style={styles.cardHint}>
+          {editingEntryId
+            ? 'You\'re editing — tap Save Changes when done 💋'
+            : `${prettyDate} • Spill the dirty little details here, baby 😏✍️`}
+        </Text>
+        {editingEntryId ? (
+          <Pressable
+            onPress={() => {
+              setEditingEntryId(null);
+              setWhatHappened('');
+              setTime('');
+              setSelectedEventId(null);
+              setCreatingEvent(false);
+            }}
+            style={styles.cancelEditBtn}>
+            <Text style={styles.cancelEditText}>Cancel editing ✕</Text>
+          </Pressable>
+        ) : null}
 
         <View style={styles.form}>
             <Text style={styles.label}>What's happening?</Text>
@@ -385,10 +402,12 @@ const styles = StyleSheet.create({
   title: { fontSize: 34, fontWeight: '800', marginBottom: 4 },
   subtitle: { fontSize: 17, fontStyle: 'italic', marginBottom: 4, lineHeight: 24 },
   spicyCaption: { fontSize: 15, fontStyle: 'italic', marginBottom: 8 },
+  cancelEditBtn: { alignSelf: 'flex-start', marginBottom: 6, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 50, backgroundColor: 'rgba(192,57,43,0.12)', borderWidth: 1, borderColor: 'rgba(192,57,43,0.35)' },
+  cancelEditText: { fontSize: 12, fontWeight: '700', color: '#C0392B' },
   hint: { fontSize: 13, opacity: 0.65, marginBottom: 8 },
   card: { padding: 18, borderRadius: 24, marginBottom: 4 },
   cardTitle: { fontSize: 19, fontWeight: '800', marginBottom: 4 },
-  cardHint: { fontSize: 13, opacity: 0.65, marginBottom: 12 },
+  cardHint: { fontSize: 13, fontStyle: 'italic', opacity: 0.65, marginBottom: 12 },
   label: { fontSize: 13, fontWeight: '700', marginTop: 12, marginBottom: 6, opacity: 0.8 },
   input: {
     borderWidth: 1,

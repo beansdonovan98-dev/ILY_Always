@@ -1012,7 +1012,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cardTitle: { fontSize: 19, fontWeight: '800', marginBottom: 4 },
-  cardHint: { fontSize: 13, opacity: 0.65, marginBottom: 12 },
+  cardHint: { fontSize: 13, fontStyle: 'italic', opacity: 0.65, marginBottom: 12 },
   subCard: {
     borderWidth: 1,
     borderRadius: 18,

@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   cardTitle: { fontSize: 19, fontWeight: '800', marginBottom: 4 },
-  cardHint: { fontSize: 13, opacity: 0.65, marginBottom: 10, lineHeight: 18 },
+  cardHint: { fontSize: 13, fontStyle: 'italic', opacity: 0.65, marginBottom: 10, lineHeight: 18 },
   label: { fontSize: 13, fontWeight: '700', marginTop: 12, marginBottom: 6, opacity: 0.8 },
   input: {
     borderWidth: 1,

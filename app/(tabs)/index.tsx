@@ -172,21 +172,6 @@ export default function HomeScreen() {
         Our little corner of the world — snuggles, giggles, and little secrets, just us two 💞
       </Text>
 
-      <View style={styles.quickRow}>
-        <View style={[styles.quickCard, appTheme.cardStyle]}>
-          <Text style={styles.quickLabel}>📅 Today</Text>
-          <Text style={styles.quickValue}>{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
-        </View>
-        <View style={[styles.quickCard, appTheme.cardStyle]}>
-          <Text style={styles.quickLabel}>💞 Together</Text>
-          <Text style={styles.quickValue}>{relationshipElapsed.days} days</Text>
-        </View>
-        <View style={[styles.quickCard, appTheme.cardStyle]}>
-          <Text style={styles.quickLabel}>🔥 Streak</Text>
-          <Text style={styles.quickValue}>Day {relationshipElapsed.days % 7 + 1}</Text>
-        </View>
-      </View>
-
       {/* 1. Relationship Tracker */}
       <View style={[styles.card, appTheme.cardStyle]}>
         <LeafBorder color={appTheme.leafColor} />
@@ -334,14 +319,10 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cardTitle: { fontSize: 19, fontWeight: '800', marginBottom: 4 },
-  cardHint: { fontSize: 13, opacity: 0.65, marginBottom: 10 },
+  cardHint: { fontSize: 13, fontStyle: 'italic', opacity: 0.65, marginBottom: 10 },
   body: { fontSize: 17, marginBottom: 6, lineHeight: 24 },
   big: { fontSize: 26, fontWeight: '800', marginVertical: 4 },
   loveNote: { fontSize: 14, fontStyle: 'italic', marginTop: 8, textAlign: 'center' },
-  quickRow: { flexDirection: 'row', gap: 10, marginTop: 8, marginBottom: 4 },
-  quickCard: { flex: 1, padding: 12, borderRadius: 16, alignItems: 'center' },
-  quickLabel: { fontSize: 11, fontWeight: '700', opacity: 0.7, marginBottom: 2 },
-  quickValue: { fontSize: 14, fontWeight: '800' },
   noteCard: { padding: 12, marginBottom: 8, borderRadius: 14, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.4)' },
   row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' },
   muted: { fontSize: 13, opacity: 0.65, marginTop: 4 },
