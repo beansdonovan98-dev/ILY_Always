@@ -26,18 +26,14 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [locked, setLocked] = useState(true);
-  useEffect(() => {
-    initCrashReporting();
-  }, []);
-
-  if (locked) {
-    return <LockScreen onUnlock={() => setLocked(false)} />;
-  }
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
+  useEffect(() => {
+    initCrashReporting();
+  }, []);
+
   useEffect(() => {
     if (error) throw error;
   }, [error]);
@@ -50,6 +46,10 @@ export default function RootLayout() {
 
   if (!loaded) {
     return null;
+  }
+
+  if (locked) {
+    return <LockScreen onUnlock={() => setLocked(false)} />;
   }
 
   return <RootLayoutNav />;
