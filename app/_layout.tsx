@@ -1,11 +1,12 @@
 import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import { initCrashReporting } from '@/lib/sentry';
+import LockScreen from '@/components/LockScreen';
 import { UsageProvider } from '@/contexts/UsageContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import AnimatedGradientBackground from '@/components/AnimatedGradientBackground';
@@ -24,9 +25,14 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const [locked, setLocked] = useState(true);
   useEffect(() => {
     initCrashReporting();
   }, []);
+
+  if (locked) {
+    return <LockScreen onUnlock={() => setLocked(false)} />;
+  }
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
