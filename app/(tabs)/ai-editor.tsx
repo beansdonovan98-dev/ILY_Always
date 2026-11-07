@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   btnText: { fontWeight: '600' },
   input: { borderWidth: 1, borderColor: 'rgba(120,120,120,0.4)', borderRadius: 8, padding: 8, minHeight: 60, marginBottom: 12 },
   photo: { width: '100%', height: 220, marginBottom: 12 },
-  card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
+  card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', width: '100%' },
   cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
   muted: { fontSize: 12, opacity: 0.6 },
   loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, marginBottom: 12, textAlign: 'center' },

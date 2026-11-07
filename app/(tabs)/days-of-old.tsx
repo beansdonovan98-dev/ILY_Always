@@ -103,10 +103,10 @@ const styles = StyleSheet.create({
   dateChipSelected: { backgroundColor: 'rgba(100,150,255,0.4)' },
   dateChipText: { fontWeight: '600', fontSize: 12 },
   sectionTitle: { fontSize: 18, fontWeight: '700', marginVertical: 8 },
-  entryCard: { padding: 12, marginBottom: 10, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
+  entryCard: { padding: 12, marginBottom: 10, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', width: '100%' },
   entryTime: { fontSize: 11, opacity: 0.6 },
   entryEvent: { fontSize: 15, fontWeight: '700', marginVertical: 2 },
   entryText: { fontSize: 14 },
-  photoCard: { marginTop: 12, borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
+  photoCard: { marginTop: 12, borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', width: '100%' },
   photo: { width: '100%', height: 220 },
 });

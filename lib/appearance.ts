@@ -22,21 +22,25 @@ export interface CoupleSettings {
 const CACHE_KEY = (coupleId: string) => `coupleSettings:${coupleId}`;
 
 export async function getCoupleSettings(coupleId: string): Promise<CoupleSettings | null> {
-  // read-through cache first (not authority)
   const cached = await getItem<CoupleSettings | null>(CACHE_KEY(coupleId), null);
-  const { data, error } = await supabase
-    .from('couple_settings')
-    .select('*')
-    .eq('couple_id', coupleId)
-    .maybeSingle();
-  if (error) throw error;
-  if (data) {
-    const row = data as CoupleSettings;
-    // last-write-wins: only replace cache if newer
-    if (!cached || new Date(row.updated_at) >= new Date(cached.updated_at)) {
-      await setItem(CACHE_KEY(coupleId), row);
+  try {
+    const { data, error } = await supabase
+      .from('couple_settings')
+      .select('*')
+      .eq('couple_id', coupleId)
+      .maybeSingle();
+    if (error) throw error;
+    if (data) {
+      const row = data as CoupleSettings;
+      if (!cached || new Date(row.updated_at) >= new Date(cached.updated_at)) {
+        await setItem(CACHE_KEY(coupleId), row);
+      }
+      return row;
     }
-    return row;
+  } catch (e) {
+    // fallback to cache or defaults
+    if (cached) return cached;
+    return null;
   }
   return cached;
 }

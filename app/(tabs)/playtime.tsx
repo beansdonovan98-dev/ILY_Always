@@ -178,9 +178,8 @@ export default function PlaytimeScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={[styles.title, { fontFamily: font }]}>Playtime 🔞 (18+)</Text>
-      <Text style={[styles.subtitle, { fontFamily: font }]}>Our private playground when things get a little heat 🌶️🔥</Text>
-      <Text style={styles.loveNote}>Private moments, just for us. 🌹</Text>
+        <Text style={[styles.title, { fontFamily: font }]}>Playtime 🥵</Text>
+      <Text style={[styles.subtitle, { fontFamily: font }]}>Where our deepest desires and hottest secrets come alive 💋🔥</Text>
 
         <View style={styles.card}>
           <Text style={[styles.cardTitle, { fontFamily: font }]}>Posting as</Text>
@@ -238,11 +237,11 @@ export default function PlaytimeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 24, paddingBottom: 60, alignItems: 'center' },
+  content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 16 },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
   subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12, textAlign: 'center' },
   body: { fontSize: 16, marginBottom: 12 },
-  card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
+  card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', width: '100%' },
   cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
   row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 6, alignItems: 'center' },
   userBtn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, backgroundColor: 'rgba(120,120,120,0.2)' },
@@ -258,7 +257,7 @@ const styles = StyleSheet.create({
   btnText: { fontWeight: '600' },
   muted: { fontSize: 12, opacity: 0.6 },
   loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, marginBottom: 12, textAlign: 'center' },
-  photoCard: { marginTop: 12, borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
+  photoCard: { marginTop: 12, borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', width: '100%' },
   photo: { width: '100%', height: 220 },
   commentHeader: { padding: 10 },
   commentHeaderText: { fontWeight: '600' },

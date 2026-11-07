@@ -40,8 +40,13 @@ export function useTheme() {
   return useContext(ThemeContext);
 }
 
+const LightBackground = '#fff5f7';
+const LightGradient: string[] = ['#fff5f7', '#ffe4e1'];
+
 export function ThemedRoot({ children }: { children: React.ReactNode }) {
   const { settings } = useTheme();
-  const bg = settings?.background_color || '#ffffff';
+  const bg = settings?.background_color && !['#000000', '#000', '#111111', '#111', '#0f2027', '#203a43'].includes(settings.background_color.toLowerCase())
+    ? settings.background_color
+    : LightBackground;
   return <View style={{ flex: 1, backgroundColor: bg }}>{children}</View>;
 }
