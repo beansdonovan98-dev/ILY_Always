@@ -24,6 +24,7 @@ export default function TabLayout() {
       <Tabs.Screen name="playtime" />
       <Tabs.Screen name="ai-editor" />
       <Tabs.Screen name="health" />
+      <Tabs.Screen name="cleaning" />
       <Tabs.Screen name="settings" />
       <Tabs.Screen name="days-of-old" />
     </Tabs>

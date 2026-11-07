@@ -160,6 +160,17 @@ create table if not exists push_tokens (
   primary key (couple_id, user_key)
 );
 
+-- Cleaning checks — shared household-chore ticks, keyed by cadence + cycle.
+create table if not exists cleaning_checks (
+  couple_id   text not null,
+  cadence     text not null check (cadence in ('daily','twoDay','weekly','focus')),
+  task_id     text not null,
+  cycle_key   text not null,
+  completed   boolean not null default false,
+  updated_at  timestamptz default now(),
+  primary key (couple_id, cadence, task_id, cycle_key)
+);
+
 -- Daily health list — the editable, shared task list (same for both).
 create table if not exists health_daily_list (
   couple_id   text not null,
@@ -186,6 +197,7 @@ alter table health_daily_checks enable row level security;
 alter table health_daily_list   enable row level security;
 alter table health_water        enable row level security;
 alter table push_tokens         enable row level security;
+alter table cleaning_checks    enable row level security;
 
 drop policy if exists "couple_settings_all" on couple_settings;
 create policy "couple_settings_all" on couple_settings
@@ -235,6 +247,10 @@ drop policy if exists "push_tokens_all" on push_tokens;
 create policy "push_tokens_all" on push_tokens
   for all using (true) with check (true);
 
+drop policy if exists "cleaning_checks_all" on cleaning_checks;
+create policy "cleaning_checks_all" on cleaning_checks
+  for all using (true) with check (true);
+
 -- Let the anon key (the app) read/write these tables.
 grant select, insert, update, delete on
   couple_settings,
@@ -248,7 +264,8 @@ grant select, insert, update, delete on
   health_daily_checks,
   health_daily_list,
   health_water,
-  push_tokens
+  push_tokens,
+  cleaning_checks
 to anon, authenticated;
 ```
 

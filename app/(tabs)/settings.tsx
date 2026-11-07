@@ -24,8 +24,9 @@ const DEFAULT_TABS = [
   { id: 'playtime', label: 'Playtime 😓', order: 2 },
   { id: 'ai-editor', label: 'Dirty Darkroom 🔥', order: 3 },
   { id: 'health', label: 'Health 🩺', order: 4 },
-  { id: 'settings', label: 'Settings ⚙️', order: 5 },
-  { id: 'days-of-old', label: 'The Days of Old 🧙‍♂️', order: 6 },
+  { id: 'cleaning', label: 'Get It Squeaky Clean 🫧', order: 5 },
+  { id: 'settings', label: 'Settings ⚙️', order: 6 },
+  { id: 'days-of-old', label: 'The Days of Old 🧙‍♂️', order: 7 },
 ];
 
 const STRAIN_PRESETS = [

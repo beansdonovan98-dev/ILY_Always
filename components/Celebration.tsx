@@ -5,8 +5,8 @@ import { AppText as Text } from '@/components/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
 interface CelebrationProps {
-  /** null = hidden. 'small' pops once; 'big' is the 7-day streak party. */
-  mode: null | 'small' | 'big';
+  /** null = hidden. small = daily pop; big = cadence party; mega = everything done. */
+  mode: null | 'small' | 'big' | 'mega';
   message: string;
   onDone: () => void;
 }
@@ -34,7 +34,7 @@ export function Celebration({ mode, message, onDone }: CelebrationProps) {
     pop.start();
 
     let loop: Animated.CompositeAnimation | null = null;
-    if (mode === 'big') {
+    if (mode !== null && mode !== 'small') {
       loop = Animated.loop(
         Animated.sequence([
           Animated.timing(burst, { toValue: 1, duration: 420, useNativeDriver: true }),
@@ -44,7 +44,7 @@ export function Celebration({ mode, message, onDone }: CelebrationProps) {
       loop.start();
     }
 
-    const duration = mode === 'big' ? 3200 : 1500;
+    const duration = mode === 'mega' ? 5000 : mode === 'big' ? 3200 : 1500;
     const timer = setTimeout(onDone, duration);
     return () => {
       pop.stop();
@@ -55,8 +55,9 @@ export function Celebration({ mode, message, onDone }: CelebrationProps) {
 
   if (!mode) return null;
 
-  const big = mode === 'big';
-  const emojis = big ? ['🎆', '🔥', '💦', '🎉', '🌿', '✨'] : ['🎉', '✨', '💦'];
+  const big = mode !== null && mode !== 'small';
+  const mega = mode === 'mega';
+  const emojis = mega ? ['🎆', '🌿', '🔥', '💦', '🎉', '✨'] : big ? ['🎆', '🔥', '💦', '🎉', '🌿', '✨'] : ['🎉', '✨', '💦'];
   const bigScale = burst.interpolate({
     inputRange: [0, 1],
     outputRange: [1, 1.35],
@@ -66,14 +67,15 @@ export function Celebration({ mode, message, onDone }: CelebrationProps) {
     <Modal transparent visible animationType="fade" onRequestClose={onDone}>
       <Pressable style={styles.overlay} onPress={onDone}>
         <Animated.View style={[styles.burst, { opacity, transform: [{ scale }] }]}>
-          <Text style={[styles.emoji, big && { fontSize: 72 }]}>{emojis[0]}</Text>
+          <Text style={[styles.emoji, big && { fontSize: mega ? 80 : 72 }]}>{emojis[0]}</Text>
           {big ? (
             <Animated.View style={{ transform: [{ scale: bigScale }] }}>
               <Text style={styles.emoji}>{emojis[1]}</Text>
             </Animated.View>
           ) : null}
+          {mega ? <Text style={styles.emoji}>🫧</Text> : null}
           <Text style={[styles.message, { color: theme.textColor }]}>{message}</Text>
-          {big ? <Text style={styles.sub}>7 days in a row — legendary 🌿💪</Text> : null}
+          {mega ? <Text style={styles.sub}>Everything. Done. Legend status earned. 🌿👑</Text> : big ? <Text style={styles.sub}>Keep the streak alive 🌿💪</Text> : null}
           <Text style={styles.tap}>tap to continue</Text>
         </Animated.View>
       </Pressable>

@@ -12,6 +12,7 @@ const DEFAULT_TABS = [
   { id: 'playtime', label: 'Playtime 😓', path: '/playtime', icon: '🥵', hint: 'Adults only' },
   { id: 'ai-editor', label: 'Dirty Darkroom 🔥', path: '/ai-editor', icon: '📷', hint: 'AI photo editor' },
   { id: 'health', label: 'Health 🩺', path: '/health', icon: '🩺', hint: 'Body & wellness' },
+  { id: 'cleaning', label: 'Get It Squeaky Clean 🫧', path: '/cleaning', icon: '🫧', hint: 'House chores' },
   { id: 'settings', label: 'Settings ⚙️', path: '/settings', icon: '⚙️', hint: 'Themes & fonts' },
   { id: 'days-of-old', label: 'The Days of Old 🧙‍♂️', path: '/days-of-old', icon: '🧙‍♂️', hint: 'Past days' },
 ];
