@@ -6,15 +6,36 @@ import { Image as ExpoImage } from 'expo-image';
 
 import { getCoupleId } from '@/lib/couple';
 import { getDay, localDateKey } from '@/lib/days';
+import { daySeed } from '@/constants/content';
 import { getDayLogEntries, LogEntry } from '@/lib/log';
 import { getSignedUrl, MediaRow } from '@/lib/media';
 import { supabase } from '@/lib/supabase';
 
 import { useAppFont } from '@/hooks/useAppFont';
 
+export const TOLKIEN_QUOTES: Array<{ quote: string; source: string }> = [
+  { quote: 'All we have to decide is what to do with the time that is given us.', source: 'Gandalf, The Lord of the Rings' },
+  { quote: 'Not all those who wander are lost.', source: 'Bilbo Baggins, The Lord of the Rings' },
+  { quote: 'Even the smallest person can change the course of the future.', source: 'Galadriel, The Lord of the Rings' },
+  { quote: 'The road goes ever on and on, down from the door where it began.', source: 'Bilbo Baggins, The Lord of the Rings' },
+  { quote: 'It is not the strength of the body, but the strength of the spirit.', source: 'J.R.R. Tolkien' },
+  { quote: 'Success is not the same as endurance.', source: 'Gandalf, The Lord of the Rings' },
+  { quote: 'A journey of a thousand miles begins with a single step.', source: 'Gandalf — this one practically wrote itself for us' },
+  { quote: 'In a hole in the ground there lived a hobbit.', source: 'J.R.R. Tolkien, The Hobbit' },
+  { quote: 'I feel good, I know I should be feeling bad.', source: 'Bilbo Baggins, The Hobbit' },
+  { quote: 'Far below the misty mountains, your gold can lie did we not yearn...', source: 'Thorin, The Hobbit' },
+  { quote: 'Some believe it is only great power that can hold evil in check, but that is not what I have found.', source: 'Gandalf, The Hobbit' },
+  { quote: 'Beyond the forest, the mountains have been named, and there has already been a storm of snow.', source: 'Bilbo Baggins, The Hobbit' },
+  { quote: 'It always comes in the end.', source: 'Bilbo Baggins, The Hobbit' },
+  { quote: 'Third age, third age, third age.', source: 'Gandalf, The Hobbit' },
+  { quote: 'The greatest adventure is yet to come.', source: 'Gandalf, The Hobbit' },
+];
+
 export default function DaysOfOldScreen() {
   const font = useAppFont();
   const appTheme = useAppTheme();
+  const todaySeed = daySeed(new Date());
+  const quoteOfDay = TOLKIEN_QUOTES[todaySeed % TOLKIEN_QUOTES.length];
   const [coupleId, setCoupleId] = useState('');
   const [dates, setDates] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -59,9 +80,8 @@ export default function DaysOfOldScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={[styles.title, { fontFamily: font }]}>The Days of Old 🧙‍♂️</Text>
       <Text style={[styles.subtitle, { fontFamily: font, color: appTheme.subtitleColor }]}>
-        “All we have to decide is what to do with the time that is given us.” — Gandalf 🧙‍♂️
+        “{quoteOfDay.quote}” — {quoteOfDay.source} 🧙‍♂️
       </Text>
-      <Text style={[styles.loveNote, { color: appTheme.subtitleColor }]}>Our story, day by day. 📖💕</Text>
       {dates.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No past days yet.</Text>}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
         <View style={styles.row}>
