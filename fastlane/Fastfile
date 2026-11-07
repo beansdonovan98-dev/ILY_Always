@@ -30,17 +30,17 @@ platform :ios do
     # (Xcode project settings are updated by fastlane at build time)
 
     build_app(
-      workspace: "ios/ILYAlways.xcworkspace",
+      workspace: "ILYAlways.xcworkspace",
       scheme: "ILYAlways",
       configuration: "Release",
       export_method: "app-store",
-      output_directory: "ios/build",
+      output_directory: "build",
       output_name: "ILYAlways.ipa"
     )
 
     upload_to_testflight(
       api_key: api_key,
-      ipa: "ios/build/ILYAlways.ipa",
+      ipa: "build/ILYAlways.ipa",
       skip_waiting_for_build_processing: true,
       distribute_external: false
     )
