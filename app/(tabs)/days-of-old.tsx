@@ -14,21 +14,21 @@ import { supabase } from '@/lib/supabase';
 import { useAppFont } from '@/hooks/useAppFont';
 
 export const TOLKIEN_QUOTES: Array<{ quote: string; source: string }> = [
-  { quote: 'All we have to decide is what to do with the time that is given us.', source: 'Gandalf, The Lord of the Rings' },
-  { quote: 'Not all those who wander are lost.', source: 'Bilbo Baggins, The Lord of the Rings' },
-  { quote: 'Even the smallest person can change the course of the future.', source: 'Galadriel, The Lord of the Rings' },
-  { quote: 'The road goes ever on and on, down from the door where it began.', source: 'Bilbo Baggins, The Lord of the Rings' },
-  { quote: 'It is not the strength of the body, but the strength of the spirit.', source: 'J.R.R. Tolkien' },
-  { quote: 'Success is not the same as endurance.', source: 'Gandalf, The Lord of the Rings' },
-  { quote: 'A journey of a thousand miles begins with a single step.', source: 'Gandalf — this one practically wrote itself for us' },
-  { quote: 'In a hole in the ground there lived a hobbit.', source: 'J.R.R. Tolkien, The Hobbit' },
-  { quote: 'I feel good, I know I should be feeling bad.', source: 'Bilbo Baggins, The Hobbit' },
-  { quote: 'Far below the misty mountains, your gold can lie did we not yearn...', source: 'Thorin, The Hobbit' },
-  { quote: 'Some believe it is only great power that can hold evil in check, but that is not what I have found.', source: 'Gandalf, The Hobbit' },
-  { quote: 'Beyond the forest, the mountains have been named, and there has already been a storm of snow.', source: 'Bilbo Baggins, The Hobbit' },
-  { quote: 'It always comes in the end.', source: 'Bilbo Baggins, The Hobbit' },
-  { quote: 'Third age, third age, third age.', source: 'Gandalf, The Hobbit' },
-  { quote: 'The greatest adventure is yet to come.', source: 'Gandalf, The Hobbit' },
+  { quote: 'All we have to decide is what to do with the time that is given us.', source: 'Gandalf, The Fellowship of the Ring' },
+  { quote: 'Not all those who wander are lost.', source: 'Aragorn, The Fellowship of the Ring' },
+  { quote: 'Even the smallest person can change the course of the future.', source: 'Galadriel, The Fellowship of the Ring' },
+  { quote: 'The road goes ever on and on, down from the door where it began.', source: 'Bilbo Baggins, The Fellowship of the Ring' },
+  { quote: 'You shall not pass!', source: 'Gandalf, The Fellowship of the Ring' },
+  { quote: 'Fly, you fools!', source: 'Gandalf, The Fellowship of the Ring' },
+  { quote: 'My precious.', source: 'Gollum, The Fellowship of the Ring' },
+  { quote: 'There is some good in this world, Mr. Frodo. And it\u2019s worth fighting for.', source: 'Samwise Gamgee, The Two Towers' },
+  { quote: 'I am no man.', source: '\u00c9owyn, The Return of the King' },
+  { quote: 'Go back, to the shadow!', source: 'Gandalf, The Return of the King' },
+  { quote: 'A very fine morning to you, my dear.', source: 'Bilbo Baggins, The Fellowship of the Ring' },
+  { quote: 'Far away o\u2019er the Misty Mountains cold, to dungeons deep and caverns old.', source: 'Thorin Oakenshield, The Hobbit: An Unexpected Journey' },
+  { quote: 'In a hole in the ground there lived a hobbit.', source: 'Bilbo Baggins, The Hobbit: An Unexpected Journey' },
+  { quote: 'The Eagles! The Eagles!', source: 'Gandalf, The Hobbit' },
+  { quote: 'They\u2019re taking the Hobbits to Isengard!', source: 'Ugl\u00fak, The Fellowship of the Ring' },
 ];
 
 export default function DaysOfOldScreen() {
