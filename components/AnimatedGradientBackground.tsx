@@ -17,7 +17,10 @@ function parseColors(gradient: string | null | undefined, fallback: string): str
 
 export default function AnimatedGradientBackground({ children }: { children: React.ReactNode }) {
   const { settings } = useTheme();
-  const bg = settings?.background_color && settings.background_color !== '#000000' ? settings.background_color : '#fff5f7';
+  const darkColors = ['#000', '#000000', '#111', '#111111', '#0f2027', '#203a43', '#2c5364', '#1c1c1e', '#2c2c2e'];
+  const bg = settings?.background_color && !darkColors.includes(settings.background_color.toLowerCase())
+    ? settings.background_color
+    : '#fff5f7';
   const colors = settings?.background_gradient
     ? parseColors(settings.background_gradient, bg)
     : ['#fff5f7', '#ffe4e1'];
