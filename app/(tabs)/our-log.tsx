@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppText as Text } from '@/components/AppText';
@@ -24,6 +24,7 @@ import { localDateKey } from '@/lib/days';
 
 export default function OurLogScreen() {
   const appTheme = useAppTheme();
+  const scrollRef = useRef<any>(null);
   const [coupleId, setCoupleId] = useState<string>('');
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [events, setEvents] = useState<LogEvent[]>([]);
@@ -146,7 +147,7 @@ export default function OurLogScreen() {
   });
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView ref={scrollRef} style={styles.container} contentContainerStyle={styles.content}>
       <Text style={[styles.title]}>Our Log 📜</Text>
       <Text style={[styles.subtitle, { color: appTheme.subtitleColor }]}>
         Our filthy little diary — every wild, sweet, sinful secret we&apos;ve ever dared to live 💋📜🔥
@@ -366,6 +367,7 @@ export default function OurLogScreen() {
                   setNewName(e.eventName);
                   setNewColor(e.eventColor);
                 }
+                scrollRef.current?.scrollTo({ y: 0, animated: true });
               }}
               style={[styles.smallBtn, appTheme.buttonStyle]}>
               <Text style={styles.smallBtnText}>Edit</Text>

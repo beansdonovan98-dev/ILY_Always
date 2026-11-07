@@ -404,7 +404,7 @@ export default function HealthScreen() {
               <TextInput
                 value={wVal}
                 onChangeText={setWVal}
-                placeholder="Weight (kg/lbs)"
+                placeholder="Weight (lbs)"
                 placeholderTextColor="rgba(58,42,46,0.4)"
                 keyboardType="decimal-pad"
                 style={[styles.input, styles.flex, { borderColor: theme.borderColor, color: theme.textColor }]}
@@ -510,12 +510,14 @@ export default function HealthScreen() {
         {list.length === 0 && <Text style={styles.empty}>No workouts logged today yet.</Text>}
 
         {list.map((f) => (
-          <View key={f.id} style={styles.listRow}>
-            <Text style={styles.listText}>
-              {f.exercise}
-              {f.sets || f.reps ? ` • ${f.sets || '-'}×${f.reps || '-'}` : ''}
-              {f.minutes ? ` • ${f.minutes} min` : ''}
-            </Text>
+          <View key={f.id} style={[styles.fitnessRow, { borderColor: theme.borderColor }]}>
+            <View style={styles.fitnessLeft}>
+              <Text style={styles.fitnessName}>{f.exercise}</Text>
+              <Text style={styles.fitnessDetail}>
+                {f.sets || f.reps ? `${f.sets || '-'}×${f.reps || '-'} sets` : ''}
+                {f.minutes ? ` • ${f.minutes} min` : ''}
+              </Text>
+            </View>
             {isMe && <GhostPill label="✕" onPress={() => deleteFitness(f.id)} />}
           </View>
         ))}
@@ -628,11 +630,146 @@ export default function HealthScreen() {
         {renderBodyPanel('princess')}
       </View>
 
+      {/* Daily Health List */}
+      <View style={[styles.card, theme.cardStyle]}>
+        <LeafBorder color={theme.leafColor} />
+        <Text style={styles.cardTitle}>Daily Health List 🌿</Text>
+        <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
+          Cross off our little rituals together, darling — every tick is a promise we keep to each other 💚
+        </Text>
+
+        <View style={styles.bubbleHeader}>
+          <Text style={styles.bubbleHeaderLabel}>His 🍆</Text>
+          <Text style={styles.bubbleHeaderLabel}>Hers 🍑</Text>
+        </View>
+
+        {tasks.length === 0 && <Text style={styles.empty}>No rituals yet — add your first one below 🌿</Text>}
+
+        {tasks.map((task) => {
+          const myDone = dailyDone(myDaily, task.id, localDateKey());
+          const theirDone = dailyDone(theirDaily, task.id, localDateKey());
+          return (
+            <View style={styles.bubbleRow} key={task.id}>
+              {renderBubble('daddy', me === 'daddy' ? myDone : theirDone, () =>
+                me === 'daddy' ? toggleTask(task) : undefined
+              )}
+              <View style={styles.bubbleLabel}>
+                <Text style={styles.bubbleName}>
+                  {task.emoji} {task.label}
+                </Text>
+                <GhostPill label="✕" onPress={() => deleteTask(task.id)} />
+              </View>
+              {renderBubble('princess', me === 'princess' ? myDone : theirDone, () =>
+                me === 'princess' ? toggleTask(task) : undefined
+              )}
+            </View>
+          );
+        })}
+
+        <Text style={styles.label}>Add a ritual 🌿</Text>
+        <View style={styles.row}>
+          <TextInput
+            value={newTaskEmoji}
+            onChangeText={setNewTaskEmoji}
+            placeholder="🌿"
+            placeholderTextColor="rgba(58,42,46,0.4)"
+            style={[styles.input, styles.taskEmojiInput, { borderColor: theme.borderColor, color: theme.textColor }]}
+          />
+          <TextInput
+            value={newTaskLabel}
+            onChangeText={setNewTaskLabel}
+            placeholder="e.g. Vitamins"
+            placeholderTextColor="rgba(58,42,46,0.4)"
+            style={[styles.input, styles.flex, { borderColor: theme.borderColor, color: theme.textColor }]}
+          />
+          <Pill label="+ Add" onPress={createTask} />
+        </View>
+      </View>
+
+      {/* 7-Day Tracker */}
+      <View style={[styles.card, theme.cardStyle]}>
+        <LeafBorder color={theme.leafColor} />
+        <Text style={styles.cardTitle}>7-Day Tracker 🏆</Text>
+        <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
+          Seven ticks in a row and you earn the grand celebration, gorgeous — keep the streak alive 🔥
+        </Text>
+
+        {tasks.map((task) => {
+          const hisStreak = streakEndingToday((d) => dailyDone(me === 'daddy' ? myDaily : theirDaily, task.id, d));
+          const hersStreak = streakEndingToday((d) => dailyDone(me === 'princess' ? myDaily : theirDaily, task.id, d));
+          return (
+            <View key={task.id} style={[styles.trackerRow, { borderColor: theme.borderColor }]}>
+              <Text style={styles.trackerName}>
+                {task.emoji} {task.label}
+              </Text>
+              <View style={styles.trackerLine}>
+                <Text style={styles.trackerWho}>His 🍆</Text>
+                <View style={styles.flex}>{renderStreakDots((d) => dailyDone(me === 'daddy' ? myDaily : theirDaily, task.id, d))}</View>
+                <Text style={styles.streakCount}>🔥 {hisStreak}</Text>
+              </View>
+              <View style={styles.trackerLine}>
+                <Text style={styles.trackerWho}>Hers 🍑</Text>
+                <View style={styles.flex}>{renderStreakDots((d) => dailyDone(me === 'princess' ? myDaily : theirDaily, task.id, d))}</View>
+                <Text style={styles.streakCount}>🔥 {hersStreak}</Text>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Water tracker */}
+      <View style={[styles.card, theme.cardStyle]}>
+        <LeafBorder color={theme.leafColor} />
+        <Text style={styles.cardTitle}>Water Tracker 💧</Text>
+        <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
+          Four cups a day keeps the thirst away — and keeps you glowing for me, sweetheart 💦
+        </Text>
+
+        <Text style={styles.label}>{personLabel(me)} — {waterCupsToday(myWater)}/{WATER_GOAL} cups</Text>
+        <View style={styles.cupRow}>
+          {Array.from({ length: WATER_GOAL }, (_, i) => (
+            <Pressable
+              key={i}
+              onPress={() => setWater(waterCupsToday(myWater) === i + 1 ? i : i + 1)}
+              style={[
+                styles.cup,
+                { borderColor: theme.borderColor },
+                waterCupsToday(myWater) > i && { backgroundColor: theme.accentSoft, borderColor: theme.accentColor },
+              ]}>
+              <Text style={styles.cupEmoji}>{waterCupsToday(myWater) > i ? '💧' : '🤍'}</Text>
+            </Pressable>
+          ))}
+          <Text style={styles.streakCount}>
+            🔥 {streakEndingToday(waterDoneDay(myWater))}-day streak
+          </Text>
+        </View>
+        {renderStreakDots(waterDoneDay(myWater))}
+
+        <Text style={[styles.label, { marginTop: 16 }]}>{personLabel(partner)} — {waterCupsToday(theirWater)}/{WATER_GOAL} cups</Text>
+        <View style={styles.cupRow}>
+          {Array.from({ length: WATER_GOAL }, (_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.cup,
+                { borderColor: theme.borderColor },
+                waterCupsToday(theirWater) > i && { backgroundColor: theme.accentSoft, borderColor: theme.accentColor },
+              ]}>
+              <Text style={styles.cupEmoji}>{waterCupsToday(theirWater) > i ? '💧' : '🤍'}</Text>
+            </View>
+          ))}
+          <Text style={styles.streakCount}>
+            🔥 {streakEndingToday(waterDoneDay(theirWater))}-day streak
+          </Text>
+        </View>
+        {renderStreakDots(waterDoneDay(theirWater))}
+      </View>
+
       {/* Weight */}
       <View style={[styles.card, theme.cardStyle]}>
         <LeafBorder color={theme.leafColor} />
         <Text style={styles.cardTitle}>Weight Tracker ⚖️</Text>
-        <Text style={styles.cardHint}>Every number on this scale matters just as much as every number in the bedroom 😏⚖️ (only you can edit yours)</Text>
+        <Text style={styles.cardHint}>Every number on this scale matters just as much as every number in the bedroom 😏⚖️ (only you can edit yours — lbs)</Text>
 
         {renderWeightPanel('daddy')}
         {renderWeightPanel('princess')}
@@ -742,141 +879,6 @@ export default function HealthScreen() {
 
         {renderFitnessPanel('daddy')}
         {renderFitnessPanel('princess')}
-      </View>
-
-      {/* Daily health list */}
-      <View style={[styles.card, theme.cardStyle]}>
-        <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Daily Health List 🌿</Text>
-        <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
-          Cross off our little rituals together, darling — every tick is a promise we keep to each other 💚
-        </Text>
-
-        <View style={styles.bubbleHeader}>
-          <Text style={styles.bubbleHeaderLabel}>His 🍆</Text>
-          <Text style={styles.bubbleHeaderLabel}>Hers 🍑</Text>
-        </View>
-
-        {tasks.length === 0 && <Text style={styles.empty}>No rituals yet — add your first one below 🌿</Text>}
-
-        {tasks.map((task) => {
-          const myDone = dailyDone(myDaily, task.id, localDateKey());
-          const theirDone = dailyDone(theirDaily, task.id, localDateKey());
-          return (
-            <View style={styles.bubbleRow} key={task.id}>
-              {renderBubble('daddy', me === 'daddy' ? myDone : theirDone, () =>
-                me === 'daddy' ? toggleTask(task) : undefined
-              )}
-              <View style={styles.bubbleLabel}>
-                <Text style={styles.bubbleName}>
-                  {task.emoji} {task.label}
-                </Text>
-                <GhostPill label="✕" onPress={() => deleteTask(task.id)} />
-              </View>
-              {renderBubble('princess', me === 'princess' ? myDone : theirDone, () =>
-                me === 'princess' ? toggleTask(task) : undefined
-              )}
-            </View>
-          );
-        })}
-
-        <Text style={styles.label}>Add a ritual 🌿</Text>
-        <View style={styles.row}>
-          <TextInput
-            value={newTaskEmoji}
-            onChangeText={setNewTaskEmoji}
-            placeholder="🌿"
-            placeholderTextColor="rgba(58,42,46,0.4)"
-            style={[styles.input, styles.taskEmojiInput, { borderColor: theme.borderColor, color: theme.textColor }]}
-          />
-          <TextInput
-            value={newTaskLabel}
-            onChangeText={setNewTaskLabel}
-            placeholder="e.g. Vitamins"
-            placeholderTextColor="rgba(58,42,46,0.4)"
-            style={[styles.input, styles.flex, { borderColor: theme.borderColor, color: theme.textColor }]}
-          />
-          <Pill label="+ Add" onPress={createTask} />
-        </View>
-      </View>
-
-      {/* 7-day streak tracker */}
-      <View style={[styles.card, theme.cardStyle]}>
-        <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>7-Day Tracker 🏆</Text>
-        <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
-          Seven ticks in a row and you earn the grand celebration, gorgeous — keep the streak alive 🔥
-        </Text>
-
-        {tasks.map((task) => {
-          const hisStreak = streakEndingToday((d) => dailyDone(me === 'daddy' ? myDaily : theirDaily, task.id, d));
-          const hersStreak = streakEndingToday((d) => dailyDone(me === 'princess' ? myDaily : theirDaily, task.id, d));
-          return (
-            <View key={task.id} style={[styles.trackerRow, { borderColor: theme.borderColor }]}>
-              <Text style={styles.trackerName}>
-                {task.emoji} {task.label}
-              </Text>
-              <View style={styles.trackerLine}>
-                <Text style={styles.trackerWho}>His 🍆</Text>
-                <View style={styles.flex}>{renderStreakDots((d) => dailyDone(me === 'daddy' ? myDaily : theirDaily, task.id, d))}</View>
-                <Text style={styles.streakCount}>🔥 {hisStreak}</Text>
-              </View>
-              <View style={styles.trackerLine}>
-                <Text style={styles.trackerWho}>Hers 🍑</Text>
-                <View style={styles.flex}>{renderStreakDots((d) => dailyDone(me === 'princess' ? myDaily : theirDaily, task.id, d))}</View>
-                <Text style={styles.streakCount}>🔥 {hersStreak}</Text>
-              </View>
-            </View>
-          );
-        })}
-      </View>
-
-      {/* Water tracker */}
-      <View style={[styles.card, theme.cardStyle]}>
-        <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Water Tracker 💧</Text>
-        <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
-          Four cups a day keeps the thirst away — and keeps you glowing for me, sweetheart 💦
-        </Text>
-
-        <Text style={styles.label}>{personLabel(me)} — {waterCupsToday(myWater)}/{WATER_GOAL} cups</Text>
-        <View style={styles.cupRow}>
-          {Array.from({ length: WATER_GOAL }, (_, i) => (
-            <Pressable
-              key={i}
-              onPress={() => setWater(waterCupsToday(myWater) === i + 1 ? i : i + 1)}
-              style={[
-                styles.cup,
-                { borderColor: theme.borderColor },
-                waterCupsToday(myWater) > i && { backgroundColor: theme.accentSoft, borderColor: theme.accentColor },
-              ]}>
-              <Text style={styles.cupEmoji}>{waterCupsToday(myWater) > i ? '💧' : '🤍'}</Text>
-            </Pressable>
-          ))}
-          <Text style={styles.streakCount}>
-            🔥 {streakEndingToday(waterDoneDay(myWater))}-day streak
-          </Text>
-        </View>
-        {renderStreakDots(waterDoneDay(myWater))}
-
-        <Text style={[styles.label, { marginTop: 16 }]}>{personLabel(partner)} — {waterCupsToday(theirWater)}/{WATER_GOAL} cups</Text>
-        <View style={styles.cupRow}>
-          {Array.from({ length: WATER_GOAL }, (_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.cup,
-                { borderColor: theme.borderColor },
-                waterCupsToday(theirWater) > i && { backgroundColor: theme.accentSoft, borderColor: theme.accentColor },
-              ]}>
-              <Text style={styles.cupEmoji}>{waterCupsToday(theirWater) > i ? '💧' : '🤍'}</Text>
-            </View>
-          ))}
-          <Text style={styles.streakCount}>
-            🔥 {streakEndingToday(waterDoneDay(theirWater))}-day streak
-          </Text>
-        </View>
-        {renderStreakDots(waterDoneDay(theirWater))}
       </View>
 
       <Celebration
@@ -1111,6 +1113,20 @@ const styles = StyleSheet.create({
   },
   listText: { fontSize: 14, flex: 1 },
   empty: { fontSize: 14, opacity: 0.6, marginTop: 10 },
+  fitnessRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    padding: 12,
+    marginTop: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+  },
+  fitnessLeft: { flex: 1 },
+  fitnessName: { fontSize: 15, fontWeight: '700' },
+  fitnessDetail: { fontSize: 12, opacity: 0.65, marginTop: 2 },
   reminderRow: {
     flexDirection: 'row',
     alignItems: 'center',

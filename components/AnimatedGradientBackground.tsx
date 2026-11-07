@@ -79,7 +79,7 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
           toValue: 1,
           duration: 6500,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(drift, {
           toValue: 0,
@@ -214,17 +214,17 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
 
       {/* Smoke wisps rising through the scene */}
       <Animated.View style={[styles.leafLayer, smokeDrift]}>
-        <View style={styles.smokeA}><SmokePuff size={52} opacity={0.14} /></View>
-        <View style={styles.smokeB}><SmokePuff size={36} opacity={0.1} /></View>
-        <View style={styles.smokeC}><SmokePuff size={64} opacity={0.12} /></View>
-        <View style={styles.smokeD}><SmokePuff size={30} opacity={0.09} /></View>
+        <View style={styles.smokeA}><SmokePuff size={52} opacity={0.35} /></View>
+        <View style={styles.smokeB}><SmokePuff size={36} opacity={0.25} /></View>
+        <View style={styles.smokeC}><SmokePuff size={64} opacity={0.3} /></View>
+        <View style={styles.smokeD}><SmokePuff size={30} opacity={0.22} /></View>
       </Animated.View>
 
-      {/* Rooted plants + a little pipe on the edges */}
-      <View pointerEvents="none" style={styles.plantLeft}><WeedPlant height={92} color={leafColor} budColor="#7B1FA2" opacity={0.22} /></View>
-      <View pointerEvents="none" style={styles.plantRight}><WeedPlant height={76} color={leafColor} budColor="#4A148C" opacity={0.18} /></View>
-      <View pointerEvents="none" style={styles.bongSlot}><BongSprite size={90} color={leafColor} opacity={0.16} /></View>
-      <View pointerEvents="none" style={styles.bongSlotSmall}><BongSprite size={54} color={leafColor} opacity={0.1} /></View>
+      {/* Rooted plants + bongs on the edges */}
+      <View pointerEvents="none" style={styles.plantLeft}><WeedPlant height={92} color={leafColor} budColor="#7B1FA2" opacity={0.45} /></View>
+      <View pointerEvents="none" style={styles.plantRight}><WeedPlant height={76} color={leafColor} budColor="#4A148C" opacity={0.4} /></View>
+      <View pointerEvents="none" style={styles.bongSlot}><BongSprite size={90} color={leafColor} opacity={0.35} /></View>
+      <View pointerEvents="none" style={styles.bongSlotSmall}><BongSprite size={54} color={leafColor} opacity={0.25} /></View>
 
       <View style={styles.content}>{children}</View>
     </View>
