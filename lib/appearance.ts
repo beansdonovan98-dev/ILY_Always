@@ -8,6 +8,7 @@ export interface CoupleSettings {
   accent_color: string | null;
   font_id: string | null;
   font_color: string | null;
+  subtitle_color: string | null;
   border_color: string | null;
   animated_gradient: boolean;
   daily_rotation: boolean;

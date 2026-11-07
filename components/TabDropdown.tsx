@@ -32,10 +32,8 @@ export default function TabDropdown() {
             const def = DEFAULT_TABS.find((d) => d.id === t.id);
             return { id: t.id, label: t.label || def?.label || t.id, path: def?.path || '/' };
           });
-        // filter playtime unless revealed
-        const revealed = !!s.playtime_revealed;
-        const filtered = mapped.filter((t) => t.id !== 'playtime' || revealed);
-        setTabs(filtered.length ? filtered : DEFAULT_TABS);
+        // Playtime stays in the menu — opening it shows the 18+ reveal gate.
+        setTabs(mapped.length ? mapped : DEFAULT_TABS);
       }
     })();
   }, []);

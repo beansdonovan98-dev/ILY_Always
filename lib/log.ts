@@ -61,6 +61,11 @@ export async function updateLogEvent(coupleId: string, eventId: string, patch: P
   return data as LogEvent;
 }
 
+export async function deleteLogEvent(coupleId: string, eventId: string): Promise<void> {
+  const { error } = await supabase.from('log_events').delete().eq('id', eventId).eq('couple_id', coupleId);
+  if (error) throw error;
+}
+
 export async function getDayLogEntries(coupleId: string, date = localDateKey()): Promise<LogEntry[]> {
   const day = await getDay(coupleId, date);
   const payload = (day?.payload || {}) as Record<string, unknown>;

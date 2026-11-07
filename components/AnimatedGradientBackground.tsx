@@ -44,87 +44,111 @@ function parseColors(gradient: string | null | undefined): string[] {
   if (!colors || colors.length < 2) return LIGHT_FALLBACK;
   // A stored dark theme must never be able to keep the app black.
   if (colors.every(isDark)) return LIGHT_FALLBACK;
-  return colors;
+  return colors.filter((c) => !isDark(c));
+}
+
+function gradientColors(palette: string[]): [string, string, ...string[]] {
+  const safe = palette.length >= 2 ? palette : LIGHT_FALLBACK;
+  return [safe[0], safe[1], ...safe.slice(2)] as [string, string, ...string[]];
 }
 
 /**
  * Continuously drifting mesh gradient.
- * Three translucent gradient sheets move at different speeds/directions, so the
- * background never looks flat or static.
+ * A full-screen gradient base plus three oversized gradient sheets that move at
+ * different speeds/directions, so the theme is always visibly animated.
  */
 export default function AnimatedGradientBackground({ children }: { children: React.ReactNode }) {
   const { settings } = useTheme();
 
   const palette = parseColors(settings?.background_gradient);
-  const base =
-    settings?.background_color && !isDark(settings.background_color)
-      ? settings.background_color
-      : palette[0];
+  const base = settings?.background_color && !isDark(settings.background_color) ? settings.background_color : palette[0];
 
   const c1 = palette[0] ?? LIGHT_FALLBACK[0];
   const c2 = palette[1] ?? LIGHT_FALLBACK[1];
   const c3 = palette[2] ?? c2;
   const c4 = palette[3] ?? c1;
 
-  const animated = settings?.animated_gradient !== false;
-
   const drift = useRef(new Animated.Value(0)).current;
+  const drift2 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (!animated) {
-      drift.stopAnimation();
-      drift.setValue(0);
-      return;
-    }
-    const loop = Animated.loop(
+    const loopA = Animated.loop(
       Animated.sequence([
         Animated.timing(drift, {
           toValue: 1,
-          duration: 9000,
+          duration: 11000,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
         Animated.timing(drift, {
           toValue: 0,
-          duration: 9000,
+          duration: 11000,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
       ])
     );
-    loop.start();
-    return () => loop.stop();
-  }, [animated, drift]);
+
+    const loopB = Animated.loop(
+      Animated.sequence([
+        Animated.timing(drift2, {
+          toValue: 1,
+          duration: 17000,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(drift2, {
+          toValue: 0,
+          duration: 17000,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    loopA.start();
+    loopB.start();
+    return () => {
+      loopA.stop();
+      loopB.stop();
+    };
+  }, [drift, drift2]);
 
   const sheetA = {
     transform: [
-      { translateX: drift.interpolate({ inputRange: [0, 1], outputRange: ['-12%', '10%'] }) },
-      { translateY: drift.interpolate({ inputRange: [0, 1], outputRange: ['6%', '-8%'] }) },
-      { scale: drift.interpolate({ inputRange: [0, 1], outputRange: [1.15, 1.4] }) },
+      { translateX: drift.interpolate({ inputRange: [0, 1], outputRange: ['-18%', '14%'] }) },
+      { translateY: drift.interpolate({ inputRange: [0, 1], outputRange: ['8%', '-12%'] }) },
+      { rotate: drift.interpolate({ inputRange: [0, 1], outputRange: ['-8deg', '10deg'] }) },
+      { scale: drift.interpolate({ inputRange: [0, 1], outputRange: [1.15, 1.45] }) },
     ],
   };
 
   const sheetB = {
     transform: [
-      { translateX: drift.interpolate({ inputRange: [0, 1], outputRange: ['10%', '-10%'] }) },
-      { translateY: drift.interpolate({ inputRange: [0, 1], outputRange: ['-8%', '8%'] }) },
-      { scale: drift.interpolate({ inputRange: [0, 1], outputRange: [1.35, 1.1] }) },
+      { translateX: drift2.interpolate({ inputRange: [0, 1], outputRange: ['14%', '-16%'] }) },
+      { translateY: drift2.interpolate({ inputRange: [0, 1], outputRange: ['-12%', '12%'] }) },
+      { rotate: drift2.interpolate({ inputRange: [0, 1], outputRange: ['12deg', '-6deg'] }) },
+      { scale: drift2.interpolate({ inputRange: [0, 1], outputRange: [1.4, 1.12] }) },
     ],
   };
 
   const sheetC = {
-    opacity: drift.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.45, 0.8, 0.45] }),
+    opacity: drift.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.55, 0.9, 0.55] }),
     transform: [
-      { translateX: drift.interpolate({ inputRange: [0, 1], outputRange: ['-6%', '6%'] }) },
-      { scale: drift.interpolate({ inputRange: [0, 1], outputRange: [1.1, 1.3] }) },
+      { translateX: drift2.interpolate({ inputRange: [0, 1], outputRange: ['-12%', '12%'] }) },
+      { translateY: drift.interpolate({ inputRange: [0, 1], outputRange: ['-6%', '10%'] }) },
+      { rotate: drift.interpolate({ inputRange: [0, 1], outputRange: ['6deg', '-12deg'] }) },
+      { scale: drift2.interpolate({ inputRange: [0, 1], outputRange: [1.1, 1.35] }) },
     ],
   };
 
   return (
     <View style={[styles.root, { backgroundColor: base }]}>
+      <LinearGradient colors={gradientColors(palette)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+
       <Animated.View style={[styles.sheet, sheetA]}>
         <LinearGradient
-          colors={[withAlpha(c2, 0.95), withAlpha(c2, 0)]}
+          colors={[withAlpha(c2, 0.95), withAlpha(c2, 0.1), withAlpha(c3, 0)]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.fill}
@@ -133,7 +157,7 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
 
       <Animated.View style={[styles.sheet, sheetB]}>
         <LinearGradient
-          colors={[withAlpha(c3, 0), withAlpha(c3, 0.9)]}
+          colors={[withAlpha(c3, 0), withAlpha(c3, 0.85), withAlpha(c4, 0.95)]}
           start={{ x: 1, y: 0 }}
           end={{ x: 0, y: 1 }}
           style={styles.fill}
@@ -142,7 +166,7 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
 
       <Animated.View style={[styles.sheet, sheetC]}>
         <LinearGradient
-          colors={[withAlpha(c4, 0.75), withAlpha(c1, 0.05), withAlpha(c4, 0.55)]}
+          colors={[withAlpha(c4, 0.85), withAlpha(c1, 0.1), withAlpha(c2, 0.7)]}
           start={{ x: 0, y: 1 }}
           end={{ x: 1, y: 0 }}
           style={styles.fill}
@@ -156,7 +180,7 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
 
 const styles = StyleSheet.create({
   root: { flex: 1, overflow: 'hidden' },
-  sheet: { position: 'absolute', width: '150%', height: '150%', left: '-25%', top: '-25%' },
+  sheet: { position: 'absolute', width: '160%', height: '160%', left: '-30%', top: '-30%' },
   fill: { flex: 1 },
   content: { flex: 1 },
 });

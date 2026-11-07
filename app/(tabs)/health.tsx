@@ -1,156 +1,674 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from 'expo-router';
+
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
+import { WeightChart, ChartPoint } from '@/components/WeightChart';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useUsage } from '@/contexts/UsageContext';
 
 import { getCoupleId } from '@/lib/couple';
-import { getCoupleSettings } from '@/lib/appearance';
-import { getItem, setItem } from '@/lib/storage';
+import { getItem } from '@/lib/storage';
+import { localDateKey } from '@/lib/days';
+import { USERS } from '@/constants/content';
+import { formatReminderTime, syncMedReminders } from '@/lib/med-reminders';
+import {
+  BODY_FIELDS,
+  BodyField,
+  BodyMetrics,
+  EMPTY_BODY,
+  EMPTY_PERIOD,
+  FitnessEntry,
+  HealthUser,
+  Med,
+  MedLog,
+  PERIOD_SYMPTOMS,
+  PeriodDay,
+  PeriodState,
+  WeightEntry,
+  addFitness as addFitnessEntry,
+  addMed as addMedRow,
+  addWeight as addWeightEntry,
+  bodyResetLabel,
+  loadBody,
+  loadFitness,
+  loadMedLogs,
+  loadMeds,
+  loadPeriod,
+  loadWeights,
+  logMedDose,
+  periodLength,
+  removeFitness,
+  removeMed as removeMedRow,
+  removeMedLog,
+  removeWeight as removeWeightEntry,
+  updateWeight as updateWeightEntry,
+  saveBody,
+  savePeriod,
+  shiftDateKey,
+  updateMed as updateMedRow,
+} from '@/lib/health';
 
-interface WeightEntry { id: string; who: string; weight: string; date: string; }
-interface Med { id: string; name: string; dosage: string; timing: string; taken: boolean; }
-interface FitnessEntry { id: string; who: string; exercise: string; duration: string; date: string; }
+/* ------------------------------------------------------------------ */
+
+function Pill({ label, onPress }: { label: string; onPress: () => void }) {
+  const theme = useAppTheme();
+  return (
+    <Pressable onPress={onPress} style={styles.pillPress}>
+      <LinearGradient
+        colors={[theme.accentColor, '#C86DD7']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.pill}>
+        <Text style={styles.pillText}>{label}</Text>
+      </LinearGradient>
+    </Pressable>
+  );
+}
+
+function GhostPill({ label, onPress }: { label: string; onPress: () => void }) {
+  const theme = useAppTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.ghostPill,
+        { borderColor: theme.borderColor, backgroundColor: 'rgba(255,255,255,0.45)' },
+      ]}>
+      <Text style={styles.ghostPillText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function DosePill({ label, onPress }: { label: string; onPress: () => void }) {
+  const theme = useAppTheme();
+  return (
+    <Pressable onPress={onPress}>
+      <LinearGradient
+        colors={[theme.accentColor, '#C86DD7']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.dosePill}>
+        <Text style={styles.dosePillText}>{label}</Text>
+      </LinearGradient>
+    </Pressable>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 
 export default function HealthScreen() {
-  const appTheme = useAppTheme();
+  const theme = useAppTheme();
+  const { currentUser } = useUsage();
+  const me = currentUser as HealthUser;
+  const partner: HealthUser = me === 'daddy' ? 'princess' : 'daddy';
+
   const [coupleId, setCoupleId] = useState('');
   const [revealed, setRevealed] = useState(false);
+  const [myBody, setMyBody] = useState<BodyMetrics>({ ...EMPTY_BODY });
+  const [theirBody, setTheirBody] = useState<BodyMetrics>({ ...EMPTY_BODY });
   const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [meds, setMeds] = useState<Med[]>([]);
+  const [medLogs, setMedLogs] = useState<MedLog[]>([]);
   const [fitness, setFitness] = useState<FitnessEntry[]>([]);
+  const [period, setPeriod] = useState<PeriodState>({ ...EMPTY_PERIOD });
+  const [pain, setPain] = useState(0);
+  const [symptoms, setSymptoms] = useState<string[]>([]);
 
-  // weight form
-  const [wWho, setWWho] = useState('Daddy');
+  // forms
   const [wVal, setWVal] = useState('');
-  // med form
+  const [editingWeightId, setEditingWeightId] = useState<string | null>(null);
   const [mName, setMName] = useState('');
   const [mDose, setMDose] = useState('');
   const [mTime, setMTime] = useState('');
-  // fitness form
-  const [fWho, setFWho] = useState('Daddy');
+  const [mReminder, setMReminder] = useState(true);
   const [fEx, setFEx] = useState('');
-  const [fDur, setFDur] = useState('');
+  const [fSets, setFSets] = useState('');
+  const [fReps, setFReps] = useState('');
+  const [fMin, setFMin] = useState('');
+  const [startDraft, setStartDraft] = useState('');
 
-  useEffect(() => {
-    (async () => {
-      const cid = await getCoupleId();
-      setCoupleId(cid);
-      const s = await getCoupleSettings(cid);
-      setRevealed(!!s?.playtime_revealed); // reuse? better separate; use settings field period_revealed
-      // Actually use a dedicated key
-      const pr = await getItem<boolean>('periodRevealed', false);
-      setRevealed(pr);
-      setWeights(await getItem<WeightEntry[]>(`weights:${cid}`, []));
-      setMeds(await getItem<Med[]>(`meds:${cid}`, []));
-      setFitness(await getItem<FitnessEntry[]>(`fitness:${cid}`, []));
-    })();
-  }, []);
+  const load = useCallback(async () => {
+    const cid = await getCoupleId();
+    setCoupleId(cid);
 
-  const saveWeights = async (next: WeightEntry[]) => { setWeights(next); await setItem(`weights:${coupleId}`, next); };
-  const saveMeds = async (next: Med[]) => { setMeds(next); await setItem(`meds:${coupleId}`, next); };
-  const saveFitness = async (next: FitnessEntry[]) => { setFitness(next); await setItem(`fitness:${coupleId}`, next); };
+    setMyBody(await loadBody(cid, me));
+    setTheirBody(await loadBody(cid, partner));
+    setWeights(await loadWeights(cid, me));
+    const loadedMeds = await loadMeds(cid);
+    setMeds(loadedMeds);
+    setMedLogs(await loadMedLogs(cid));
+    setFitness(await loadFitness(cid, me));
+    setRevealed(await getItem<boolean>('periodRevealed', false));
+
+    const nextPeriod = await loadPeriod(cid, me);
+    setPeriod(nextPeriod);
+    setStartDraft(nextPeriod.startDate || '');
+    const todayLog = nextPeriod.days.find((d) => d.dateKey === localDateKey());
+    setPain(todayLog?.pain ?? 0);
+    setSymptoms(todayLog?.symptoms ?? []);
+
+    void syncMedReminders(loadedMeds);
+  }, [me, partner]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load])
+  );
+
+  /* ----------------------------- body ----------------------------- */
+
+  const updateMetric = (key: BodyField, value: string) => {
+    setMyBody((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const saveMyBody = async () => {
+    if (!coupleId) return;
+    setMyBody(await saveBody(coupleId, me, myBody));
+  };
+
+  /* ---------------------------- weight ---------------------------- */
 
   const addWeight = async () => {
-    if (!wVal.trim()) return;
-    const entry: WeightEntry = { id: `${Date.now()}`, who: wWho, weight: wVal.trim(), date: new Date().toLocaleDateString() };
-    await saveWeights([...weights, entry]);
+    const value = parseFloat(wVal.replace(',', '.'));
+    if (!isFinite(value) || value <= 0) return;
+    if (editingWeightId) {
+      setWeights(await updateWeightEntry(coupleId, me, editingWeightId, value));
+      setEditingWeightId(null);
+    } else {
+      setWeights(await addWeightEntry(coupleId, me, value));
+    }
     setWVal('');
   };
 
-  const addMed = async () => {
-    if (!mName.trim()) return;
-    const med: Med = { id: `${Date.now()}`, name: mName.trim(), dosage: mDose.trim(), timing: mTime.trim(), taken: false };
-    await saveMeds([...meds, med]);
-    setMName(''); setMDose(''); setMTime('');
+  const deleteWeight = async (id: string) => {
+    setWeights(await removeWeightEntry(coupleId, me, id));
+    if (editingWeightId === id) {
+      setEditingWeightId(null);
+      setWVal('');
+    }
   };
 
-  const toggleMed = async (id: string) => {
-    const next = meds.map((m) => (m.id === id ? { ...m, taken: !m.taken } : m));
-    await saveMeds(next);
+  const chartData: ChartPoint[] = weights.map((w) => ({
+    id: w.id,
+    value: w.value,
+    label: w.dateKey.slice(5).replace('-', '/'),
+  }));
+
+  /* --------------------------- medicine --------------------------- */
+
+  const addMed = async () => {
+    if (!mName.trim()) return;
+    const next = await addMedRow(coupleId, {
+      name: mName.trim(),
+      dosage: mDose.trim(),
+      timeLabel: mTime.trim(),
+      reminder: mReminder,
+    });
+    setMeds(next);
+    setMName('');
+    setMDose('');
+    setMTime('');
+    setMReminder(true);
+    void syncMedReminders(next);
   };
+
+  const takeMed = async (med: Med) => {
+    setMedLogs(await logMedDose(coupleId, med));
+  };
+
+  const undoDose = async (id: string) => {
+    setMedLogs(await removeMedLog(coupleId, id));
+  };
+
+  const toggleReminder = async (med: Med) => {
+    const next = await updateMedRow(coupleId, med.id, { reminder: !med.reminder });
+    setMeds(next);
+    void syncMedReminders(next);
+  };
+
+  const deleteMed = async (id: string) => {
+    const next = await removeMedRow(coupleId, id);
+    setMeds(next);
+    setMedLogs((prev) => prev.filter((l) => l.medId !== id));
+    void syncMedReminders(next);
+  };
+
+  /* ---------------------------- fitness --------------------------- */
 
   const addFitness = async () => {
     if (!fEx.trim()) return;
-    const entry: FitnessEntry = { id: `${Date.now()}`, who: fWho, exercise: fEx.trim(), duration: fDur.trim(), date: new Date().toLocaleDateString() };
-    await saveFitness([...fitness, entry]);
-    setFEx(''); setFDur('');
+    const entry: FitnessEntry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      exercise: fEx.trim(),
+      sets: fSets.trim(),
+      reps: fReps.trim(),
+      minutes: fMin.trim(),
+      dateKey: localDateKey(),
+      at: Date.now(),
+    };
+    setFitness(await addFitnessEntry(coupleId, me, entry));
+    setFEx('');
+    setFSets('');
+    setFReps('');
+    setFMin('');
+  };
+
+  const deleteFitness = async (id: string) => {
+    setFitness(await removeFitness(coupleId, me, id));
+  };
+
+  /* ----------------------------- period --------------------------- */
+
+  const startPeriod = async () => {
+    const start = startDraft.trim() || localDateKey();
+    const next: PeriodState = { startDate: start, endDate: null, days: [] };
+    setPeriod(next);
+    await savePeriod(coupleId, me, next);
+  };
+
+  const completePeriod = async () => {
+    const next: PeriodState = { ...period, endDate: localDateKey() };
+    setPeriod(next);
+    await savePeriod(coupleId, me, next);
+  };
+
+  const toggleSymptom = (s: string) => {
+    setSymptoms((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+  };
+
+  const saveCheckIn = async () => {
+    const key = localDateKey();
+    const day: PeriodDay = { dateKey: key, pain, symptoms, completed: true };
+    const next: PeriodState = {
+      ...period,
+      startDate: period.startDate || key,
+      days: [...period.days.filter((d) => d.dateKey !== key), day].sort((a, b) => a.dateKey.localeCompare(b.dateKey)),
+    };
+    setPeriod(next);
+    await savePeriod(coupleId, me, next);
+  };
+
+  const lastSeven = Array.from({ length: 7 }, (_, i) => shiftDateKey(localDateKey(), i - 6));
+  const periodDays = periodLength(period);
+  const todayChecked = period.days.some((d) => d.dateKey === localDateKey() && d.completed);
+
+  /* ----------------------------- render --------------------------- */
+
+  const renderBodyPanel = (person: HealthUser) => {
+    const isMe = person === me;
+    const metrics = isMe ? myBody : theirBody;
+    const label = person === 'daddy' ? 'Him 👨' : 'Her 👩';
+
+    return (
+      <View style={[styles.subCard, { borderColor: theme.borderColor }]}>
+        <View style={styles.subHeader}>
+          <Text style={styles.subTitle}>{label}</Text>
+          <Text style={[styles.tag, isMe ? styles.tagYou : styles.tagLock]}>
+            {isMe ? 'You ✏️' : 'View only 🔒'}
+          </Text>
+        </View>
+
+        {BODY_FIELDS.map((field) => (
+          <View key={field.key} style={styles.metricRow}>
+            <Text style={styles.metricLabel}>
+              {field.emoji} {field.label}
+            </Text>
+            {isMe ? (
+              <TextInput
+                value={myBody[field.key]}
+                onChangeText={(v) => updateMetric(field.key, v)}
+                placeholder="—"
+                placeholderTextColor="rgba(58,42,46,0.4)"
+                keyboardType="decimal-pad"
+                style={[styles.metricInput, { borderColor: theme.borderColor, color: theme.textColor }]}
+              />
+            ) : (
+              <Text style={styles.metricValue}>{metrics[field.key] || '—'}</Text>
+            )}
+          </View>
+        ))}
+
+        {isMe && (
+          <>
+            <Text style={styles.smallHint}>{bodyResetLabel(myBody)}</Text>
+            <Pill label="Save Measurements" onPress={saveMyBody} />
+          </>
+        )}
+      </View>
+    );
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Health 🩺</Text>
-      <Text style={styles.subtitle}>Taking care of our temple and each other 🌿</Text>
+      <Text style={[styles.subtitle, { color: theme.subtitleColor }]}>
+        Keeping our temples sinfully healthy — because this body belongs to you 🔥🌿💦
+      </Text>
 
-      {/* Weight tracker */}
-      <View style={[styles.card, appTheme.cardStyle]}>
-        <LeafBorder color={appTheme.leafColor} />
-        <Text style={styles.cardTitle}>Weight Tracker</Text>
+      {/* Body measurements */}
+      <View style={[styles.card, theme.cardStyle]}>
+        <LeafBorder color={theme.leafColor} />
+        <Text style={styles.cardTitle}>Him &amp; Her Body Measurements 💪</Text>
+        <Text style={styles.cardHint}>
+          Only you can edit your own numbers — measurements refresh every 3 days 🍃
+        </Text>
+        {renderBodyPanel('daddy')}
+        {renderBodyPanel('princess')}
+      </View>
+
+      {/* Weight */}
+      <View style={[styles.card, theme.cardStyle]}>
+        <LeafBorder color={theme.leafColor} />
+        <Text style={styles.cardTitle}>Weight Tracker ⚖️</Text>
+        <Text style={styles.cardHint}>Your full trend, kept forever — only you can edit your numbers 📈</Text>
+
+        <WeightChart data={chartData} accentColor={theme.accentColor} textColor={theme.textColor} />
+
         <View style={styles.row}>
-          <Pressable onPress={() => setWWho('Daddy')} style={[[styles.chip, appTheme.chipStyle], wWho === 'Daddy' && [styles.chipActive, appTheme.activeChipStyle]]}><Text style={styles.chipText}>Daddy</Text></Pressable>
-          <Pressable onPress={() => setWWho('Princess')} style={[[styles.chip, appTheme.chipStyle], wWho === 'Princess' && [styles.chipActive, appTheme.activeChipStyle]]}><Text style={styles.chipText}>Princess</Text></Pressable>
+          <TextInput
+            value={wVal}
+            onChangeText={setWVal}
+            placeholder="Weight (kg/lbs)"
+            placeholderTextColor="rgba(58,42,46,0.4)"
+            keyboardType="decimal-pad"
+            style={[styles.input, styles.flex, { borderColor: theme.borderColor, color: theme.textColor }]}
+          />
+          <Pill label={editingWeightId ? 'Save Weight' : 'Log Weight'} onPress={addWeight} />
         </View>
-        <TextInput value={wVal} onChangeText={setWVal} placeholder="Weight (kg/lbs)" style={styles.input} keyboardType="numeric" />
-        <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={addWeight}><Text style={styles.btnText}>Log Weight</Text></Pressable>
-        {weights.filter((w) => w.who === wWho).length > 0 && (
-          <View style={styles.chart}>
-            {weights.filter((w) => w.who === wWho).map((w) => {
-              const max = Math.max(...weights.filter((x) => x.who === wWho).map((x) => parseFloat(x.weight) || 0));
-              const h = max > 0 ? (parseFloat(w.weight) / max) * 80 : 0;
+
+        {editingWeightId ? (
+          <GhostPill
+            label="Cancel edit"
+            onPress={() => {
+              setEditingWeightId(null);
+              setWVal('');
+            }}
+          />
+        ) : null}
+
+        {weights.length > 0 && (
+          <View style={styles.list}>
+            {[...weights]
+              .reverse()
+              .slice(0, 5)
+              .map((w) => (
+                <View key={w.id} style={styles.listRow}>
+                  <Text style={styles.listText}>
+                    {w.value} — {w.dateKey}
+                  </Text>
+                  <GhostPill
+                    label="Edit"
+                    onPress={() => {
+                      setEditingWeightId(w.id);
+                      setWVal(String(w.value));
+                    }}
+                  />
+                  <GhostPill label="Delete" onPress={() => deleteWeight(w.id)} />
+                </View>
+              ))}
+          </View>
+        )}
+      </View>
+
+      {/* Medicine */}
+      <View style={[styles.card, theme.cardStyle]}>
+        <LeafBorder color={theme.leafColor} />
+        <Text style={styles.cardTitle}>Medicine &amp; Supplements 💊</Text>
+        <Text style={styles.cardHint}>
+          Each dose gets logged with the exact time — the log clears at midnight 🌅
+        </Text>
+
+        <TextInput
+          value={mName}
+          onChangeText={setMName}
+          placeholder="Medicine name"
+          placeholderTextColor="rgba(58,42,46,0.4)"
+          style={[styles.input, { borderColor: theme.borderColor, color: theme.textColor }]}
+        />
+        <View style={styles.row}>
+          <TextInput
+            value={mDose}
+            onChangeText={setMDose}
+            placeholder="Dosage (1 pill)"
+            placeholderTextColor="rgba(58,42,46,0.4)"
+            style={[styles.input, styles.flex, { borderColor: theme.borderColor, color: theme.textColor }]}
+          />
+          <TextInput
+            value={mTime}
+            onChangeText={setMTime}
+            placeholder="Time (8:00 AM)"
+            placeholderTextColor="rgba(58,42,46,0.4)"
+            style={[styles.input, styles.flex, { borderColor: theme.borderColor, color: theme.textColor }]}
+          />
+        </View>
+
+        <View style={styles.reminderRow}>
+          <Text style={styles.reminderLabel}>🔔 Daily reminder</Text>
+          <Switch value={mReminder} onValueChange={setMReminder} />
+        </View>
+
+        <Pill label="+ Add Medication" onPress={addMed} />
+
+        {meds.length === 0 && <Text style={styles.empty}>Nothing on the list yet.</Text>}
+
+        {meds.map((m) => {
+          const dose = medLogs.find((l) => l.medId === m.id);
+          return (
+            <View key={m.id} style={[styles.medRow, { borderColor: theme.borderColor }]}>
+              <View style={styles.flex}>
+                <Text style={styles.medName}>{m.name}</Text>
+                <Text style={styles.smallHint}>
+                  {m.dosage || 'No dose'} •{' '}
+                  {m.timeLabel ? formatReminderTime(m.timeLabel) : 'Anytime'}
+                  {m.reminder ? ' • 🔔' : ''}
+                </Text>
+                {dose ? (
+                  <Text style={styles.takenAt}>
+                    ✓ Taken at{' '}
+                    {new Date(dose.takenAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                  </Text>
+                ) : (
+                  <Text style={styles.pendingAt}>○ Pending today</Text>
+                )}
+                <View style={styles.medActions}>
+                  <GhostPill
+                    label={m.reminder ? 'Reminder on' : 'Reminder off'}
+                    onPress={() => toggleReminder(m)}
+                  />
+                  <GhostPill label="✕ Remove" onPress={() => deleteMed(m.id)} />
+                </View>
+              </View>
+
+              {dose ? (
+                <DosePill label="Undo" onPress={() => undoDose(dose.id)} />
+              ) : (
+                <DosePill label="Take now" onPress={() => takeMed(m)} />
+              )}
+            </View>
+          );
+        })}
+
+        <Text style={styles.label}>Today&apos;s doses</Text>
+        {medLogs.length === 0 ? (
+          <Text style={styles.empty}>No doses logged today yet.</Text>
+        ) : (
+          medLogs.map((log) => (
+            <View key={log.id} style={styles.listRow}>
+              <Text style={styles.listText}>
+                💊 {log.name} —{' '}
+                {new Date(log.takenAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+              </Text>
+              <GhostPill label="Undo" onPress={() => undoDose(log.id)} />
+            </View>
+          ))
+        )}
+      </View>
+
+      {/* Fitness */}
+      <View style={[styles.card, theme.cardStyle]}>
+        <LeafBorder color={theme.leafColor} />
+        <Text style={styles.cardTitle}>Fitness Log 🏋️</Text>
+        <Text style={styles.cardHint}>
+          Logging as {USERS[me].name} — your workouts reset daily 🌅
+        </Text>
+
+        <TextInput
+          value={fEx}
+          onChangeText={setFEx}
+          placeholder="Exercise (squats, run, yoga...)"
+          placeholderTextColor="rgba(58,42,46,0.4)"
+          style={[styles.input, { borderColor: theme.borderColor, color: theme.textColor }]}
+        />
+        <View style={styles.row}>
+          <TextInput
+            value={fSets}
+            onChangeText={setFSets}
+            placeholder="Sets"
+            placeholderTextColor="rgba(58,42,46,0.4)"
+            keyboardType="numeric"
+            style={[styles.input, styles.flex, { borderColor: theme.borderColor, color: theme.textColor }]}
+          />
+          <TextInput
+            value={fReps}
+            onChangeText={setFReps}
+            placeholder="Reps"
+            placeholderTextColor="rgba(58,42,46,0.4)"
+            keyboardType="numeric"
+            style={[styles.input, styles.flex, { borderColor: theme.borderColor, color: theme.textColor }]}
+          />
+          <TextInput
+            value={fMin}
+            onChangeText={setFMin}
+            placeholder="Min"
+            placeholderTextColor="rgba(58,42,46,0.4)"
+            keyboardType="numeric"
+            style={[styles.input, styles.flex, { borderColor: theme.borderColor, color: theme.textColor }]}
+          />
+        </View>
+        <Pill label="+ Log Workout" onPress={addFitness} />
+
+        {fitness.length === 0 && <Text style={styles.empty}>No workouts logged today yet.</Text>}
+
+        {fitness.map((f) => (
+          <View key={f.id} style={styles.listRow}>
+            <Text style={styles.listText}>
+              {f.exercise}
+              {f.sets || f.reps ? ` • ${f.sets || '-'}×${f.reps || '-'}` : ''}
+              {f.minutes ? ` • ${f.minutes} min` : ''}
+            </Text>
+            <GhostPill label="✕" onPress={() => deleteFitness(f.id)} />
+          </View>
+        ))}
+      </View>
+
+      {/* Period tracker */}
+      {revealed && (
+        <View style={[styles.card, theme.cardStyle]}>
+          <LeafBorder color={theme.leafColor} />
+          <Text style={styles.cardTitle}>Period Tracker 🌸</Text>
+          <Text style={styles.cardHint}>
+            {period.startDate
+              ? period.endDate
+                ? `Last cycle: ${period.startDate} → ${period.endDate} (${periodDays} days)`
+                : `Day ${periodDays} of this cycle`
+              : 'Start a cycle to begin tracking 🌱'}
+          </Text>
+
+          {!period.startDate || period.endDate ? (
+            <>
+              <Text style={styles.label}>Start day (YYYY-MM-DD)</Text>
+              <TextInput
+                value={startDraft}
+                onChangeText={setStartDraft}
+                placeholder={localDateKey()}
+                placeholderTextColor="rgba(58,42,46,0.4)"
+                style={[styles.input, { borderColor: theme.borderColor, color: theme.textColor }]}
+              />
+              <Pill label="Start Period" onPress={startPeriod} />
+            </>
+          ) : (
+            <GhostPill label="Mark Period Complete ✓" onPress={completePeriod} />
+          )}
+
+          <Text style={styles.label}>Pain scale (0–10)</Text>
+          <View style={styles.row}>
+            {Array.from({ length: 11 }, (_, i) => i).map((n) => (
+              <Pressable
+                key={n}
+                onPress={() => setPain(n)}
+                style={[
+                  styles.painChip,
+                  pain === n
+                    ? { backgroundColor: theme.accentSoft, borderColor: theme.accentColor }
+                    : { backgroundColor: 'rgba(255,255,255,0.5)', borderColor: theme.borderColor },
+                ]}>
+                <Text style={styles.painChipText}>{n}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Text style={styles.label}>Symptoms</Text>
+          <View style={styles.row}>
+            {PERIOD_SYMPTOMS.map((s) => {
+              const active = symptoms.includes(s);
               return (
-                <View key={w.id} style={styles.chartBar}>
-                  <View style={[styles.bar, { height: h }]} />
-                  <Text style={styles.chartLabel}>{w.weight}</Text>
+                <Pressable
+                  key={s}
+                  onPress={() => toggleSymptom(s)}
+                  style={[
+                    styles.symptomChip,
+                    active
+                      ? { backgroundColor: theme.accentSoft, borderColor: theme.accentColor }
+                      : { backgroundColor: 'rgba(255,255,255,0.5)', borderColor: theme.borderColor },
+                  ]}>
+                  <Text style={styles.symptomText}>{s}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Pill
+            label={todayChecked ? 'Update Today’s Check-in ✓' : 'Save Today’s Check-in ✓'}
+            onPress={saveCheckIn}
+          />
+
+          <Text style={styles.label}>Last 7 days</Text>
+          <View style={styles.row}>
+            {lastSeven.map((d) => {
+              const done = period.days.some((x) => x.dateKey === d && x.completed);
+              return (
+                <View key={d} style={styles.dayWrap}>
+                  <View
+                    style={[
+                      styles.dayDot,
+                      done
+                        ? { backgroundColor: theme.accentColor, borderColor: theme.accentColor }
+                        : { backgroundColor: 'rgba(255,255,255,0.5)', borderColor: theme.borderColor },
+                    ]}>
+                    <Text style={[styles.dayDotText, done && { color: '#FFFFFF' }]}>{done ? '✓' : '·'}</Text>
+                  </View>
+                  <Text style={styles.dayLabel}>{d.slice(8)}</Text>
                 </View>
               );
             })}
           </View>
-        )}
-        {weights.filter((w) => w.who === wWho).map((w) => (
-          <Text key={w.id} style={styles.body}>{w.who}: {w.weight} ({w.date})</Text>
-        ))}
-      </View>
 
-      {/* Medicine tracker */}
-      <View style={[styles.card, appTheme.cardStyle]}>
-        <LeafBorder color={appTheme.leafColor} />
-        <Text style={styles.cardTitle}>Medicine / Supplement Tracker</Text>
-        <TextInput value={mName} onChangeText={setMName} placeholder="Name" style={styles.input} />
-        <TextInput value={mDose} onChangeText={setMDose} placeholder="Dosage" style={styles.input} />
-        <TextInput value={mTime} onChangeText={setMTime} placeholder="Timing (e.g. 8am)" style={styles.input} />
-        <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={addMed}><Text style={styles.btnText}>Add Medication</Text></Pressable>
-        {meds.map((m) => (
-          <View key={m.id} style={styles.row}>
-            <Pressable onPress={() => toggleMed(m.id)} style={styles.checkBtn}>
-              <Text style={styles.btnText}>{m.taken ? '✓' : '○'}</Text>
-            </Pressable>
-            <Text style={styles.body}>{m.name} — {m.dosage} ({m.timing})</Text>
-          </View>
-        ))}
-      </View>
-
-      {/* Fitness log */}
-      <View style={[styles.card, appTheme.cardStyle]}>
-        <LeafBorder color={appTheme.leafColor} />
-        <Text style={styles.cardTitle}>Fitness Log (Individual)</Text>
-        <View style={styles.row}>
-          <Pressable onPress={() => setFWho('Daddy')} style={[[styles.chip, appTheme.chipStyle], fWho === 'Daddy' && [styles.chipActive, appTheme.activeChipStyle]]}><Text style={styles.chipText}>Daddy</Text></Pressable>
-          <Pressable onPress={() => setFWho('Princess')} style={[[styles.chip, appTheme.chipStyle], fWho === 'Princess' && [styles.chipActive, appTheme.activeChipStyle]]}><Text style={styles.chipText}>Princess</Text></Pressable>
-        </View>
-        <TextInput value={fEx} onChangeText={setFEx} placeholder="Exercise" style={styles.input} />
-        <TextInput value={fDur} onChangeText={setFDur} placeholder="Duration (min)" style={styles.input} keyboardType="numeric" />
-        <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={addFitness}><Text style={styles.btnText}>Log Workout</Text></Pressable>
-        {fitness.filter((f) => f.who === fWho).map((f) => (
-          <Text key={f.id} style={styles.body}>{f.who}: {f.exercise} — {f.duration} min ({f.date})</Text>
-        ))}
-      </View>
-
-      {/* Period tracker hidden */}
-      {revealed && (
-        <View style={[styles.card, appTheme.cardStyle]}>
-        <LeafBorder color={appTheme.leafColor} />
-          <Text style={styles.cardTitle}>Period Tracker</Text>
-          <Text style={styles.body}>Period tracking enabled (placeholder). Add dates here.</Text>
+          {period.days.length > 0 && (
+            <View style={styles.list}>
+              {[...period.days]
+                .reverse()
+                .slice(0, 7)
+                .map((d) => (
+                  <Text key={d.dateKey} style={styles.smallHint}>
+                    {d.dateKey} • pain {d.pain}/10 • {d.symptoms.length ? d.symptoms.join(', ') : 'no symptoms'}
+                  </Text>
+                ))}
+            </View>
+          )}
         </View>
       )}
     </ScrollView>
@@ -161,20 +679,127 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 16, maxWidth: '100%' },
   title: { fontSize: 34, fontWeight: '800', marginBottom: 4 },
-  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12 },
-  card: { borderRadius: 16, padding: 18, marginBottom: 16, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', width: '100%' },
-  cardTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
-  body: { fontSize: 16, marginBottom: 6 },
-  input: { borderWidth: 1, borderColor: 'rgba(120,120,120,0.4)', borderRadius: 8, padding: 8, minHeight: 40, marginBottom: 8, width: '100%' },
-  btn: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, backgroundColor: 'rgba(100,150,255,0.4)', marginBottom: 12, alignSelf: 'flex-start' },
-  btnText: { fontWeight: '600' },
-  row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 6 },
-  chip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 16, backgroundColor: 'rgba(120,120,120,0.2)', marginRight: 6 },
-  chipActive: { backgroundColor: 'rgba(100,150,255,0.4)' },
-  chipText: { fontWeight: '600', fontSize: 13 },
-  checkBtn: { paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, backgroundColor: 'rgba(100,150,255,0.4)', marginRight: 8 },
-  chart: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, marginVertical: 10 },
-  chartBar: { alignItems: 'center', width: 32 },
-  bar: { width: 20, backgroundColor: 'rgba(100,150,255,0.6)', borderRadius: 4 },
-  chartLabel: { fontSize: 10, marginTop: 2 },
+  subtitle: { fontSize: 17, marginBottom: 4, lineHeight: 24 },
+  card: {
+    padding: 18,
+    borderRadius: 22,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+  },
+  cardTitle: { fontSize: 19, fontWeight: '800', marginBottom: 4 },
+  cardHint: { fontSize: 13, opacity: 0.65, marginBottom: 12 },
+  subCard: {
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 14,
+    marginTop: 10,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+  },
+  subHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  subTitle: { fontSize: 16, fontWeight: '800' },
+  tag: {
+    fontSize: 11,
+    fontWeight: '800',
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  tagYou: { backgroundColor: 'rgba(46,125,79,0.18)' },
+  tagLock: { backgroundColor: 'rgba(58,42,46,0.1)' },
+  metricRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 8,
+  },
+  metricLabel: { fontSize: 14, flex: 1 },
+  metricValue: { fontSize: 15, fontWeight: '700', opacity: 0.8 },
+  metricInput: {
+    width: 96,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    textAlign: 'right',
+    backgroundColor: 'rgba(255,255,255,0.55)',
+    fontSize: 15,
+  },
+  smallHint: { fontSize: 12, opacity: 0.65, marginTop: 4, marginBottom: 6 },
+  pillPress: { alignSelf: 'flex-start', marginTop: 8 },
+  pill: { paddingVertical: 12, paddingHorizontal: 22, borderRadius: 50 },
+  pillText: { fontWeight: '800', fontSize: 14, color: '#FFFFFF' },
+  ghostPill: { paddingVertical: 7, paddingHorizontal: 14, borderRadius: 50, borderWidth: 1 },
+  ghostPillText: { fontSize: 12, fontWeight: '700' },
+  dosePill: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 50 },
+  dosePillText: { fontWeight: '800', fontSize: 13, color: '#FFFFFF' },
+  row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 },
+  flex: { flex: 1, minWidth: 90 },
+  input: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 10,
+    minHeight: 44,
+    marginTop: 8,
+    backgroundColor: 'rgba(255,255,255,0.55)',
+  },
+  label: { fontSize: 13, fontWeight: '700', marginTop: 14, marginBottom: 2, opacity: 0.8 },
+  list: { marginTop: 10, gap: 6 },
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginTop: 6,
+  },
+  listText: { fontSize: 14, flex: 1 },
+  empty: { fontSize: 14, opacity: 0.6, marginTop: 10 },
+  reminderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingVertical: 4,
+  },
+  reminderLabel: { fontSize: 14, fontWeight: '700' },
+  medRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 12,
+    marginTop: 10,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+  },
+  medName: { fontSize: 15, fontWeight: '700' },
+  medActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  takenAt: { fontSize: 12, fontWeight: '700', color: '#2E7D4F', marginTop: 4 },
+  pendingAt: { fontSize: 12, fontWeight: '700', opacity: 0.55, marginTop: 4 },
+  painChip: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  painChipText: { fontSize: 13, fontWeight: '700' },
+  symptomChip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 50, borderWidth: 1 },
+  symptomText: { fontSize: 12, fontWeight: '700' },
+  dayWrap: { alignItems: 'center', gap: 2 },
+  dayDot: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayDotText: { fontSize: 14, fontWeight: '800' },
+  dayLabel: { fontSize: 10, opacity: 0.6 },
 });

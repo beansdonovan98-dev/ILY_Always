@@ -18,6 +18,7 @@ const BASE_SETTINGS: CoupleSettings = {
   accent_color: null,
   font_id: null,
   font_color: null,
+  subtitle_color: null,
   border_color: null,
   animated_gradient: false,
   daily_rotation: false,

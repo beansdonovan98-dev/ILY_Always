@@ -6,10 +6,9 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 
-import { daySeed, RELATIONSHIP_START, todayKey, USERS, WORDS_OF_THE_DAY } from '@/constants/content';
+import { daySeed, FACTS_OF_THE_DAY, RELATIONSHIP_START, todayKey, USERS, WORDS_OF_THE_DAY } from '@/constants/content';
 import { getItem, setItem } from '@/lib/storage';
 import { useUsage } from '@/contexts/UsageContext';
-import AvatarChips from '@/components/AvatarChips';
 import { getCoupleId } from '@/lib/couple';
 import { getCoupleSettings, upsertCoupleSettings } from '@/lib/appearance';
 import { getSignedUrl, MediaRow, resolveMime, updateCaption, uploadMedia, validateSize } from '@/lib/media';
@@ -19,7 +18,7 @@ const CAPTIONS_KEY = 'coverCaptions';
 
 export default function HomeScreen() {
   const appTheme = useAppTheme();
-  const { currentUser, setCurrentUser, ready } = useUsage();
+  const { currentUser, ready } = useUsage();
 
   const [coupleId, setCoupleId] = useState('');
   const [loveNotes, setLoveNotes] = useState<Array<{ id: string; author: string; text: string; created_at: string }>>([]);
@@ -59,6 +58,11 @@ export default function HomeScreen() {
   const wordOfDay = useMemo(() => {
     const seed = daySeed(now);
     return WORDS_OF_THE_DAY[seed % WORDS_OF_THE_DAY.length];
+  }, [now]);
+
+  const factOfDay = useMemo(() => {
+    const seed = daySeed(now);
+    return FACTS_OF_THE_DAY[seed % FACTS_OF_THE_DAY.length];
   }, [now]);
 
   // cover media (shared, today)
@@ -161,11 +165,10 @@ export default function HomeScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <AvatarChips active={currentUser} onChange={setCurrentUser} />
-
       <Text style={styles.header}>Home 🏠</Text>
-      <Text style={styles.subtitle}>Our shared space, updated live ✨</Text>
-      <Text style={styles.subheader}>Daddy 🍆 &amp; Princess 🍑</Text>
+      <Text style={[styles.subtitle, { color: appTheme.subtitleColor }]}>
+        Our little world of sin, snuggles, and secrets — and I&apos;m obsessed with every inch of it 🔥💞
+      </Text>
 
       {/* 1. Relationship Tracker */}
       <View style={[styles.card, appTheme.cardStyle]}>
@@ -176,7 +179,9 @@ export default function HomeScreen() {
         <Text style={styles.big}>
           {relationshipElapsed.days}d {relationshipElapsed.hours}h {relationshipElapsed.mins}m {relationshipElapsed.secs}s
         </Text>
-        <Text style={styles.loveNote}>Every second with you is my favorite. 💗</Text>
+        <Text style={[styles.loveNote, { color: appTheme.subtitleColor }]}>
+          Every second with you is my favorite — and I still want more. 💗
+        </Text>
       </View>
 
       {/* 2. Cover Photo */}
@@ -280,7 +285,12 @@ export default function HomeScreen() {
         <Text style={styles.big}>{wordOfDay.word}</Text>
         <Text style={styles.body}>{wordOfDay.pronunciation}</Text>
         <Text style={styles.body}>{wordOfDay.definition}</Text>
-        <Text style={styles.loveNote}>{wordOfDay.example}</Text>
+        <Text style={[styles.loveNote, { color: appTheme.subtitleColor }]}>{wordOfDay.example}</Text>
+
+        <View style={[styles.factDivider, { borderColor: appTheme.borderColor }]} />
+        <Text style={styles.cardTitle}>Fun Fact of the Day 🧠</Text>
+        <Text style={styles.cardHint}>A tiny thing to learn together today ✨</Text>
+        <Text style={styles.body}>{factOfDay}</Text>
       </View>
 
       {!ready && <Text style={styles.muted}>Loading...</Text>}
@@ -293,7 +303,7 @@ const styles = StyleSheet.create({
   content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 16, maxWidth: '100%' },
   header: { fontSize: 34, fontWeight: '800', marginBottom: 4 },
   subheader: { fontSize: 17, opacity: 0.75, marginBottom: 4 },
-  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12 },
+  subtitle: { fontSize: 17, lineHeight: 24, marginBottom: 4 },
   card: {
     padding: 18,
     borderRadius: 22,
@@ -307,7 +317,8 @@ const styles = StyleSheet.create({
   cardHint: { fontSize: 13, opacity: 0.65, marginBottom: 10 },
   body: { fontSize: 17, marginBottom: 6, lineHeight: 24 },
   big: { fontSize: 26, fontWeight: '800', marginVertical: 4 },
-  loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 8, textAlign: 'center' },
+  loveNote: { fontSize: 14, fontStyle: 'italic', marginTop: 8, textAlign: 'center' },
+  factDivider: { borderTopWidth: 1, marginTop: 16, marginBottom: 12 },
   muted: { fontSize: 13, opacity: 0.65, marginTop: 4 },
   noteCard: { padding: 12, marginBottom: 8, borderRadius: 14, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.4)' },
   row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' },

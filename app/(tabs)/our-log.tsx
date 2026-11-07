@@ -8,6 +8,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { getCoupleId } from '@/lib/couple';
 import {
   addLogEntry,
+  deleteLogEvent,
   EVENT_COLORS,
   getDayLogEntries,
   getLogEvents,
@@ -27,7 +28,6 @@ export default function OurLogScreen() {
   const [dateKey, setDateKey] = useState(localDateKey());
 
   // form state
-  const [showForm, setShowForm] = useState(false);
   const [whatHappened, setWhatHappened] = useState('');
   const [time, setTime] = useState('');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -104,8 +104,38 @@ export default function OurLogScreen() {
     setNewName('');
     setNewColor(EVENT_COLORS[0]);
     setEditingEntryId(null);
-    setShowForm(false);
   }, [coupleId, creatingEvent, newEmoji, newName, newColor, selectedEventId, events, whatHappened, time, dateKey, editingEntryId]);
+
+  const handleSaveEvent = useCallback(async () => {
+    if (!newEmoji.trim() || !newName.trim()) return;
+    const cid = coupleId || (await getCoupleId());
+    if (editingEventId) {
+      const updated = await updateLogEvent(cid, editingEventId, {
+        emoji: newEmoji.trim(),
+        name: newName.trim(),
+        color: newColor,
+      });
+      setEvents((prev) => prev.map((x) => (x.id === editingEventId ? updated : x)));
+      setEditingEventId(null);
+      setSelectedEventId(updated.id);
+    } else {
+      const event = await saveLogEvent(cid, newEmoji.trim(), newName.trim(), newColor);
+      setEvents((prev) => [...prev, event]);
+      setSelectedEventId(event.id);
+      setCreatingEvent(false);
+      setNewEmoji('');
+      setNewName('');
+      setNewColor(EVENT_COLORS[0]);
+    }
+  }, [coupleId, editingEventId, newEmoji, newName, newColor]);
+
+  const handleDeleteEvent = useCallback(async (id: string) => {
+    const cid = coupleId || (await getCoupleId());
+    await deleteLogEvent(cid, id);
+    setEvents((prev) => prev.filter((x) => x.id !== id));
+    if (selectedEventId === id) setSelectedEventId(null);
+    if (editingEventId === id) setEditingEventId(null);
+  }, [coupleId, selectedEventId, editingEventId]);
 
   const prettyDate = new Date(`${dateKey}T12:00:00`).toLocaleDateString(undefined, {
     weekday: 'long',
@@ -115,8 +145,8 @@ export default function OurLogScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Our Log 📜</Text>
-      <Text style={styles.subtitle}>
+      <Text style={[styles.title]}>Our Log 📜</Text>
+      <Text style={[styles.subtitle, { color: appTheme.subtitleColor }]}>
         Every wild story, sweet secret, and unforgettable moment we&apos;ve shared 💋📜
       </Text>
 
@@ -127,18 +157,7 @@ export default function OurLogScreen() {
         <Text style={styles.cardTitle}>New Entry</Text>
         <Text style={styles.cardHint}>{prettyDate} • A little memory to keep 💭</Text>
 
-        <Pressable onPress={() => setShowForm((v) => !v)} style={styles.pillPress}>
-          <LinearGradient
-            colors={[appTheme.accentColor, '#C86DD7']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.pill}>
-            <Text style={styles.pillText}>{showForm ? 'Close Form' : '+ Add Entry'}</Text>
-          </LinearGradient>
-        </Pressable>
-
-        {showForm && (
-          <View style={styles.form}>
+        <View style={styles.form}>
             <Text style={styles.label}>What's happening?</Text>
             <TextInput
               value={whatHappened}
@@ -236,13 +255,85 @@ export default function OurLogScreen() {
               </LinearGradient>
             </Pressable>
           </View>
-        )}
-      </View>
+
+          <Text style={styles.label}>Your events 🎨</Text>
+          <Text style={styles.hint}>Tap Edit to rename, recolor or change the emoji — or erase it entirely.</Text>
+          {events.length === 0 ? (
+            <Text style={styles.muted}>No events yet. Hit “+ New Event” above to make your first one.</Text>
+          ) : (
+            events.map((ev) => (
+              <View key={ev.id} style={[styles.eventRow, { borderColor: appTheme.borderColor }]}>
+                {editingEventId === ev.id ? (
+                  <View style={styles.flex}>
+                    <TextInput
+                      value={newEmoji}
+                      onChangeText={setNewEmoji}
+                      placeholder="Emoji"
+                      placeholderTextColor="rgba(58,42,46,0.45)"
+                      style={[styles.input, { borderColor: appTheme.borderColor, color: appTheme.textColor }]}
+                    />
+                    <TextInput
+                      value={newName}
+                      onChangeText={setNewName}
+                      placeholder="Name"
+                      placeholderTextColor="rgba(58,42,46,0.45)"
+                      style={[styles.input, { borderColor: appTheme.borderColor, color: appTheme.textColor }]}
+                    />
+                    <View style={styles.colorGrid}>
+                      {EVENT_COLORS.map((c) => (
+                        <Pressable
+                          key={c}
+                          onPress={() => setNewColor(c)}
+                          style={[
+                            styles.colorSwatch,
+                            { backgroundColor: c },
+                            newColor === c && [styles.colorSwatchSelected, appTheme.activeChipStyle],
+                          ]}
+                        />
+                      ))}
+                    </View>
+                    <View style={styles.eventActions}>
+                      <Pressable style={[styles.smallBtn, appTheme.buttonStyle]} onPress={handleSaveEvent}>
+                        <Text style={styles.smallBtnText}>Save</Text>
+                      </Pressable>
+                      <Pressable style={[styles.smallBtn, styles.ghostBtn]} onPress={() => setEditingEventId(null)}>
+                        <Text style={styles.smallBtnText}>Cancel</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.eventRowInner}>
+                    <View style={[styles.eventDot, { backgroundColor: ev.color }]} />
+                    <Text style={styles.eventName}>
+                      {ev.emoji} {ev.name}
+                    </Text>
+                    <Pressable
+                      onPress={() => {
+                        setEditingEventId(ev.id);
+                        setNewEmoji(ev.emoji);
+                        setNewName(ev.name);
+                        setNewColor(ev.color);
+                      }}
+                      style={[styles.smallBtn, appTheme.buttonStyle]}>
+                      <Text style={styles.smallBtnText}>Edit</Text>
+                    </Pressable>
+                    <Pressable style={[styles.smallBtn, styles.ghostBtn]} onPress={() => handleDeleteEvent(ev.id)}>
+                      <Text style={styles.smallBtnText}>Erase</Text>
+                    </Pressable>
+                  </View>
+                )}
+              </View>
+            ))
+          )}
+        </View>
 
       {/* Today's log card */}
       <View style={[styles.card, appTheme.cardStyle]}>
         <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardTitle}>Today&apos;s Log 📜</Text>
+        <Text style={[styles.spicyCaption, { color: appTheme.subtitleColor }]}>
+          Every delicious little detail, kept safe for just us two 😏🔥
+        </Text>
         <Text style={styles.cardHint}>{prettyDate}</Text>
 
         {entries.length === 0 && <Text style={styles.muted}>No entries yet today. Add your first memory ✨</Text>}
@@ -273,7 +364,6 @@ export default function OurLogScreen() {
                   setNewName(e.eventName);
                   setNewColor(e.eventColor);
                 }
-                setShowForm(true);
               }}
               style={[styles.smallBtn, appTheme.buttonStyle]}>
               <Text style={styles.smallBtnText}>Edit</Text>
@@ -281,82 +371,6 @@ export default function OurLogScreen() {
           </View>
         ))}
       </View>
-
-      {/* Saved events card */}
-      {events.length > 0 && (
-        <View style={[styles.card, appTheme.cardStyle]}>
-          <LeafBorder color={appTheme.leafColor} />
-          <Text style={styles.cardTitle}>Saved Events</Text>
-          <Text style={styles.cardHint}>Tap Edit to rename, recolor or change the emoji 🎨</Text>
-
-          {events.map((ev) => (
-            <View key={ev.id} style={styles.eventRow}>
-              {editingEventId === ev.id ? (
-                <View style={styles.flex}>
-                  <TextInput
-                    value={newEmoji}
-                    onChangeText={setNewEmoji}
-                    placeholder="Emoji"
-                    placeholderTextColor="rgba(58,42,46,0.45)"
-                    style={[styles.input, { borderColor: appTheme.borderColor, color: appTheme.textColor }]}
-                  />
-                  <TextInput
-                    value={newName}
-                    onChangeText={setNewName}
-                    placeholder="Name"
-                    placeholderTextColor="rgba(58,42,46,0.45)"
-                    style={[styles.input, { borderColor: appTheme.borderColor, color: appTheme.textColor }]}
-                  />
-                  <View style={styles.colorGrid}>
-                    {EVENT_COLORS.map((c) => (
-                      <Pressable
-                        key={c}
-                        onPress={() => setNewColor(c)}
-                        style={[
-                          styles.colorSwatch,
-                          { backgroundColor: c },
-                          newColor === c && [styles.colorSwatchSelected, appTheme.activeChipStyle],
-                        ]}
-                      />
-                    ))}
-                  </View>
-                  <Pressable
-                    style={[styles.smallBtn, appTheme.buttonStyle, { marginLeft: 0, marginTop: 8 }]}
-                    onPress={async () => {
-                      const cid = coupleId || (await getCoupleId());
-                      const updated = await updateLogEvent(cid, ev.id, {
-                        emoji: newEmoji.trim(),
-                        name: newName.trim(),
-                        color: newColor,
-                      });
-                      setEvents((prev) => prev.map((x) => (x.id === ev.id ? updated : x)));
-                      setEditingEventId(null);
-                    }}>
-                    <Text style={styles.smallBtnText}>Save Event</Text>
-                  </Pressable>
-                </View>
-              ) : (
-                <>
-                  <View style={[styles.eventDot, { backgroundColor: ev.color }]} />
-                  <Text style={styles.eventName}>
-                    {ev.emoji} {ev.name}
-                  </Text>
-                  <Pressable
-                    onPress={() => {
-                      setEditingEventId(ev.id);
-                      setNewEmoji(ev.emoji);
-                      setNewName(ev.name);
-                      setNewColor(ev.color);
-                    }}
-                    style={[styles.smallBtn, appTheme.buttonStyle]}>
-                    <Text style={styles.smallBtnText}>Edit</Text>
-                  </Pressable>
-                </>
-              )}
-            </View>
-          ))}
-        </View>
-      )}
     </ScrollView>
   );
 }
@@ -365,7 +379,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 16, maxWidth: '100%' },
   title: { fontSize: 34, fontWeight: '800', marginBottom: 4 },
-  subtitle: { fontSize: 17, opacity: 0.72, marginBottom: 4, lineHeight: 24 },
+  subtitle: { fontSize: 17, marginBottom: 4, lineHeight: 24 },
+  spicyCaption: { fontSize: 15, fontStyle: 'italic', marginBottom: 8 },
+  hint: { fontSize: 13, opacity: 0.65, marginBottom: 8 },
   card: { padding: 18, borderRadius: 24, marginBottom: 4 },
   cardTitle: { fontSize: 19, fontWeight: '800', marginBottom: 4 },
   cardHint: { fontSize: 13, opacity: 0.65, marginBottom: 12 },
@@ -411,7 +427,10 @@ const styles = StyleSheet.create({
   entryTime: { fontSize: 11, opacity: 0.6, fontWeight: '700' },
   entryEvent: { fontSize: 15, fontWeight: '800' },
   entryText: { fontSize: 15, lineHeight: 22, marginBottom: 8 },
-  eventRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
+  eventRow: { marginTop: 10, padding: 10, borderRadius: 14, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.4)' },
+  eventRowInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  eventActions: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  ghostBtn: { borderWidth: 1, borderColor: 'rgba(58,42,46,0.25)', marginLeft: 0 },
   eventDot: { width: 16, height: 16, borderRadius: 8 },
   eventName: { flex: 1, fontSize: 15, fontWeight: '600' },
   muted: { fontSize: 14, opacity: 0.65 },

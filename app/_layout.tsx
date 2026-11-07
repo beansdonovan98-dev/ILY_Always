@@ -2,14 +2,16 @@ import { useFonts } from 'expo-font';
 import { DefaultTheme, Stack, ThemeProvider as NavThemeProvider, type Theme } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { initCrashReporting } from '@/lib/sentry';
-import LockScreen from '@/components/LockScreen';
-import { UsageProvider } from '@/contexts/UsageContext';
+import LoginScreen from '@/components/LoginScreen';
+import { UsageProvider, useUsage } from '@/contexts/UsageContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import AnimatedGradientBackground from '@/components/AnimatedGradientBackground';
+import { Caveat_400Regular } from '@expo-google-fonts/caveat';
+import { ComicNeue_400Regular } from '@expo-google-fonts/comic-neue';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -43,9 +45,10 @@ const APP_NAV_THEME: Theme = {
 };
 
 export default function RootLayout() {
-  const [locked, setLocked] = useState(false);
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    ComicNeue_400Regular,
+    Caveat_400Regular,
   });
 
   useEffect(() => {
@@ -66,11 +69,25 @@ export default function RootLayout() {
     return null;
   }
 
-  if (locked) {
-    return <LockScreen onUnlock={() => setLocked(false)} />;
-  }
-
   return <RootLayoutNav />;
+}
+
+/** Requires the partner to log in before the app (and user identity) is exposed. */
+function AuthGate() {
+  const { authenticated, ready } = useUsage();
+  if (!ready) return null;
+  if (!authenticated) return <LoginScreen />;
+
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: 'transparent' },
+      }}>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+    </Stack>
+  );
 }
 
 function RootLayoutNav() {
@@ -80,14 +97,7 @@ function RootLayoutNav() {
         <AnimatedGradientBackground>
           <NavThemeProvider value={APP_NAV_THEME}>
             <StatusBar style="dark" />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: 'transparent' },
-              }}>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-            </Stack>
+            <AuthGate />
           </NavThemeProvider>
         </AnimatedGradientBackground>
       </ThemeProvider>

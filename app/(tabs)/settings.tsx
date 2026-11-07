@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { getCoupleId } from '@/lib/couple';
 import { getCoupleSettings, CoupleSettings } from '@/lib/appearance';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useUsage } from '@/contexts/UsageContext';
 import { FONT_OPTIONS } from '@/lib/fonts';
 import { Sentry } from '@/lib/sentry';
 import { getItem, setItem } from '@/lib/storage';
@@ -45,15 +46,15 @@ export default function SettingsScreen() {
   const font = useAppFont();
   const appTheme = useAppTheme();
   const { updateSettings } = useTheme();
+  const { logout } = useUsage();
   const [, setCoupleId] = useState('');
   const [settings, setSettings] = useState<CoupleSettings | null>(null);
-  const [animated, setAnimated] = useState(true);
   const [fontColor, setFontColor] = useState('');
+  const [subtitleColor, setSubtitleColor] = useState('');
   const [borderColor, setBorderColor] = useState('');
   const [accentColor, setAccentColor] = useState('');
   const [fontId, setFontId] = useState('sans');
   const [tabConfig, setTabConfig] = useState(DEFAULT_TABS);
-  const [playtimeRevealed, setPlaytimeRevealed] = useState(false);
   const [periodRevealed, setPeriodRevealed] = useState(false);
   const [avatarDaddy, setAvatarDaddy] = useState('🍆');
   const [avatarPrincess, setAvatarPrincess] = useState('🍑');
@@ -67,12 +68,11 @@ export default function SettingsScreen() {
       const s = await getCoupleSettings(cid);
       setSettings(s);
       if (s) {
-        setAnimated(!!s.animated_gradient);
         setFontColor(s.font_color || '');
+        setSubtitleColor(s.subtitle_color || '');
         setBorderColor(s.border_color || '');
         setAccentColor(s.accent_color || '');
         setFontId(s.font_id || 'sans');
-        setPlaytimeRevealed(!!s.playtime_revealed);
         setPeriodRevealed(await getItem<boolean>('periodRevealed', false));
         setAvatarDaddy(s.avatar_daddy || '🍆');
         setAvatarPrincess(s.avatar_princess || '🍑');
@@ -89,21 +89,17 @@ export default function SettingsScreen() {
   }, [updateSettings]);
 
   const applyGradient = useCallback(async (colors: string[]) => {
-    await saveSettings({ background_gradient: JSON.stringify(colors) });
-  }, [saveSettings]);
-
-  const toggleAnimated = useCallback(async (v: boolean) => {
-    setAnimated(v);
-    await saveSettings({ animated_gradient: v });
+    await saveSettings({ background_gradient: JSON.stringify(colors), animated_gradient: true });
   }, [saveSettings]);
 
   const saveColors = useCallback(async () => {
     await saveSettings({
       font_color: fontColor || null,
+      subtitle_color: subtitleColor || null,
       border_color: borderColor || null,
       accent_color: accentColor || null,
     });
-  }, [fontColor, borderColor, accentColor, saveSettings]);
+  }, [fontColor, subtitleColor, borderColor, accentColor, saveSettings]);
 
   const updateTabLabel = useCallback((id: string, label: string) => {
     setTabConfig((prev) => prev.map((t) => (t.id === id ? { ...t, label } : t)));
@@ -132,11 +128,6 @@ export default function SettingsScreen() {
     await saveSettings({ tab_config: tabConfig });
   }, [tabConfig, saveSettings]);
 
-  const togglePlaytimeRevealed = useCallback(async (v: boolean) => {
-    setPlaytimeRevealed(v);
-    await saveSettings({ playtime_revealed: v });
-  }, [saveSettings]);
-
   const setLockBackground = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) return;
@@ -164,8 +155,9 @@ export default function SettingsScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={[styles.title, { fontFamily: font }]}>Settings ⚙️</Text>
-      <Text style={[styles.subtitle, { fontFamily: font }]}>Make this space feel completely like ours 🛠️</Text>
-      <Text style={styles.loveNote}>Make our space feel like home. 🏡</Text>
+      <Text style={[styles.subtitle, { fontFamily: font, color: appTheme.subtitleColor }]}>
+        Our naughtiest little control room — every colour, kink, and font is ours to play with 🔥⚙️💋
+      </Text>
 
       <View style={[styles.card, appTheme.cardStyle]}>
         <LeafBorder color={appTheme.leafColor} />
@@ -183,10 +175,6 @@ export default function SettingsScreen() {
             </Pressable>
           ))}
         </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Animate gradient</Text>
-          <Switch value={animated} onValueChange={toggleAnimated} />
-        </View>
       </View>
 
       <View style={[styles.card, appTheme.cardStyle]}>
@@ -196,6 +184,12 @@ export default function SettingsScreen() {
         <View style={styles.row}>
           {EVENT_COLORS.map((c) => (
             <Pressable key={c} onPress={() => { setFontColor(c); updateSettings({ font_color: c }); }} style={[styles.colorSwatch, { backgroundColor: c }, fontColor === c && [styles.colorSwatchSelected, appTheme.activeChipStyle]]} />
+          ))}
+        </View>
+        <Text style={styles.label}>Subtitle color</Text>
+        <View style={styles.row}>
+          {EVENT_COLORS.map((c) => (
+            <Pressable key={c} onPress={() => { setSubtitleColor(c); updateSettings({ subtitle_color: c }); }} style={[styles.colorSwatch, { backgroundColor: c }, subtitleColor === c && [styles.colorSwatchSelected, appTheme.activeChipStyle]]} />
           ))}
         </View>
         <Text style={styles.label}>Border color</Text>
@@ -240,15 +234,6 @@ export default function SettingsScreen() {
 
       <View style={[styles.card, appTheme.cardStyle]}>
         <LeafBorder color={appTheme.leafColor} />
-        <Text style={[styles.cardTitle, { fontFamily: font }]}>Playtime Reveal</Text>
-        <View style={styles.row}>
-          <Text style={styles.label}>Reveal Playtime in menu</Text>
-          <Switch value={playtimeRevealed} onValueChange={togglePlaytimeRevealed} />
-        </View>
-      </View>
-
-      <View style={[styles.card, appTheme.cardStyle]}>
-        <LeafBorder color={appTheme.leafColor} />
         <Text style={[styles.cardTitle, { fontFamily: font }]}>Fonts</Text>
         <View style={styles.row}>
           {FONT_OPTIONS.map((f) => (
@@ -282,6 +267,10 @@ export default function SettingsScreen() {
         <Text style={styles.btnText}>Test Crash (Sentry)</Text>
       </Pressable>
 
+      <Pressable style={[styles.btn, { borderWidth: 1, borderColor: appTheme.borderColor, borderRadius: 50 }]} onPress={logout}>
+        <Text style={styles.btnText}>Log out 🔒</Text>
+      </Pressable>
+
       {status ? <Text style={styles.muted}>{status}</Text> : null}
 
       <View style={[styles.card, appTheme.cardStyle]}>
@@ -307,7 +296,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 16, maxWidth: '100%' },
   title: { fontSize: 34, fontWeight: '800', marginBottom: 4 },
-  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12 },
+  subtitle: { fontSize: 17, marginBottom: 4, lineHeight: 24 },
   card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', width: '100%' },
   cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
   label: { fontSize: 13, fontWeight: '600', marginTop: 8, marginBottom: 4 },

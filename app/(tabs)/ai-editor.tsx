@@ -1,25 +1,30 @@
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View, Share } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from 'expo-media-library';
 import { Image as ExpoImage } from 'expo-image';
 
 import { getCoupleId } from '@/lib/couple';
 import { editImageWithAI } from '@/lib/aiImage';
-import { uploadMedia, getSignedUrl, MediaRow } from '@/lib/media';
+import { uploadMedia, getSignedUrl } from '@/lib/media';
 import { localDateKey } from '@/lib/days';
+import { useUsage } from '@/contexts/UsageContext';
 
 import { useAppFont } from '@/hooks/useAppFont';
 
 export default function AIEditorScreen() {
   const font = useAppFont();
   const appTheme = useAppTheme();
+  const { currentUser } = useUsage();
   const [prompt, setPrompt] = useState('');
   const [sourceUri, setSourceUri] = useState('');
   const [resultUri, setResultUri] = useState('');
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
 
   const pickSource = useCallback(async () => {
@@ -29,6 +34,7 @@ export default function AIEditorScreen() {
     if (result.canceled) return;
     setSourceUri(result.assets[0].uri);
     setResultUri('');
+    setStatus('');
   }, []);
 
   const runEdit = useCallback(async () => {
@@ -38,21 +44,7 @@ export default function AIEditorScreen() {
     try {
       const edited = await editImageWithAI(sourceUri, prompt.trim());
       setResultUri(edited);
-      // upload result as shared cover for today
-      const cid = await getCoupleId();
-      const row = await uploadMedia({
-        coupleId: cid,
-        kind: 'shared',
-        localUri: edited,
-        fileName: `ai-edit-${Date.now()}.png`,
-        mimeType: 'image/png',
-        byteSize: 0,
-        uploadedBy: 'daddy',
-        dailyDate: localDateKey(),
-      });
-      const url = await getSignedUrl(row);
-      setResultUri(url);
-      setStatus('Done! Uploaded to shared covers.');
+      setStatus('Done! Save it, or it is already uploaded to shared covers.');
     } catch (e) {
       setStatus(`Error: ${String(e)}`);
     } finally {
@@ -60,38 +52,121 @@ export default function AIEditorScreen() {
     }
   }, [sourceUri, prompt]);
 
+  /** Saves the edited photo to the couple's shared covers (Supabase storage). */
+  const saveToCovers = useCallback(async () => {
+    if (!resultUri) return;
+    setSaving(true);
+    setStatus('Saving to shared covers...');
+    try {
+      const cid = await getCoupleId();
+      const row = await uploadMedia({
+        coupleId: cid,
+        kind: 'shared',
+        localUri: resultUri,
+        fileName: `ai-edit-${Date.now()}.png`,
+        mimeType: 'image/png',
+        byteSize: 0,
+        uploadedBy: currentUser,
+        dailyDate: localDateKey(),
+      });
+      await getSignedUrl(row);
+      setStatus('Saved to shared covers! It will show up on Home 📸');
+    } catch (e) {
+      setStatus(`Save failed: ${String(e)}`);
+    } finally {
+      setSaving(false);
+    }
+  }, [resultUri, currentUser]);
+
+  /** Saves the edited photo directly to this device's photo library. */
+  const saveToDevice = useCallback(async () => {
+    if (!resultUri) return;
+    setSaving(true);
+    try {
+      const { status: perm } = await MediaLibrary.requestPermissionsAsync();
+      if (perm !== 'granted') {
+        setStatus('Photo library permission not granted — saved to shared covers instead.');
+        await saveToCovers();
+        return;
+      }
+      await MediaLibrary.saveToLibraryAsync(resultUri);
+      setStatus('Saved to your photo library 💾');
+    } catch (e) {
+      setStatus(`Save failed: ${String(e)}`);
+    } finally {
+      setSaving(false);
+    }
+  }, [resultUri, saveToCovers]);
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={[styles.title, { fontFamily: font }]}>AI Photo Editor 📷</Text>
-      <Text style={[styles.subtitle, { fontFamily: font }]}>Transforming our favorite moments into magic 🎨</Text>
-      <Text style={styles.loveNote}>Create something beautiful together. ✨</Text>
-      <Text style={[styles.body, { fontFamily: font }]}>Pick a photo, describe the edit, and let AI create it.</Text>
+      <Text style={[styles.subtitle, { fontFamily: font, color: appTheme.subtitleColor }]}>
+        Re-imagining our favorite moments — naughty, dreamy, or downright filthy 🎨🔥
+      </Text>
 
-      <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={pickSource}>
-        <Text style={styles.btnText}>Pick Photo</Text>
-      </Pressable>
+      <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
+        <Text style={[styles.cardTitle, { fontFamily: font }]}>New Edit ✨</Text>
+        <Text style={styles.cardHint}>Pick a photo, describe the edit, and let the AI do the dirty work 😏</Text>
 
-      {sourceUri ? <ExpoImage source={{ uri: sourceUri }} style={styles.photo} contentFit="contain" /> : null}
+        <Pressable onPress={pickSource} style={styles.pillPress}>
+          <LinearGradient
+            colors={[appTheme.accentColor, '#C86DD7']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.pill}>
+            <Text style={styles.pillText}>Pick Photo</Text>
+          </LinearGradient>
+        </Pressable>
 
-      <TextInput
-        value={prompt}
-        onChangeText={setPrompt}
-        placeholder="Describe the edit (e.g. make it watercolor)"
-        style={styles.input}
-        multiline
-      />
+        {sourceUri ? (
+          <View style={[styles.photoWrap, { borderColor: appTheme.borderColor }]}>
+            <ExpoImage source={{ uri: sourceUri }} style={styles.photo} contentFit="contain" />
+          </View>
+        ) : null}
 
-      <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={runEdit} disabled={loading}>
-        <Text style={styles.btnText}>{loading ? 'Working...' : 'AI Edit'}</Text>
-      </Pressable>
+        <Text style={styles.label}>Describe the edit</Text>
+        <TextInput
+          value={prompt}
+          onChangeText={setPrompt}
+          placeholder="e.g. make it watercolor, dreamy neon..."
+          placeholderTextColor="rgba(58,42,46,0.45)"
+          style={[styles.input, { borderColor: appTheme.borderColor, color: appTheme.textColor }]}
+          multiline
+        />
+
+        <Pressable onPress={runEdit} disabled={loading} style={styles.pillPress}>
+          <LinearGradient
+            colors={[appTheme.accentColor, '#C86DD7']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.pill}>
+            <Text style={styles.pillText}>{loading ? 'Working...' : 'AI Edit ✨'}</Text>
+          </LinearGradient>
+        </Pressable>
+      </View>
 
       {resultUri ? (
         <View style={[styles.card, appTheme.cardStyle]}>
-        <LeafBorder color={appTheme.leafColor} />
-          <Text style={[styles.cardTitle, { fontFamily: font }]}>Result</Text>
-          <ExpoImage source={{ uri: resultUri }} style={styles.photo} contentFit="contain" />
-          <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={() => Share.share({ url: resultUri, message: 'AI edited image' })}>
-            <Text style={styles.btnText}>Save / Download</Text>
+          <LeafBorder color={appTheme.leafColor} />
+          <Text style={[styles.cardTitle, { fontFamily: font }]}>Result 🔥</Text>
+          <View style={[styles.photoWrap, { borderColor: appTheme.borderColor }]}>
+            <ExpoImage source={{ uri: resultUri }} style={styles.photo} contentFit="contain" />
+          </View>
+
+          <Pressable onPress={saveToCovers} disabled={saving} style={styles.pillPress}>
+            <LinearGradient
+              colors={[appTheme.accentColor, '#C86DD7']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.pill}>
+              <Text style={styles.pillText}>{saving ? 'Saving...' : 'Save to Shared Covers 💞'}</Text>
+            </LinearGradient>
+          </Pressable>
+
+          <Pressable onPress={saveToDevice} disabled={saving} style={[styles.ghostPill, { borderColor: appTheme.borderColor }]}>
+            <Text style={styles.ghostPillText}>Save to My Photos 💾</Text>
           </Pressable>
         </View>
       ) : null}
@@ -105,14 +180,43 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 16, maxWidth: '100%' },
   title: { fontSize: 34, fontWeight: '800', marginBottom: 4 },
-  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12 },
-  body: { fontSize: 16, marginBottom: 12 },
-  btn: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, backgroundColor: 'rgba(100,150,255,0.4)', marginBottom: 12, alignSelf: 'flex-start' },
-  btnText: { fontWeight: '600' },
-  input: { borderWidth: 1, borderColor: 'rgba(120,120,120,0.4)', borderRadius: 8, padding: 8, minHeight: 60, marginBottom: 12 },
-  photo: { width: '100%', height: 220, marginBottom: 12 },
-  card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', width: '100%' },
-  cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
-  muted: { fontSize: 12, opacity: 0.6 },
-  loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, marginBottom: 12, textAlign: 'center' },
+  subtitle: { fontSize: 17, lineHeight: 24, marginBottom: 4 },
+  card: {
+    padding: 18,
+    borderRadius: 22,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+    width: '100%',
+  },
+  cardTitle: { fontSize: 19, fontWeight: '800', marginBottom: 4 },
+  cardHint: { fontSize: 13, opacity: 0.65, marginBottom: 10, lineHeight: 18 },
+  label: { fontSize: 13, fontWeight: '700', marginTop: 12, marginBottom: 6, opacity: 0.8 },
+  input: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 10,
+    minHeight: 60,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    marginBottom: 6,
+    fontSize: 15,
+  },
+  pillPress: { alignSelf: 'flex-start', marginTop: 8, marginBottom: 4 },
+  pill: { paddingVertical: 13, paddingHorizontal: 26, borderRadius: 50 },
+  pillText: { fontWeight: '800', fontSize: 15, color: '#FFFFFF' },
+  ghostPill: {
+    alignSelf: 'flex-start',
+    marginTop: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 50,
+    borderWidth: 1,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+  },
+  ghostPillText: { fontWeight: '700', fontSize: 13 },
+  photoWrap: { marginTop: 12, borderRadius: 18, overflow: 'hidden', borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.35)' },
+  photo: { width: '100%', height: 240 },
+  muted: { fontSize: 13, opacity: 0.65, textAlign: 'center' },
 });

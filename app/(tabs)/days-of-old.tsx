@@ -58,8 +58,10 @@ export default function DaysOfOldScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={[styles.title, { fontFamily: font }]}>The Days of Old 🧙‍♂️</Text>
-      <Text style={[styles.subtitle, { fontFamily: font }]}>Looking back on everything we've built together ⏳</Text>
-      <Text style={styles.loveNote}>Our story, day by day. 📖💕</Text>
+      <Text style={[styles.subtitle, { fontFamily: font, color: appTheme.subtitleColor }]}>
+        “All we have to decide is what to do with the time that is given us.” — Gandalf 🧙‍♂️
+      </Text>
+      <Text style={[styles.loveNote, { color: appTheme.subtitleColor }]}>Our story, day by day. 📖💕</Text>
       {dates.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No past days yet.</Text>}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
         <View style={styles.row}>
@@ -98,9 +100,9 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 16, maxWidth: '100%' },
   title: { fontSize: 34, fontWeight: '800', marginBottom: 4 },
-  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12 },
+  subtitle: { fontSize: 17, lineHeight: 24, marginBottom: 4 },
   muted: { fontSize: 12, opacity: 0.6, marginBottom: 8 },
-  loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, marginBottom: 12, textAlign: 'center' },
+  loveNote: { fontSize: 14, fontStyle: 'italic', marginTop: 6, marginBottom: 12, textAlign: 'center' },
   row: { flexDirection: 'row', gap: 8 },
   dateChip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 16, backgroundColor: 'rgba(120,120,120,0.2)', marginRight: 6 },
   dateChipSelected: { backgroundColor: 'rgba(100,150,255,0.4)' },

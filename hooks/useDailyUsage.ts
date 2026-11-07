@@ -26,6 +26,7 @@ export function formatDuration(seconds: number): string {
 export function useDailyUsage() {
   const [usage, setUsage] = useState<UsageState>({ date: todayKey(), daddy: 0, princess: 0 });
   const [currentUser, setCurrentUserState] = useState<UserKey>('daddy');
+  const [authenticated, setAuthenticated] = useState(false);
   const [ready, setReady] = useState(false);
 
   const activeUserRef = useRef<UserKey>('daddy');
@@ -87,6 +88,22 @@ export function useDailyUsage() {
     setItem(USER_KEY, u);
   }, [flush]);
 
+  /** Called by the login screen once the PIN is verified. */
+  const login = useCallback((u: UserKey) => {
+    flush();
+    lastTickRef.current = Date.now();
+    setCurrentUserState(u);
+    activeUserRef.current = u;
+    setItem(USER_KEY, u);
+    setAuthenticated(true);
+  }, [flush]);
+
+  const logout = useCallback(() => {
+    flush();
+    setAuthenticated(false);
+    lastTickRef.current = null;
+  }, [flush]);
+
   useEffect(() => {
     if (!ready) return;
     // start ticking
@@ -118,5 +135,5 @@ export function useDailyUsage() {
 
   // midnight reset check via interval already handles date change in flush
 
-  return { usage, currentUser, setCurrentUser, ready, formatDuration };
+  return { usage, currentUser, setCurrentUser, login, logout, authenticated, ready, formatDuration };
 }

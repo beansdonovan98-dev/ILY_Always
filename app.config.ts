@@ -21,7 +21,15 @@ const config = {
       NSUserNotificationsUsageDescription: 'This app uses notifications to keep you and your partner in sync.',
     },
   },
-  plugins: [],
+  plugins: [
+    'expo-media-library',
+    [
+      'expo-notifications',
+      {
+        icon: './assets/images/icon.png',
+      },
+    ],
+  ],
 };
 
 export default config;

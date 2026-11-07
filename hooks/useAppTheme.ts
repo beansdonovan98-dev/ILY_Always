@@ -45,6 +45,7 @@ export function useAppTheme() {
     settings,
     fontFamily: fontFamilyFor(settings?.font_id),
     textColor: settings?.font_color || DEFAULTS.text,
+    subtitleColor: settings?.subtitle_color || withAlpha(settings?.font_color || DEFAULTS.text, 0.75),
     accentColor,
     accentSoft: withAlpha(accentColor, 0.35),
     accentStrong: withAlpha(accentColor, 0.75),
