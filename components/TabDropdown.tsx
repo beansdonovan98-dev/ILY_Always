@@ -39,12 +39,12 @@ export default function TabDropdown() {
     })();
   }, []);
 
-  const current = tabs.find((o) => o.path === pathname) || tabs[0] || DEFAULT_TABS[0];
+  const current = tabs.find((o) => o.path === pathname || (o.id === 'home' && (pathname === '/' || pathname === '/index' || pathname === '/(tabs)'))) || tabs[0] || DEFAULT_TABS[0];
 
   return (
     <View style={styles.container}>
       <Pressable style={styles.button} onPress={() => setOpen(true)}>
-        <Text style={styles.buttonText}>{current.label} ▾</Text>
+        <Text style={styles.buttonText}>Menu ☰</Text>
       </Pressable>
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>

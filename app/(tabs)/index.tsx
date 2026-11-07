@@ -29,7 +29,10 @@ import {
 
 const CAPTIONS_KEY = 'coverCaptions';
 
+import { useAppFont } from '@/hooks/useAppFont';
+
 export default function HomeScreen() {
+  const font = useAppFont();
   const { usage, currentUser, setCurrentUser, ready } = useUsage();
 
   const [coupleId, setCoupleId] = useState('');
@@ -152,12 +155,13 @@ export default function HomeScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <AvatarChips active={currentUser} onChange={setCurrentUser} />
-      <Text style={styles.header}>Home Is Where the Heart Is 💗</Text>
+      <Text style={[styles.header, { fontFamily: font }]}>Home Is Where the Heart Is 💗</Text>
+      <Text style={[styles.subtitle, { fontFamily: font }]}>Our love, live and in color 💋</Text>
       <Text style={styles.subheader}>Daddy 🍆 & Princess 🍑</Text>
 
       {/* Active user selector */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Who's using now?</Text>
+        <Text style={[styles.cardTitle, { fontFamily: font }]}>Who's using now?</Text>
         <View style={styles.row}>
           {(['daddy', 'princess'] as const).map((k) => (
             <Pressable
@@ -172,9 +176,9 @@ export default function HomeScreen() {
 
       {/* Relationship tracker */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Relationship Tracker 💞</Text>
-        <Text style={styles.body}>Together since 08/09/19</Text>
-        <Text style={styles.big}>
+        <Text style={[styles.cardTitle, { fontFamily: font }]}>Relationship Tracker 💞</Text>
+        <Text style={[styles.body, { fontFamily: font }]}>Together since 08/09/19</Text>
+        <Text style={[styles.big, { fontFamily: font }]}>
           {relationshipElapsed.days}d {relationshipElapsed.hours}h {relationshipElapsed.mins}m {relationshipElapsed.secs}s
         </Text>
         <Text style={styles.loveNote}>Every second with you is my favorite. 💗</Text>
@@ -184,28 +188,29 @@ export default function HomeScreen() {
 
       {/* Word & Fact */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Word of the Day 📖</Text>
-        <Text style={styles.big}>{wordOfDay.word}</Text>
-        <Text style={styles.body}>{wordOfDay.definition}</Text>
+        <Text style={[styles.cardTitle, { fontFamily: font }]}>Word of the Day 📖</Text>
+        <Text style={[styles.big, { fontFamily: font }]}>{wordOfDay.word}</Text>
+        <Text style={[styles.body, { fontFamily: font }]}>{wordOfDay.definition}</Text>
         <Text style={styles.loveNote}>Learning new words with you is my favorite thing. 💕</Text>
       </View>
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Fact of the Day 🧠</Text>
-        <Text style={styles.body}>{factOfDay}</Text>
+        <Text style={[styles.cardTitle, { fontFamily: font }]}>Fact of the Day 🧠</Text>
+        <Text style={[styles.body, { fontFamily: font }]}>{factOfDay}</Text>
         <Text style={styles.loveNote}>Every fact is better when shared with you. 🌸</Text>
       </View>
 
       {/* Usage tracker */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Time on App Today ⏱️</Text>
-        <Text style={styles.body}>Daddy 🍆: {formatDuration(usage.daddy)}</Text>
-        <Text style={styles.body}>Princess 🍑: {formatDuration(usage.princess)}</Text>
-        <Text style={styles.muted}>Resets at midnight. Active: {USERS[currentUser as keyof typeof USERS].label}</Text>
+        <Text style={[styles.cardTitle, { fontFamily: font }]}>Time on App Today ⏱️</Text>
+        <Text style={[styles.body, { fontFamily: font }]}>Daddy 🍆: {formatDuration(usage.daddy)}</Text>
+        <Text style={[styles.body, { fontFamily: font }]}>Princess 🍑: {formatDuration(usage.princess)}</Text>
+        <Text style={[styles.muted, { fontFamily: font }]}>Resets at midnight. Active: {USERS[currentUser as keyof typeof USERS].label}</Text>
         <Text style={styles.loveNote}>Every moment together counts. ⏳❤️</Text>
       </View>
 
       {/* Cover photos (shared, reset daily) */}
       <Text style={styles.sectionTitle}>Cover Photos 🖼️ (reset daily)</Text>
+      <Text style={styles.loveNote}>Our favorite faces, every single day. 💕</Text>
       <Pressable style={styles.smallBtn} onPress={uploadCover}><Text style={styles.smallBtnText}>Upload Cover (max 60MB)</Text></Pressable>
       {coverMedia.map((photo) => (
         <View key={photo.id} style={styles.photoCard}>
@@ -222,16 +227,16 @@ export default function HomeScreen() {
             ) : (
               <View style={{ flex: 1 }}>
                 <Text style={styles.caption}>{(photo.captions && photo.captions[currentUser]) || photo.caption || 'No caption yet'}</Text>
-                <Text style={styles.muted}>Partner: {(photo.captions && photo.captions[currentUser === 'daddy' ? 'princess' : 'daddy']) || ''}</Text>
+                <Text style={[styles.muted, { fontFamily: font }]}>Partner: {(photo.captions && photo.captions[currentUser === 'daddy' ? 'princess' : 'daddy']) || ''}</Text>
                 <Pressable onPress={() => { setEditingCaptionId(photo.id); setCaptionDraft((photo.captions && photo.captions[currentUser]) || photo.caption || ''); }} style={styles.smallBtn}><Text style={styles.smallBtnText}>Edit My Caption</Text></Pressable>
               </View>
             )}
           </View>
         </View>
       ))}
-      {coverMedia.length === 0 && <Text style={styles.muted}>No cover photos yet. Upload one.</Text>}
+      {coverMedia.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No cover photos yet. Upload one.</Text>}
 
-      {!ready && <Text style={styles.muted}>Loading...</Text>}
+      {!ready && <Text style={[styles.muted, { fontFamily: font }]}>Loading...</Text>}
     </ScrollView>
   );
 }
@@ -241,6 +246,7 @@ const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 40 },
   header: { fontSize: 30, fontWeight: 'bold', marginBottom: 8, color: '#111' },
   subheader: { fontSize: 17, marginBottom: 16, opacity: 0.7, color: '#333' },
+  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 16, color: '#444', textAlign: 'center' },
   card: {
     borderRadius: 16,
     padding: 18,

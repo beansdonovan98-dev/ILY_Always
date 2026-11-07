@@ -23,7 +23,10 @@ import {
 } from '@/lib/log';
 import { localDateKey } from '@/lib/days';
 
+import { useAppFont } from '@/hooks/useAppFont';
+
 export default function OurLogScreen() {
+  const font = useAppFont();
   const [coupleId, setCoupleId] = useState<string>('');
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [events, setEvents] = useState<LogEvent[]>([]);
@@ -112,9 +115,10 @@ export default function OurLogScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Our Log 📜</Text>
+      <Text style={[styles.title, { fontFamily: font }]}>Our Log 📜</Text>
+      <Text style={[styles.subtitle, { fontFamily: font }]}>Every little thing we do, together 💋</Text>
       <Text style={styles.loveNote}>Every moment together, written with love. 💕</Text>
-      <Text style={styles.muted}>{dateKey}</Text>
+      <Text style={[styles.muted, { fontFamily: font }]}>{dateKey}</Text>
 
       <Pressable style={styles.btn} onPress={() => setShowForm((v) => !v)}>
         <Text style={styles.btnText}>{showForm ? 'Cancel' : 'Add Entry'}</Text>
@@ -122,7 +126,7 @@ export default function OurLogScreen() {
 
       {showForm && (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>What's Happening?</Text>
+          <Text style={[styles.cardTitle, { fontFamily: font }]}>What's Happening?</Text>
           <TextInput
             value={whatHappened}
             onChangeText={setWhatHappened}
@@ -195,7 +199,7 @@ export default function OurLogScreen() {
 
       {events.length > 0 && (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Saved Events (editable)</Text>
+          <Text style={[styles.cardTitle, { fontFamily: font }]}>Saved Events (editable)</Text>
           {events.map((ev) => (
             <View key={ev.id} style={[styles.row, { alignItems: 'center', marginBottom: 8 }]}>
               {editingEventId === ev.id ? (
@@ -239,7 +243,7 @@ export default function OurLogScreen() {
         </View>
       )}
 
-      {entries.length === 0 && <Text style={styles.muted}>No entries yet today.</Text>}
+      {entries.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No entries yet today.</Text>}
       {entries.map((e) => (
         <View key={e.id} style={[styles.entryCard, { borderLeftColor: e.eventColor, borderLeftWidth: 4 }]}>
           <Text style={styles.entryTime}>{e.time}</Text>
@@ -275,6 +279,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 24, paddingBottom: 60, alignItems: 'center' },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 4 },
+  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12, textAlign: 'center' },
   muted: { fontSize: 12, opacity: 0.6, marginBottom: 12 },
   card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(120,120,120,0.12)' },
   cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },

@@ -37,7 +37,10 @@ interface ChatMessage {
   timestamp: number;
 }
 
+import { useAppFont } from '@/hooks/useAppFont';
+
 export default function PlaytimeScreen() {
+  const font = useAppFont();
   const router = useRouter();
   const [consent, setConsent] = useState<boolean | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -45,7 +48,7 @@ export default function PlaytimeScreen() {
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [activeUser, setActiveUser] = useState<UserKey>('daddy');
   const [draftMessage, setDraftMessage] = useState('');
-  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [uploadStatus, setUploadStatus] = useState('');
   const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
   const [coupleId, setCoupleId] = useState<string>('');
 
@@ -117,6 +120,7 @@ export default function PlaytimeScreen() {
     if (result.canceled) return;
     const cid = coupleId || (await getCoupleId());
 
+    setUploadStatus('Uploading...');
     for (const asset of result.assets) {
       try {
         const mimeType = resolveMime({ mimeType: asset.mimeType, fileName: asset.fileName, uri: asset.uri });
@@ -135,12 +139,13 @@ export default function PlaytimeScreen() {
           dailyDate: new Date().toISOString().slice(0, 10),
         });
         setMedia((prev) => [row, ...prev]);
+        setUploadStatus('Uploaded ' + row.file_name);
         try {
           const url = await getSignedUrl(row);
           setSignedUrls((prev) => ({ ...prev, [row.id]: url }));
         } catch {}
       } catch (e) {
-        // keep going; show error in console
+        setUploadStatus('Upload failed: ' + String(e));
         console.warn('Upload failed', e);
       }
     }
@@ -150,22 +155,10 @@ export default function PlaytimeScreen() {
     setOpenComments((prev) => ({ ...prev, [id]: !prev[id] }));
   }, []);
 
-  const addComment = useCallback(async (mediaId: string) => {
-    const text = (commentDrafts[mediaId] || '').trim();
-    if (!text) return;
-    const row = media.find((m) => m.id === mediaId);
-    if (!row) return;
-    const comment = { id: `${Date.now()}`, author: activeUser, text, created_at: new Date().toISOString() };
-    const nextComments = [...(row.comments || []), comment];
-    await updateMediaComments(mediaId, nextComments);
-    setMedia((prev) => prev.map((m) => (m.id === mediaId ? { ...m, comments: nextComments } : m)));
-    setCommentDrafts((d) => ({ ...d, [mediaId]: '' }));
-  }, [commentDrafts, activeUser, media]);
-
   if (consent === null) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Loading...</Text>
+        <Text style={[styles.title, { fontFamily: font }]}>Loading...</Text>
       </View>
     );
   }
@@ -173,8 +166,8 @@ export default function PlaytimeScreen() {
   if (!consent) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Playtime 🔞</Text>
-        <Text style={styles.body}>This area is for adults 18 and older only.</Text>
+        <Text style={[styles.title, { fontFamily: font }]}>Playtime 🔞</Text>
+        <Text style={[styles.body, { fontFamily: font }]}>This area is for adults 18 and older only.</Text>
         <Pressable style={styles.btn} onPress={handleConsent}>
           <Text style={styles.btnText}>I am 18 or older — Enter</Text>
         </Pressable>
@@ -185,11 +178,12 @@ export default function PlaytimeScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Playtime 🔞 (18+)</Text>
+        <Text style={[styles.title, { fontFamily: font }]}>Playtime 🔞 (18+)</Text>
+      <Text style={[styles.subtitle, { fontFamily: font }]}>Our private playground when things get a little heat 🌶️🔥</Text>
       <Text style={styles.loveNote}>Private moments, just for us. 🌹</Text>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Posting as</Text>
+          <Text style={[styles.cardTitle, { fontFamily: font }]}>Posting as</Text>
           <View style={styles.row}>
             {(['daddy', 'princess'] as const).map((k) => (
               <Pressable key={k} onPress={() => setActiveUser(k)} style={[styles.userBtn, activeUser === k && styles.userBtnActive]}>
@@ -200,7 +194,7 @@ export default function PlaytimeScreen() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Chat Log 💬</Text>
+          <Text style={[styles.cardTitle, { fontFamily: font }]}>Chat Log 💬</Text>
           <View style={styles.chatBox}>
             {messages.map((m) => (
               <View key={m.id} style={styles.chatMsg}>
@@ -209,7 +203,7 @@ export default function PlaytimeScreen() {
                 <Text style={styles.chatTime}>{new Date(m.timestamp).toLocaleString()}</Text>
               </View>
             ))}
-            {messages.length === 0 && <Text style={styles.muted}>No messages yet.</Text>}
+            {messages.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No messages yet.</Text>}
           </View>
           <View style={styles.row}>
             <TextInput value={draftMessage} onChangeText={setDraftMessage} placeholder="Type a message..." style={[styles.input, { flex: 1 }]} />
@@ -220,16 +214,17 @@ export default function PlaytimeScreen() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Pictures & GIFs 📸 (max 60 MB)</Text>
+          <Text style={[styles.cardTitle, { fontFamily: font }]}>Pictures & GIFs 📸 (max 60 MB)</Text>
           <Pressable style={styles.btn} onPress={pickPhotos}>
             <Text style={styles.btnText}>Upload (multiple)</Text>
           </Pressable>
+          {uploadStatus ? <Text style={styles.muted}>{uploadStatus}</Text> : null}
           {media.map((m) => (
             <View key={m.id} style={styles.photoCard}>
               <Pressable onPress={() => router.push(`/media/${m.id}`)}>
                 <Image source={{ uri: signedUrls[m.id] || '' }} style={styles.photo} contentFit="contain" />
               </Pressable>
-              <Text style={styles.muted}>{m.file_name}</Text>
+              <Text style={[styles.muted, { fontFamily: font }]}>{m.file_name}</Text>
               <Pressable onPress={() => router.push(`/media/${m.id}`)} style={styles.commentHeader}>
                 <Text style={styles.commentHeaderText}>Comments ({(m.comments || []).length}) — tap to open</Text>
               </Pressable>
@@ -245,6 +240,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 24, paddingBottom: 60, alignItems: 'center' },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
+  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12, textAlign: 'center' },
   body: { fontSize: 16, marginBottom: 12 },
   card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(120,120,120,0.12)' },
   cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },

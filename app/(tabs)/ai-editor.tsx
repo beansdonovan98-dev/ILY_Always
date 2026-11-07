@@ -8,7 +8,10 @@ import { editImageWithAI } from '@/lib/aiImage';
 import { uploadMedia, getSignedUrl, MediaRow } from '@/lib/media';
 import { localDateKey } from '@/lib/days';
 
+import { useAppFont } from '@/hooks/useAppFont';
+
 export default function AIEditorScreen() {
+  const font = useAppFont();
   const [prompt, setPrompt] = useState('');
   const [sourceUri, setSourceUri] = useState('');
   const [resultUri, setResultUri] = useState('');
@@ -55,9 +58,10 @@ export default function AIEditorScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>AI Photo Editor 📷</Text>
+      <Text style={[styles.title, { fontFamily: font }]}>AI Photo Editor 📷</Text>
+      <Text style={[styles.subtitle, { fontFamily: font }]}>Make our memories even more beautiful 💋</Text>
       <Text style={styles.loveNote}>Create something beautiful together. ✨</Text>
-      <Text style={styles.body}>Pick a photo, describe the edit, and let AI create it.</Text>
+      <Text style={[styles.body, { fontFamily: font }]}>Pick a photo, describe the edit, and let AI create it.</Text>
 
       <Pressable style={styles.btn} onPress={pickSource}>
         <Text style={styles.btnText}>Pick Photo</Text>
@@ -79,12 +83,12 @@ export default function AIEditorScreen() {
 
       {resultUri ? (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Result</Text>
+          <Text style={[styles.cardTitle, { fontFamily: font }]}>Result</Text>
           <ExpoImage source={{ uri: resultUri }} style={styles.photo} contentFit="contain" />
         </View>
       ) : null}
 
-      {status ? <Text style={styles.muted}>{status}</Text> : null}
+      {status ? <Text style={[styles.muted, { fontFamily: font }]}>{status}</Text> : null}
     </ScrollView>
   );
 }
@@ -93,6 +97,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 24, paddingBottom: 60, alignItems: 'center' },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
+  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12, textAlign: 'center' },
   body: { fontSize: 16, marginBottom: 12 },
   btn: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, backgroundColor: 'rgba(100,150,255,0.4)', marginBottom: 12, alignSelf: 'flex-start' },
   btnText: { fontWeight: '600' },

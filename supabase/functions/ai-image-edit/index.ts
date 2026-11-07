@@ -2,18 +2,20 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 serve(async (req) => {
   try {
-    const { imageBase64, prompt } = await req.json();
+    const { imageBase64, prompt, mimeType } = await req.json();
     if (!imageBase64 || !prompt) return new Response('Missing imageBase64/prompt', { status: 400 });
 
+    const mime = mimeType || 'image/png';
+    const ext = mime.includes('png') ? 'png' : mime.includes('jpeg') || mime.includes('jpg') ? 'jpg' : 'png';
     const bytes = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
-    const blob = new Blob([bytes], { type: 'image/png' });
+    const blob = new Blob([bytes], { type: mime });
 
     const form = new FormData();
-    form.append('image', blob, 'image.png');
+    form.append('image', blob, `image.${ext}`);
     form.append('prompt', prompt);
     form.append('n', '1');
     form.append('size', '1024x1024');
-    form.append('model', 'dall-e-2');
+    form.append('model', 'gpt-image-1');
 
     const res = await fetch('https://api.openai.com/v1/images/edits', {
       method: 'POST',

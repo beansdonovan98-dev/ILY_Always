@@ -19,7 +19,7 @@ export async function editImageWithAI(imageUrl: string, prompt: string): Promise
   const base64 = await blobToBase64(blob);
 
   const { data, error } = await supabase.functions.invoke('ai-image-edit', {
-    body: { imageBase64: base64, prompt },
+    body: { imageBase64: base64, prompt, mimeType: blob.type || 'image/png' },
   });
   if (error) throw error;
   if (!data?.b64) throw new Error('No edited image returned');

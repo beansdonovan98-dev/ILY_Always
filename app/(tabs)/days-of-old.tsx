@@ -8,7 +8,10 @@ import { getDayLogEntries, LogEntry } from '@/lib/log';
 import { getSignedUrl, MediaRow } from '@/lib/media';
 import { supabase } from '@/lib/supabase';
 
+import { useAppFont } from '@/hooks/useAppFont';
+
 export default function DaysOfOldScreen() {
+  const font = useAppFont();
   const [coupleId, setCoupleId] = useState('');
   const [dates, setDates] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -51,9 +54,10 @@ export default function DaysOfOldScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>The Days of Old 🧙‍♂️</Text>
+      <Text style={[styles.title, { fontFamily: font }]}>The Days of Old 🧙‍♂️</Text>
+      <Text style={[styles.subtitle, { fontFamily: font }]}>Our story, hotter with every page 🔥</Text>
       <Text style={styles.loveNote}>Our story, day by day. 📖💕</Text>
-      {dates.length === 0 && <Text style={styles.muted}>No past days yet.</Text>}
+      {dates.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No past days yet.</Text>}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
         <View style={styles.row}>
           {dates.map((d) => (
@@ -67,7 +71,7 @@ export default function DaysOfOldScreen() {
       {selectedDate && (
         <View>
           <Text style={styles.sectionTitle}>{selectedDate} (read-only)</Text>
-          {entries.length === 0 && <Text style={styles.muted}>No log entries.</Text>}
+          {entries.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No log entries.</Text>}
           {entries.map((e) => (
             <View key={e.id} style={[styles.entryCard, { borderLeftColor: e.eventColor, borderLeftWidth: 4 }]}>
               <Text style={styles.entryTime}>{e.time}</Text>
@@ -78,7 +82,7 @@ export default function DaysOfOldScreen() {
           {media.map((m) => (
             <View key={m.id} style={styles.photoCard}>
               <ExpoImage source={{ uri: urls[m.id] || '' }} style={styles.photo} contentFit="contain" />
-              <Text style={styles.muted}>{m.file_name}</Text>
+              <Text style={[styles.muted, { fontFamily: font }]}>{m.file_name}</Text>
             </View>
           ))}
         </View>
@@ -90,7 +94,8 @@ export default function DaysOfOldScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 24, paddingBottom: 60, alignItems: 'center' },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 4 },
+  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12, textAlign: 'center' },
   muted: { fontSize: 12, opacity: 0.6, marginBottom: 8 },
   loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, marginBottom: 12, textAlign: 'center' },
   row: { flexDirection: 'row', gap: 8 },
