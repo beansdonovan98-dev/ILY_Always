@@ -90,8 +90,16 @@ export default function SettingsScreen() {
     setStatus('Saved ✓');
   }, [updateSettings]);
 
+  const autoThemeColors = (colors: string[]) => {
+    const accent = colors[1] || colors[0];
+    const border = colors[colors.length - 1];
+    const subtitle = colors[0];
+    const font = colors[colors.length - 1];
+    return { accent_color: accent, border_color: border, subtitle_color: subtitle, font_color: font };
+  };
+
   const applyGradient = useCallback(async (colors: string[]) => {
-    await saveSettings({ background_gradient: JSON.stringify(colors), animated_gradient: true });
+    await saveSettings({ background_gradient: JSON.stringify(colors), animated_gradient: true, ...autoThemeColors(colors) });
   }, [saveSettings]);
 
   const saveColors = useCallback(async () => {
@@ -248,10 +256,10 @@ export default function SettingsScreen() {
       <View style={[styles.card, appTheme.cardStyle]}>
         <LeafBorder color={appTheme.leafColor} />
         <Text style={[styles.cardTitle, { fontFamily: font }]}>Fonts</Text>
-        <View style={styles.row}>
+        <View style={styles.fontGrid}>
           {FONT_OPTIONS.map((f) => (
-            <Pressable key={f.id} onPress={() => setFontId(f.id)} style={[[styles.chip, appTheme.chipStyle], fontId === f.id && [styles.chipActive, appTheme.activeChipStyle]]}>
-              <Text style={styles.chipText}>{f.label}</Text>
+            <Pressable key={f.id} onPress={() => setFontId(f.id)} style={[[styles.fontChip, appTheme.chipStyle], fontId === f.id && [styles.fontChipActive, appTheme.activeChipStyle]]}>
+              <Text style={styles.fontChipText}>{f.label}</Text>
             </Pressable>
           ))}
         </View>
@@ -315,7 +323,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 16, maxWidth: '100%' },
   title: { fontSize: 34, fontWeight: '800', marginBottom: 4 },
-  subtitle: { fontSize: 17, marginBottom: 4, lineHeight: 24 },
+  subtitle: { fontSize: 17, fontStyle: 'italic', marginBottom: 4, lineHeight: 24 },
   card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', width: '100%' },
   cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
   label: { fontSize: 13, fontWeight: '600', marginTop: 8, marginBottom: 4 },
@@ -325,6 +333,10 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 6 },
   chip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 16, backgroundColor: 'rgba(120,120,120,0.2)', marginRight: 6 },
   chipActive: { backgroundColor: 'rgba(100,150,255,0.4)' },  chipText: { fontWeight: '600', fontSize: 13 },
+  fontGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
+  fontChip: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, backgroundColor: 'rgba(120,120,120,0.2)', width: '48%' },
+  fontChipActive: { backgroundColor: 'rgba(100,150,255,0.4)' },
+  fontChipText: { fontWeight: '600', fontSize: 13 },
   gradientChip: { borderRadius: 999, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(58,42,46,0.15)' },
   gradientChipInner: { paddingVertical: 9, paddingHorizontal: 16 },
   gradientChipText: { color: '#3A2A2E', fontWeight: '700', fontSize: 13 },

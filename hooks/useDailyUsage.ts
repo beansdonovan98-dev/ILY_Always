@@ -26,7 +26,7 @@ export function formatDuration(seconds: number): string {
 export function useDailyUsage() {
   const [usage, setUsage] = useState<UsageState>({ date: todayKey(), daddy: 0, princess: 0 });
   const [currentUser, setCurrentUserState] = useState<UserKey>('daddy');
-  const [authenticated, setAuthenticated] = useState(false);
+  const [authenticated, setAuthenticated] = useState(true);
   const [ready, setReady] = useState(false);
 
   const activeUserRef = useRef<UserKey>('daddy');

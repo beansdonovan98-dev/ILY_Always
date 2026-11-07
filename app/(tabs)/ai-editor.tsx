@@ -46,7 +46,8 @@ export default function AIEditorScreen() {
       setResultUri(edited);
       setStatus('Done! Tap Save to keep it 💞');
     } catch (e) {
-      setStatus(`Error: ${String(e)}`);
+      const msg = e instanceof Error ? e.message : JSON.stringify(e);
+      setStatus(`Error: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -73,7 +74,8 @@ export default function AIEditorScreen() {
       await getSignedUrl(row);
       setStatus('Saved to shared covers! It will show up on Home 📸');
     } catch (e) {
-      setStatus(`Save failed: ${String(e)}`);
+      const msg = e instanceof Error ? e.message : JSON.stringify(e);
+      setStatus(`Save failed: ${msg}`);
     } finally {
       setSaving(false);
     }
@@ -94,7 +96,8 @@ export default function AIEditorScreen() {
       await MediaLibrary.saveToLibraryAsync(uri);
       setStatus('Saved to your photo library 💾');
     } catch (e) {
-      setStatus(`Save failed: ${String(e)}`);
+      const msg = e instanceof Error ? e.message : JSON.stringify(e);
+      setStatus(`Save failed: ${msg}`);
     } finally {
       setSaving(false);
     }
@@ -197,7 +200,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 16, maxWidth: '100%' },
   title: { fontSize: 34, fontWeight: '800', marginBottom: 4 },
-  subtitle: { fontSize: 17, lineHeight: 24, marginBottom: 4 },
+  subtitle: { fontSize: 17, fontStyle: 'italic', lineHeight: 24, marginBottom: 4 },
   card: {
     padding: 18,
     borderRadius: 22,

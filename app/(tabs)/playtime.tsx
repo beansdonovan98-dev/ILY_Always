@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   gate: { flex: 1, padding: 24, gap: 12, justifyContent: 'center' },
   content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 16 },
   title: { fontSize: 34, fontWeight: '800', marginBottom: 4 },
-  subtitle: { fontSize: 17, lineHeight: 24, marginBottom: 4 },
+  subtitle: { fontSize: 17, fontStyle: 'italic', lineHeight: 24, marginBottom: 4 },
   body: { fontSize: 16, marginBottom: 12 },
   card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', width: '100%' },
   cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },

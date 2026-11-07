@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
   content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 16, maxWidth: '100%' },
   header: { fontSize: 34, fontWeight: '800', marginBottom: 4 },
   subheader: { fontSize: 17, opacity: 0.75, marginBottom: 4 },
-  subtitle: { fontSize: 17, lineHeight: 24, marginBottom: 4 },
+  subtitle: { fontSize: 17, fontStyle: 'italic', lineHeight: 24, marginBottom: 4 },
   card: {
     padding: 18,
     borderRadius: 22,
