@@ -15,7 +15,7 @@ export default function TabLayout() {
         tabBarStyle: { display: 'none' },
         headerRight: () => <TabDropdown />,
       }}>
-      <Tabs.Screen name="index" options={{ title: 'Home Is Where the Heart Is 💗' }} />
+      <Tabs.Screen name="ai-editor" options={{ title: 'AI Photo Editor 📷' }} />
       <Tabs.Screen name="our-log" options={{ title: 'Our Log 📜' }} />
       <Tabs.Screen name="days-of-old" options={{ title: 'The Days of Old 🧙‍♂️' }} />
       <Tabs.Screen name="playtime" options={{ title: 'Playtime 🔞', href: null }} />

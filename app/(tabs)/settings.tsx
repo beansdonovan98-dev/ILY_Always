@@ -14,8 +14,9 @@ const DEFAULT_TABS = [
   { id: 'home', label: 'Home 🏠', order: 0 },
   { id: 'our-log', label: 'Our Log 📜', order: 1 },
   { id: 'days-of-old', label: 'The Days of Old 🧙‍♂️', order: 2 },
-  { id: 'playtime', label: 'Playtime 😓', order: 3 },
-  { id: 'settings', label: 'Settings ⚙️', order: 4 },
+  { id: 'ai-editor', label: 'AI Photo Editor 📷', order: 3 },
+  { id: 'playtime', label: 'Playtime 😓', order: 4 },
+  { id: 'settings', label: 'Settings ⚙️', order: 5 },
 ];
 
 const GRADIENT_PRESETS = [
