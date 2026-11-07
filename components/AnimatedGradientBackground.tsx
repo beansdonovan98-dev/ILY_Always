@@ -216,12 +216,15 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
       <Animated.View style={[styles.leafLayer, smokeDrift]}>
         <View style={styles.smokeA}><SmokePuff size={52} opacity={0.14} /></View>
         <View style={styles.smokeB}><SmokePuff size={36} opacity={0.1} /></View>
+        <View style={styles.smokeC}><SmokePuff size={64} opacity={0.12} /></View>
+        <View style={styles.smokeD}><SmokePuff size={30} opacity={0.09} /></View>
       </Animated.View>
 
       {/* Rooted plants + a little pipe on the edges */}
       <View pointerEvents="none" style={styles.plantLeft}><WeedPlant height={92} color={leafColor} budColor="#7B1FA2" opacity={0.22} /></View>
       <View pointerEvents="none" style={styles.plantRight}><WeedPlant height={76} color={leafColor} budColor="#4A148C" opacity={0.18} /></View>
-      <View pointerEvents="none" style={styles.bongSlot}><BongSprite size={64} color={leafColor} opacity={0.15} /></View>
+      <View pointerEvents="none" style={styles.bongSlot}><BongSprite size={90} color={leafColor} opacity={0.16} /></View>
+      <View pointerEvents="none" style={styles.bongSlotSmall}><BongSprite size={54} color={leafColor} opacity={0.1} /></View>
 
       <View style={styles.content}>{children}</View>
     </View>
@@ -246,7 +249,10 @@ const styles = StyleSheet.create({
   leafB4: { position: 'absolute', top: '86%', left: '88%' },
   smokeA: { position: 'absolute', top: '30%', left: '52%', transform: [{ rotate: '12deg' }] },
   smokeB: { position: 'absolute', top: '56%', left: '10%', transform: [{ rotate: '-8deg' }] },
+  smokeC: { position: 'absolute', top: '8%', left: '22%', transform: [{ rotate: '14deg' }] },
+  smokeD: { position: 'absolute', top: '72%', left: '60%', transform: [{ rotate: '-12deg' }] },
   plantLeft: { position: 'absolute', bottom: '-6%', left: '-3%', transform: [{ rotate: '-4deg' }] },
   plantRight: { position: 'absolute', bottom: '-6%', right: '-3%', transform: [{ rotate: '4deg' }] },
   bongSlot: { position: 'absolute', bottom: '10%', right: '6%', transform: [{ rotate: '6deg' }] },
+  bongSlotSmall: { position: 'absolute', bottom: '18%', left: '4%', transform: [{ rotate: '-6deg' }] },
 });

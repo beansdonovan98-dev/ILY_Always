@@ -53,9 +53,14 @@ export function useAppTheme() {
     leafColor: DEFAULTS.leaf,
     cardStyle: {
       backgroundColor: DEFAULTS.card,
-      borderWidth: 1,
-      borderColor,
-      borderRadius: 22,
+      borderWidth: 2.5,
+      borderColor: withAlpha(DEFAULTS.leaf, 0.55),
+      borderRadius: 26,
+      shadowColor: '#1B3A24',
+      shadowOpacity: 0.14,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 5 },
+      elevation: 6,
     },
     chipStyle: {
       backgroundColor: withAlpha(accentColor, 0.18),

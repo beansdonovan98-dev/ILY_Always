@@ -178,25 +178,29 @@ export function SmokePuff({ size = 60, color = '#9AA0A6', opacity = 0.16 }: {
   );
 }
 
-/** A tiny pipe/bong silhouette — base, chamber, neck and bowl. */
-export function BongSprite({ size = 56, color = '#2E7D32', opacity = 0.13 }: {
+/** A bong silhouette — dome base, water chamber, angled mouthpiece and bowl. */
+export function BongSprite({ size = 90, color = '#2E7D32', opacity = 0.16 }: {
   size?: number;
   color?: string;
   opacity?: number;
 }) {
-  const w = size * 0.55;
+  const w = size * 0.5;
   return (
-    <Svg width={w} height={size} viewBox="0 0 32 58" style={{ opacity }}>
+    <Svg width={w} height={size} viewBox="0 0 36 72" style={{ opacity }}>
       {/* bowl */}
-      <Path d="M13,3 L19,3 L18,8 L14,8 Z" fill={color} />
-      {/* neck */}
-      <Path d="M13.5,8 L18.5,8 L18,26 L14,26 Z" fill={color} />
+      <Path d="M15,2 L21,2 L20,8 L16,8 Z" fill={color} />
+      {/* straight neck */}
+      <Path d="M14,8 L22,8 L21,30 L15,30 Z" fill={color} />
+      {/* angled mouthpiece */}
+      <Path d="M19,10 C24,14 27,19 29,24" stroke={color} strokeWidth={3.4} fill="none" strokeLinecap="round" />
+      {/* downstem */}
+      <Path d="M19,28 L13,52" stroke={color} strokeWidth={2.4} strokeLinecap="round" />
       {/* chamber */}
-      <Ellipse cx={16} cy={42} rx={11} ry={14} fill={color} />
-      {/* base */}
-      <Ellipse cx={16} cy={54} rx={12} ry={4} fill={color} />
-      {/* slide tube */}
-      <Path d="M21,30 L27,35" stroke={color} strokeWidth={2} strokeLinecap="round" />
+      <Ellipse cx={18} cy={52} rx={12} ry={15} fill={color} />
+      {/* water shine */}
+      <Ellipse cx={14} cy={48} rx={3.4} ry={6} fill="#FFFFFF" opacity={0.35} transform="rotate(-12 14 48)" />
+      {/* foot */}
+      <Ellipse cx={18} cy={65} rx={13} ry={4.6} fill={color} />
     </Svg>
   );
 }
