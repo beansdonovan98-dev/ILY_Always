@@ -5,7 +5,7 @@ const config = {
   slug: 'ily-always',
   version: '1.0.0',
   orientation: 'portrait',
-  icon: './assets/icon.png',
+  icon: './assets/images/icon.png',
   scheme: 'ilyalways',
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
