@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { CannabisLeaf } from '@/components/CannabisLeaf';
+import { BongSprite, CannabisLeaf, SmokePuff, WeedPlant } from '@/components/CannabisLeaf';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const LIGHT_FALLBACK = ['#FFE3EC', '#F7D9FF', '#FFF3D6', '#FFD9E8'];
@@ -77,13 +77,13 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
       Animated.sequence([
         Animated.timing(drift, {
           toValue: 1,
-          duration: 11000,
+          duration: 6500,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
         Animated.timing(drift, {
           toValue: 0,
-          duration: 11000,
+          duration: 6500,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
@@ -94,13 +94,13 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
       Animated.sequence([
         Animated.timing(drift2, {
           toValue: 1,
-          duration: 17000,
+          duration: 11000,
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.timing(drift2, {
           toValue: 0,
-          duration: 17000,
+          duration: 11000,
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
@@ -117,29 +117,29 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
 
   const sheetA = {
     transform: [
-      { translateX: drift.interpolate({ inputRange: [0, 1], outputRange: ['-18%', '14%'] }) },
-      { translateY: drift.interpolate({ inputRange: [0, 1], outputRange: ['8%', '-12%'] }) },
-      { rotate: drift.interpolate({ inputRange: [0, 1], outputRange: ['-8deg', '10deg'] }) },
-      { scale: drift.interpolate({ inputRange: [0, 1], outputRange: [1.15, 1.45] }) },
+      { translateX: drift.interpolate({ inputRange: [0, 1], outputRange: ['-26%', '22%'] }) },
+      { translateY: drift.interpolate({ inputRange: [0, 1], outputRange: ['12%', '-18%'] }) },
+      { rotate: drift.interpolate({ inputRange: [0, 1], outputRange: ['-14deg', '16deg'] }) },
+      { scale: drift.interpolate({ inputRange: [0, 1], outputRange: [1.1, 1.6] }) },
     ],
   };
 
   const sheetB = {
     transform: [
-      { translateX: drift2.interpolate({ inputRange: [0, 1], outputRange: ['14%', '-16%'] }) },
-      { translateY: drift2.interpolate({ inputRange: [0, 1], outputRange: ['-12%', '12%'] }) },
-      { rotate: drift2.interpolate({ inputRange: [0, 1], outputRange: ['12deg', '-6deg'] }) },
-      { scale: drift2.interpolate({ inputRange: [0, 1], outputRange: [1.4, 1.12] }) },
+      { translateX: drift2.interpolate({ inputRange: [0, 1], outputRange: ['22%', '-24%'] }) },
+      { translateY: drift2.interpolate({ inputRange: [0, 1], outputRange: ['-18%', '18%'] }) },
+      { rotate: drift2.interpolate({ inputRange: [0, 1], outputRange: ['18deg', '-12deg'] }) },
+      { scale: drift2.interpolate({ inputRange: [0, 1], outputRange: [1.55, 1.08] }) },
     ],
   };
 
   const sheetC = {
-    opacity: drift.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.55, 0.9, 0.55] }),
+    opacity: drift.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.45, 0.95, 0.45] }),
     transform: [
-      { translateX: drift2.interpolate({ inputRange: [0, 1], outputRange: ['-12%', '12%'] }) },
-      { translateY: drift.interpolate({ inputRange: [0, 1], outputRange: ['-6%', '10%'] }) },
-      { rotate: drift.interpolate({ inputRange: [0, 1], outputRange: ['6deg', '-12deg'] }) },
-      { scale: drift2.interpolate({ inputRange: [0, 1], outputRange: [1.1, 1.35] }) },
+      { translateX: drift2.interpolate({ inputRange: [0, 1], outputRange: ['-20%', '20%'] }) },
+      { translateY: drift.interpolate({ inputRange: [0, 1], outputRange: ['-10%', '16%'] }) },
+      { rotate: drift.interpolate({ inputRange: [0, 1], outputRange: ['10deg', '-20deg'] }) },
+      { scale: drift2.interpolate({ inputRange: [0, 1], outputRange: [1.05, 1.5] }) },
     ],
   };
 
@@ -156,6 +156,14 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
       { translateY: drift2.interpolate({ inputRange: [0, 1], outputRange: [0, 16] }) },
       { translateX: drift.interpolate({ inputRange: [0, 1], outputRange: [0, -10] }) },
       { rotate: drift2.interpolate({ inputRange: [0, 1], outputRange: ['8deg', '-8deg'] }) },
+    ],
+  };
+
+  const smokeDrift = {
+    opacity: drift.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.5, 1, 0.5] }),
+    transform: [
+      { translateY: drift.interpolate({ inputRange: [0, 1], outputRange: [14, -30] }) },
+      { translateX: drift2.interpolate({ inputRange: [0, 1], outputRange: [-8, 10] }) },
     ],
   };
 
@@ -204,6 +212,17 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
         <View style={styles.leafB4}><CannabisLeaf size={14} color={leafColor} opacity={0.08} style={styles.tiltLeft} /></View>
       </Animated.View>
 
+      {/* Smoke wisps rising through the scene */}
+      <Animated.View style={[styles.leafLayer, smokeDrift]}>
+        <View style={styles.smokeA}><SmokePuff size={52} opacity={0.14} /></View>
+        <View style={styles.smokeB}><SmokePuff size={36} opacity={0.1} /></View>
+      </Animated.View>
+
+      {/* Rooted plants + a little pipe on the edges */}
+      <View pointerEvents="none" style={styles.plantLeft}><WeedPlant height={92} color={leafColor} budColor="#7B1FA2" opacity={0.22} /></View>
+      <View pointerEvents="none" style={styles.plantRight}><WeedPlant height={76} color={leafColor} budColor="#4A148C" opacity={0.18} /></View>
+      <View pointerEvents="none" style={styles.bongSlot}><BongSprite size={64} color={leafColor} opacity={0.15} /></View>
+
       <View style={styles.content}>{children}</View>
     </View>
   );
@@ -225,4 +244,9 @@ const styles = StyleSheet.create({
   leafB2: { position: 'absolute', top: '38%', left: '6%' },
   leafB3: { position: 'absolute', top: '64%', left: '-4%' },
   leafB4: { position: 'absolute', top: '86%', left: '88%' },
+  smokeA: { position: 'absolute', top: '30%', left: '52%', transform: [{ rotate: '12deg' }] },
+  smokeB: { position: 'absolute', top: '56%', left: '10%', transform: [{ rotate: '-8deg' }] },
+  plantLeft: { position: 'absolute', bottom: '-6%', left: '-3%', transform: [{ rotate: '-4deg' }] },
+  plantRight: { position: 'absolute', bottom: '-6%', right: '-3%', transform: [{ rotate: '4deg' }] },
+  bongSlot: { position: 'absolute', bottom: '10%', right: '6%', transform: [{ rotate: '6deg' }] },
 });

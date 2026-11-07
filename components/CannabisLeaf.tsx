@@ -1,5 +1,5 @@
 import { View, ViewStyle } from 'react-native';
-import Svg, { G, Path } from 'react-native-svg';
+import Svg, { Ellipse, G, Path } from 'react-native-svg';
 
 interface CannabisLeafProps {
   size?: number;
@@ -40,7 +40,7 @@ export function CannabisLeaf({ size = 14, color = '#2E7D4F', opacity = 0.9, styl
   );
 }
 
-/** Leaf clusters on the top corners, with a few small leaves trailing along the top edge. */
+/** Two little leaf clusters sitting on the top edge of a glass card. */
 export function LeafBorder({ color = '#2E7D4F', size = 24 }: { color?: string; size?: number }) {
   return (
     <>
@@ -128,3 +128,75 @@ const styles = {
 };
 
 export default CannabisLeaf;
+
+/** A little rooted weed plant — stem, paired fan leaves and a top bud. */
+export function WeedPlant({ height = 80, color = '#2E7D32', budColor = '#7B1FA2', opacity = 0.9 }: {
+  height?: number;
+  color?: string;
+  budColor?: string;
+  opacity?: number;
+}) {
+  const w = height * 0.75;
+  return (
+    <Svg width={w} height={height} viewBox="0 0 60 80" style={{ opacity }}>
+      {/* stem */}
+      <Path d="M30,78 C30,60 30,44 30,30" stroke={color} strokeWidth={2.6} fill="none" strokeLinecap="round" />
+      {/* lower fan leaves */}
+      <G transform="translate(30,62)">
+        <G transform="rotate(-42)"><Path d="M0,0 C-1.4,-6 -1.2,-12 0,-16 C1.2,-12 1.4,-6 0,0 Z" fill={color} /></G>
+        <G transform="rotate(42)"><Path d="M0,0 C-1.4,-6 -1.2,-12 0,-16 C1.2,-12 1.4,-6 0,0 Z" fill={color} /></G>
+        <G transform="rotate(-78)"><Path d="M0,0 C-1.4,-6 -1.2,-12 0,-16 C1.2,-12 1.4,-6 0,0 Z" fill={color} opacity={0.7} /></G>
+        <G transform="rotate(78)"><Path d="M0,0 C-1.4,-6 -1.2,-12 0,-16 C1.2,-12 1.4,-6 0,0 Z" fill={color} opacity={0.7} /></G>
+      </G>
+      {/* middle fan leaves */}
+      <G transform="translate(30,44)">
+        <G transform="rotate(-30)"><Path d="M0,0 C-1.6,-7 -1.4,-14 0,-18 C1.4,-14 1.6,-7 0,0 Z" fill={color} /></G>
+        <G transform="rotate(30)"><Path d="M0,0 C-1.6,-7 -1.4,-14 0,-18 C1.4,-14 1.6,-7 0,0 Z" fill={color} /></G>
+      </G>
+      {/* top bud */}
+      <Path d="M30,28 C24,20 24,10 30,2 C36,10 36,20 30,28 Z" fill={budColor} opacity={0.85} />
+      <Path d="M30,22 C27,17 27,11 30,7 C33,11 33,17 30,22 Z" fill={budColor} opacity={0.5} />
+      {/* soil line */}
+      <Path d="M12,78 L48,78" stroke={color} strokeWidth={1.6} opacity={0.6} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+/** A soft smoke puff made of overlapping translucent circles. */
+export function SmokePuff({ size = 60, color = '#9AA0A6', opacity = 0.16 }: {
+  size?: number;
+  color?: string;
+  opacity?: number;
+}) {
+  const w = size * 1.6;
+  return (
+    <Svg width={w} height={size} viewBox="0 0 96 60" style={{ opacity }}>
+      <Ellipse cx={26} cy={38} rx={20} ry={14} fill={color} />
+      <Ellipse cx={52} cy={26} rx={24} ry={16} fill={color} />
+      <Ellipse cx={74} cy={38} rx={18} ry={12} fill={color} />
+    </Svg>
+  );
+}
+
+/** A tiny pipe/bong silhouette — base, chamber, neck and bowl. */
+export function BongSprite({ size = 56, color = '#2E7D32', opacity = 0.13 }: {
+  size?: number;
+  color?: string;
+  opacity?: number;
+}) {
+  const w = size * 0.55;
+  return (
+    <Svg width={w} height={size} viewBox="0 0 32 58" style={{ opacity }}>
+      {/* bowl */}
+      <Path d="M13,3 L19,3 L18,8 L14,8 Z" fill={color} />
+      {/* neck */}
+      <Path d="M13.5,8 L18.5,8 L18,26 L14,26 Z" fill={color} />
+      {/* chamber */}
+      <Ellipse cx={16} cy={42} rx={11} ry={14} fill={color} />
+      {/* base */}
+      <Ellipse cx={16} cy={54} rx={12} ry={4} fill={color} />
+      {/* slide tube */}
+      <Path d="M21,30 L27,35" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}

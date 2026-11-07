@@ -34,6 +34,9 @@ const STRAIN_PRESETS = [
   { name: 'Purple Haze', colors: ['#3A0CA3', '#5A189A', '#F48C06', '#FF9F1C'] },
   { name: 'Tropicana Cherry', colors: ['#800000', '#DC143C', '#7B1FA2', '#E0FBFC'] },
   { name: 'Pink Runts', colors: ['#FF8FAB', '#F15BB5', '#9B5DE5', '#FFF0F5'] },
+  { name: 'Blue Dream', colors: ['#1A237E', '#2962FF', '#82B1FF', '#ECEFF1'] },
+  { name: 'Northern Lights', colors: ['#312E81', '#7C3AED', '#22D3EE', '#F9A8D4'] },
+  { name: 'Sour Diesel', colors: ['#EAB308', '#A3E635', '#4D7C0F', '#7C3AED'] },
 ];
 
 const GRADIENT_PRESETS = STRAIN_PRESETS;
