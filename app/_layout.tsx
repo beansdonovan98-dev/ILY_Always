@@ -25,7 +25,7 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [locked, setLocked] = useState(true);
+  const [locked, setLocked] = useState(false);
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
