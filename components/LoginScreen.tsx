@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Image as ExpoImage } from 'expo-image';
 
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
@@ -10,10 +11,13 @@ import { USERS, UserKey } from '@/constants/content';
 import { hasPin, setPin, verifyPin } from '@/lib/auth';
 import { notifyPartner, registerPushToken } from '@/lib/push';
 import { getCoupleId } from '@/lib/couple';
+import { getItem } from '@/lib/storage';
 
 export default function LoginScreen() {
   const theme = useAppTheme();
   const { login } = useUsage();
+
+  const [bgUri, setBgUri] = useState('');
 
   const [selected, setSelected] = useState<UserKey | null>(null);
   const [existingPin, setExistingPin] = useState(false);
@@ -21,6 +25,17 @@ export default function LoginScreen() {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const uri = await getItem<string>('lockBackgroundUri', '');
+      if (alive) setBgUri(uri);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     setPinValue('');
@@ -71,7 +86,14 @@ export default function LoginScreen() {
   }, [selected, pin, confirm, existingPin, login]);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <View style={styles.root}>
+      {bgUri ? (
+        <>
+          <ExpoImage source={{ uri: bgUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+          <View style={styles.scrim} />
+        </>
+      ) : null}
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>ILY Always 💞</Text>
       <Text style={[styles.subtitle, { color: theme.subtitleColor }]}>
         Two hearts, one private little world — log in and come sin with me 🔥🔐
@@ -147,11 +169,14 @@ export default function LoginScreen() {
           <Text style={styles.smallHint}>Tap your name to continue.</Text>
         )}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
+  scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.35)' },
   container: { flex: 1 },
   content: { padding: 24, paddingTop: 80, paddingBottom: 60, gap: 16, maxWidth: '100%' },
   title: { fontSize: 34, fontWeight: '800', marginBottom: 4 },

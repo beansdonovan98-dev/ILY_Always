@@ -133,14 +133,25 @@ export default function SettingsScreen() {
   const setLockBackground = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) return;
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 1 });
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 1,
+    });
     if (result.canceled) return;
-    const uri = result.assets[0].uri;
+    const asset = result.assets[0];
+    const uri = asset.uri;
+    // Keep the original extension so GIFs stay GIFs.
+    const ext = (uri.split('?')[0].split('.').pop() || 'jpg').toLowerCase();
     const dir = `${FileSystem.documentDirectory}lockbg/`;
     try { await FileSystem.makeDirectoryAsync(dir, { intermediates: true }); } catch {}
-    const dest = `${dir}lockbg.jpg`;
+    const dest = `${dir}lockbg.${ext}`;
     try { await FileSystem.copyAsync({ from: uri, to: dest }); await setItem('lockBackgroundUri', dest); }
     catch { await setItem('lockBackgroundUri', uri); }
+  };
+
+  const clearLockBackground = async () => {
+    await setItem('lockBackgroundUri', '');
   };
 
   const handleSecretTap = () => {
@@ -260,20 +271,16 @@ export default function SettingsScreen() {
       <View style={[styles.card, appTheme.cardStyle]}>
         <LeafBorder color={appTheme.leafColor} />
         <Text style={[styles.cardTitle, { fontFamily: font }]}>Lock Screen</Text>
-        <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={setLockBackground}>
-          <Text style={styles.btnText}>Set Background Picture</Text>
-        </Pressable>
+        <Text style={styles.smallHint}>Photo or GIF shown behind the login screen on this phone.</Text>
+        <View style={styles.row}>
+          <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={setLockBackground}>
+            <Text style={styles.btnText}>Set Background Picture / GIF</Text>
+          </Pressable>
+          <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={clearLockBackground}>
+            <Text style={styles.btnText}>Remove</Text>
+          </Pressable>
+        </View>
       </View>
-
-      <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={() => Sentry.captureException(new Error('Test crash from settings'))}>
-        <Text style={styles.btnText}>Test Crash (Sentry)</Text>
-      </Pressable>
-
-      <Pressable style={[styles.btn, { borderWidth: 1, borderColor: appTheme.borderColor, borderRadius: 50 }]} onPress={logout}>
-        <Text style={styles.btnText}>Log out 🔒</Text>
-      </Pressable>
-
-      {status ? <Text style={styles.muted}>{status}</Text> : null}
 
       <View style={[styles.card, appTheme.cardStyle]}>
         <LeafBorder color={appTheme.leafColor} />
@@ -286,6 +293,16 @@ export default function SettingsScreen() {
           <Text style={styles.btnText}>Save Avatars</Text>
         </Pressable>
       </View>
+
+      {status ? <Text style={styles.muted}>{status}</Text> : null}
+
+      <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={() => Sentry.captureException(new Error('Test crash from settings'))}>
+        <Text style={styles.btnText}>Test Crash (Sentry)</Text>
+      </Pressable>
+
+      <Pressable style={[styles.btn, { borderWidth: 1, borderColor: appTheme.borderColor, borderRadius: 50 }]} onPress={logout}>
+        <Text style={styles.btnText}>Log out 🔒</Text>
+      </Pressable>
 
       <Pressable onPress={handleSecretTap} style={styles.secret}>
         <Text style={styles.secretText}>v1.0.0</Text>
@@ -317,6 +334,7 @@ const styles = StyleSheet.create({
   colorSwatch: { width: 24, height: 24, borderRadius: 12, margin: 3 },
   colorSwatchSelected: { borderWidth: 3, borderColor: '#fff' },
   secret: { position: 'absolute', bottom: 16, right: 16, opacity: 0.3 },
+  smallHint: { fontSize: 12, opacity: 0.65, marginBottom: 8 },
   muted: { fontSize: 12, opacity: 0.6, marginBottom: 8 },
   loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, marginBottom: 12, textAlign: 'center' },
   secretText: { fontSize: 10 },
