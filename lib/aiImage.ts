@@ -60,7 +60,11 @@ export async function editImageWithAI(imageUrl: string, prompt: string): Promise
     if (res.status === 404) {
       throw new Error('The AI editor backend is not deployed yet. (supabase functions deploy ai-image-edit)');
     }
-    const detail = parsed?.error || (text && text.length < 300 ? text : null);
+    const detail =
+      typeof parsed?.error === 'string'
+        ? parsed.error
+        : (parsed?.error as { message?: string } | undefined)?.message ||
+          (text && text.length < 300 ? text : null);
     throw new Error(detail || FRIENDLY[res.status] || `The AI editor failed (HTTP ${res.status}).`);
   }
 
