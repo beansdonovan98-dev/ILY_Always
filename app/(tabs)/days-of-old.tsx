@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { Image as ExpoImage } from 'expo-image';
 
 import { getCoupleId } from '@/lib/couple';
@@ -12,6 +14,7 @@ import { useAppFont } from '@/hooks/useAppFont';
 
 export default function DaysOfOldScreen() {
   const font = useAppFont();
+  const appTheme = useAppTheme();
   const [coupleId, setCoupleId] = useState('');
   const [dates, setDates] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -61,7 +64,7 @@ export default function DaysOfOldScreen() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
         <View style={styles.row}>
           {dates.map((d) => (
-            <Pressable key={d} onPress={() => openDate(d)} style={[styles.dateChip, selectedDate === d && styles.dateChipSelected]}>
+            <Pressable key={d} onPress={() => openDate(d)} style={[[styles.dateChip, appTheme.chipStyle], selectedDate === d && [styles.dateChipSelected, appTheme.activeChipStyle]]}>
               <Text style={styles.dateChipText}>{d}</Text>
             </Pressable>
           ))}
@@ -73,14 +76,14 @@ export default function DaysOfOldScreen() {
           <Text style={styles.sectionTitle}>{selectedDate} (read-only)</Text>
           {entries.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No log entries.</Text>}
           {entries.map((e) => (
-            <View key={e.id} style={[styles.entryCard, { borderLeftColor: e.eventColor, borderLeftWidth: 4 }]}>
+            <View key={e.id} style={[[styles.entryCard, appTheme.cardStyle], { borderLeftColor: e.eventColor, borderLeftWidth: 4 }]}>
               <Text style={styles.entryTime}>{e.time}</Text>
               <Text style={styles.entryEvent}>{e.eventEmoji} {e.eventName}</Text>
               <Text style={styles.entryText}>{e.whatHappened}</Text>
             </View>
           ))}
           {media.map((m) => (
-            <View key={m.id} style={styles.photoCard}>
+            <View key={m.id} style={[styles.photoCard, appTheme.cardStyle]}>
               <ExpoImage source={{ uri: urls[m.id] || '' }} style={styles.photo} contentFit="contain" />
               <Text style={[styles.muted, { fontFamily: font }]}>{m.file_name}</Text>
             </View>
@@ -93,9 +96,9 @@ export default function DaysOfOldScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 24, paddingBottom: 60, alignItems: 'center' },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 4 },
-  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12, textAlign: 'center' },
+  content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 16, maxWidth: '100%' },
+  title: { fontSize: 34, fontWeight: '800', marginBottom: 4 },
+  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12 },
   muted: { fontSize: 12, opacity: 0.6, marginBottom: 8 },
   loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, marginBottom: 12, textAlign: 'center' },
   row: { flexDirection: 'row', gap: 8 },

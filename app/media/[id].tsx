@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
+import { LeafBorder } from '@/components/CannabisLeaf';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image as ExpoImage } from 'expo-image';
 
@@ -18,6 +12,7 @@ import { USERS, UserKey } from '@/constants/content';
 import { getSignedUrl, MediaRow, updateMediaComments } from '@/lib/media';
 
 export default function MediaDetailScreen() {
+  const appTheme = useAppTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [media, setMedia] = useState<MediaRow | null>(null);
@@ -69,24 +64,26 @@ export default function MediaDetailScreen() {
         <ExpoImage source={{ uri: url }} style={styles.photo} contentFit="contain" />
 
         {isShared && (
-          <View style={styles.card}>
+          <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
             <Text style={styles.cardTitle}>Captions</Text>
             <Text style={styles.body}>Daddy 🍆: {(media.captions && media.captions.daddy) || media.caption || '—'}</Text>
             <Text style={styles.body}>Princess 🍑: {(media.captions && media.captions.princess) || '—'}</Text>
           </View>
         )}
 
-        <View style={styles.card}>
+        <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
           <Text style={styles.cardTitle}>Comments</Text>
           <View style={styles.row}>
             {(['daddy', 'princess'] as const).map((k) => (
-              <Pressable key={k} onPress={() => setActiveUser(k)} style={[styles.userBtn, activeUser === k && styles.userBtnActive]}>
+              <Pressable key={k} onPress={() => setActiveUser(k)} style={[[styles.userBtn, appTheme.chipStyle], activeUser === k && [styles.userBtnActive, appTheme.activeChipStyle]]}>
                 <Text style={styles.userBtnText}>{USERS[k].label}</Text>
               </Pressable>
             ))}
           </View>
           {(comments || []).map((c) => (
-            <View key={c.id} style={styles.comment}>
+            <View key={c.id} style={[styles.comment, appTheme.cardStyle]}>
               <Text style={styles.chatAuthor}>{USERS[c.author as UserKey]?.label || c.author}</Text>
               <Text style={styles.chatText}>{c.text}</Text>
               <Text style={styles.chatTime}>{new Date(c.created_at).toLocaleString()}</Text>
@@ -94,7 +91,7 @@ export default function MediaDetailScreen() {
           ))}
           <View style={styles.row}>
             <TextInput value={draft} onChangeText={setDraft} placeholder="Add a comment..." style={[styles.input, { flex: 1 }]} />
-            <Pressable style={styles.btn} onPress={postComment}>
+            <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={postComment}>
               <Text style={styles.btnText}>Post</Text>
             </Pressable>
           </View>

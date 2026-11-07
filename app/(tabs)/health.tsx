@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
+import { LeafBorder } from '@/components/CannabisLeaf';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 import { getCoupleId } from '@/lib/couple';
 import { getCoupleSettings } from '@/lib/appearance';
@@ -10,6 +13,7 @@ interface Med { id: string; name: string; dosage: string; timing: string; taken:
 interface FitnessEntry { id: string; who: string; exercise: string; duration: string; date: string; }
 
 export default function HealthScreen() {
+  const appTheme = useAppTheme();
   const [coupleId, setCoupleId] = useState('');
   const [revealed, setRevealed] = useState(false);
   const [weights, setWeights] = useState<WeightEntry[]>([]);
@@ -79,14 +83,15 @@ export default function HealthScreen() {
       <Text style={styles.subtitle}>Taking care of our temple and each other 🌿</Text>
 
       {/* Weight tracker */}
-      <View style={styles.card}>
+      <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardTitle}>Weight Tracker</Text>
         <View style={styles.row}>
-          <Pressable onPress={() => setWWho('Daddy')} style={[styles.chip, wWho === 'Daddy' && styles.chipActive]}><Text style={styles.chipText}>Daddy</Text></Pressable>
-          <Pressable onPress={() => setWWho('Princess')} style={[styles.chip, wWho === 'Princess' && styles.chipActive]}><Text style={styles.chipText}>Princess</Text></Pressable>
+          <Pressable onPress={() => setWWho('Daddy')} style={[[styles.chip, appTheme.chipStyle], wWho === 'Daddy' && [styles.chipActive, appTheme.activeChipStyle]]}><Text style={styles.chipText}>Daddy</Text></Pressable>
+          <Pressable onPress={() => setWWho('Princess')} style={[[styles.chip, appTheme.chipStyle], wWho === 'Princess' && [styles.chipActive, appTheme.activeChipStyle]]}><Text style={styles.chipText}>Princess</Text></Pressable>
         </View>
         <TextInput value={wVal} onChangeText={setWVal} placeholder="Weight (kg/lbs)" style={styles.input} keyboardType="numeric" />
-        <Pressable style={styles.btn} onPress={addWeight}><Text style={styles.btnText}>Log Weight</Text></Pressable>
+        <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={addWeight}><Text style={styles.btnText}>Log Weight</Text></Pressable>
         {weights.filter((w) => w.who === wWho).length > 0 && (
           <View style={styles.chart}>
             {weights.filter((w) => w.who === wWho).map((w) => {
@@ -107,12 +112,13 @@ export default function HealthScreen() {
       </View>
 
       {/* Medicine tracker */}
-      <View style={styles.card}>
+      <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardTitle}>Medicine / Supplement Tracker</Text>
         <TextInput value={mName} onChangeText={setMName} placeholder="Name" style={styles.input} />
         <TextInput value={mDose} onChangeText={setMDose} placeholder="Dosage" style={styles.input} />
         <TextInput value={mTime} onChangeText={setMTime} placeholder="Timing (e.g. 8am)" style={styles.input} />
-        <Pressable style={styles.btn} onPress={addMed}><Text style={styles.btnText}>Add Medication</Text></Pressable>
+        <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={addMed}><Text style={styles.btnText}>Add Medication</Text></Pressable>
         {meds.map((m) => (
           <View key={m.id} style={styles.row}>
             <Pressable onPress={() => toggleMed(m.id)} style={styles.checkBtn}>
@@ -124,15 +130,16 @@ export default function HealthScreen() {
       </View>
 
       {/* Fitness log */}
-      <View style={styles.card}>
+      <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardTitle}>Fitness Log (Individual)</Text>
         <View style={styles.row}>
-          <Pressable onPress={() => setFWho('Daddy')} style={[styles.chip, fWho === 'Daddy' && styles.chipActive]}><Text style={styles.chipText}>Daddy</Text></Pressable>
-          <Pressable onPress={() => setFWho('Princess')} style={[styles.chip, fWho === 'Princess' && styles.chipActive]}><Text style={styles.chipText}>Princess</Text></Pressable>
+          <Pressable onPress={() => setFWho('Daddy')} style={[[styles.chip, appTheme.chipStyle], fWho === 'Daddy' && [styles.chipActive, appTheme.activeChipStyle]]}><Text style={styles.chipText}>Daddy</Text></Pressable>
+          <Pressable onPress={() => setFWho('Princess')} style={[[styles.chip, appTheme.chipStyle], fWho === 'Princess' && [styles.chipActive, appTheme.activeChipStyle]]}><Text style={styles.chipText}>Princess</Text></Pressable>
         </View>
         <TextInput value={fEx} onChangeText={setFEx} placeholder="Exercise" style={styles.input} />
         <TextInput value={fDur} onChangeText={setFDur} placeholder="Duration (min)" style={styles.input} keyboardType="numeric" />
-        <Pressable style={styles.btn} onPress={addFitness}><Text style={styles.btnText}>Log Workout</Text></Pressable>
+        <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={addFitness}><Text style={styles.btnText}>Log Workout</Text></Pressable>
         {fitness.filter((f) => f.who === fWho).map((f) => (
           <Text key={f.id} style={styles.body}>{f.who}: {f.exercise} — {f.duration} min ({f.date})</Text>
         ))}
@@ -140,7 +147,8 @@ export default function HealthScreen() {
 
       {/* Period tracker hidden */}
       {revealed && (
-        <View style={styles.card}>
+        <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
           <Text style={styles.cardTitle}>Period Tracker</Text>
           <Text style={styles.body}>Period tracking enabled (placeholder). Add dates here.</Text>
         </View>
@@ -151,9 +159,9 @@ export default function HealthScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 24, paddingBottom: 60, alignItems: 'center' },
-  title: { fontSize: 28, fontWeight: 'bold', marginBottom: 4 },
-  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 16, textAlign: 'center' },
+  content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 16, maxWidth: '100%' },
+  title: { fontSize: 34, fontWeight: '800', marginBottom: 4 },
+  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12 },
   card: { borderRadius: 16, padding: 18, marginBottom: 16, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', width: '100%' },
   cardTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8 },
   body: { fontSize: 16, marginBottom: 6 },

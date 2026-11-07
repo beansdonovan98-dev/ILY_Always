@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
+import { LeafBorder } from '@/components/CannabisLeaf';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -41,6 +35,7 @@ import { useAppFont } from '@/hooks/useAppFont';
 
 export default function PlaytimeScreen() {
   const font = useAppFont();
+  const appTheme = useAppTheme();
   const router = useRouter();
   const [consent, setConsent] = useState<boolean | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -157,7 +152,7 @@ export default function PlaytimeScreen() {
 
   if (consent === null) {
     return (
-      <View style={styles.container}>
+      <View style={styles.gate}>
         <Text style={[styles.title, { fontFamily: font }]}>Loading...</Text>
       </View>
     );
@@ -165,10 +160,11 @@ export default function PlaytimeScreen() {
 
   if (!consent) {
     return (
-      <View style={styles.container}>
-        <Text style={[styles.title, { fontFamily: font }]}>Playtime 🔞</Text>
+      <View style={styles.gate}>
+        <Text style={[styles.title, { fontFamily: font }]}>Playtime 🥵</Text>
+        <Text style={[styles.subtitle, { fontFamily: font }]}>Where our deepest desires and hottest secrets come alive 💋🔥</Text>
         <Text style={[styles.body, { fontFamily: font }]}>This area is for adults 18 and older only.</Text>
-        <Pressable style={styles.btn} onPress={handleConsent}>
+        <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={handleConsent}>
           <Text style={styles.btnText}>I am 18 or older — Enter</Text>
         </Pressable>
       </View>
@@ -181,22 +177,24 @@ export default function PlaytimeScreen() {
         <Text style={[styles.title, { fontFamily: font }]}>Playtime 🥵</Text>
       <Text style={[styles.subtitle, { fontFamily: font }]}>Where our deepest desires and hottest secrets come alive 💋🔥</Text>
 
-        <View style={styles.card}>
+        <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
           <Text style={[styles.cardTitle, { fontFamily: font }]}>Posting as</Text>
           <View style={styles.row}>
             {(['daddy', 'princess'] as const).map((k) => (
-              <Pressable key={k} onPress={() => setActiveUser(k)} style={[styles.userBtn, activeUser === k && styles.userBtnActive]}>
+              <Pressable key={k} onPress={() => setActiveUser(k)} style={[[styles.userBtn, appTheme.chipStyle], activeUser === k && [styles.userBtnActive, appTheme.activeChipStyle]]}>
                 <Text style={styles.userBtnText}>{USERS[k].label}</Text>
               </Pressable>
             ))}
           </View>
         </View>
 
-        <View style={styles.card}>
+        <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
           <Text style={[styles.cardTitle, { fontFamily: font }]}>Chat Log 💬</Text>
           <View style={styles.chatBox}>
             {messages.map((m) => (
-              <View key={m.id} style={styles.chatMsg}>
+              <View key={m.id} style={[styles.chatMsg, appTheme.cardStyle]}>
                 <Text style={styles.chatAuthor}>{USERS[m.author].label}</Text>
                 <Text style={styles.chatText}>{m.text}</Text>
                 <Text style={styles.chatTime}>{new Date(m.timestamp).toLocaleString()}</Text>
@@ -206,20 +204,21 @@ export default function PlaytimeScreen() {
           </View>
           <View style={styles.row}>
             <TextInput value={draftMessage} onChangeText={setDraftMessage} placeholder="Type a message..." style={[styles.input, { flex: 1 }]} />
-            <Pressable style={styles.btn} onPress={sendMessage}>
+            <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={sendMessage}>
               <Text style={styles.btnText}>Send</Text>
             </Pressable>
           </View>
         </View>
 
-        <View style={styles.card}>
+        <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
           <Text style={[styles.cardTitle, { fontFamily: font }]}>Pictures & GIFs 📸 (max 60 MB)</Text>
-          <Pressable style={styles.btn} onPress={pickPhotos}>
+          <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={pickPhotos}>
             <Text style={styles.btnText}>Upload (multiple)</Text>
           </Pressable>
           {uploadStatus ? <Text style={styles.muted}>{uploadStatus}</Text> : null}
           {media.map((m) => (
-            <View key={m.id} style={styles.photoCard}>
+            <View key={m.id} style={[styles.photoCard, appTheme.cardStyle]}>
               <Pressable onPress={() => router.push(`/media/${m.id}`)}>
                 <Image source={{ uri: signedUrls[m.id] || '' }} style={styles.photo} contentFit="contain" />
               </Pressable>
@@ -237,9 +236,10 @@ export default function PlaytimeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  gate: { flex: 1, padding: 24, gap: 12, justifyContent: 'center' },
   content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 16 },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
-  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12, textAlign: 'center' },
+  title: { fontSize: 34, fontWeight: '800', marginBottom: 4 },
+  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12 },
   body: { fontSize: 16, marginBottom: 12 },
   card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', width: '100%' },
   cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },

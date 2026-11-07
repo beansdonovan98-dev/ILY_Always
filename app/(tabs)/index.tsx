@@ -1,40 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
+import { LeafBorder } from '@/components/CannabisLeaf';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 
-import { COVER_PHOTO_POOL, daySeed, pickDailyItems, todayKey } from '@/constants/content';
+import { daySeed, RELATIONSHIP_START, todayKey, USERS, WORDS_OF_THE_DAY } from '@/constants/content';
 import { getItem, setItem } from '@/lib/storage';
 import { useUsage } from '@/contexts/UsageContext';
 import AvatarChips from '@/components/AvatarChips';
 import { getCoupleId } from '@/lib/couple';
 import { getCoupleSettings, upsertCoupleSettings } from '@/lib/appearance';
-import { formatDuration } from '@/hooks/useDailyUsage';
 import { getSignedUrl, MediaRow, resolveMime, updateCaption, uploadMedia, validateSize } from '@/lib/media';
 import { supabase } from '@/lib/supabase';
 
-// placeholders for word/fact selection
-import {
-  FACTS_OF_THE_DAY,
-  RELATIONSHIP_START,
-  USERS,
-  WORDS_OF_THE_DAY,
-} from '@/constants/content';
-
 const CAPTIONS_KEY = 'coverCaptions';
 
-import { useAppFont } from '@/hooks/useAppFont';
-
 export default function HomeScreen() {
-  const font = useAppFont();
-  const { usage, currentUser, setCurrentUser, ready } = useUsage();
+  const appTheme = useAppTheme();
+  const { currentUser, setCurrentUser, ready } = useUsage();
 
   const [coupleId, setCoupleId] = useState('');
   const [loveNotes, setLoveNotes] = useState<Array<{ id: string; author: string; text: string; created_at: string }>>([]);
@@ -70,21 +55,17 @@ export default function HomeScreen() {
     return { days, hours, mins, secs };
   }, [now]);
 
-  // word & fact of day
+  // word of the day
   const wordOfDay = useMemo(() => {
     const seed = daySeed(now);
     return WORDS_OF_THE_DAY[seed % WORDS_OF_THE_DAY.length];
   }, [now]);
-  const factOfDay = useMemo(() => {
-    const seed = daySeed(now) + 3;
-    return FACTS_OF_THE_DAY[seed % FACTS_OF_THE_DAY.length];
-  }, [now]);
 
   // cover media (shared, today)
-  const [todayKeyState, setTodayKeyState] = useState(new Date().toISOString().slice(0, 10));
+  const [todayKeyState, setTodayKeyState] = useState(todayKey(new Date()));
   useEffect(() => {
     const t = setInterval(() => {
-      const k = new Date().toISOString().slice(0, 10);
+      const k = todayKey(new Date());
       if (k !== todayKeyState) setTodayKeyState(k);
     }, 30000);
     return () => clearInterval(t);
@@ -108,6 +89,10 @@ export default function HomeScreen() {
     await Promise.all(rows.map(async (r) => { try { urls[r.id] = await getSignedUrl(r); } catch {} }));
     setCoverUrls(urls);
   }, [today]);
+
+  useEffect(() => {
+    loadCoverMedia();
+  }, [loadCoverMedia]);
 
   const uploadCover = useCallback(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -165,186 +150,195 @@ export default function HomeScreen() {
     setEditingId(null);
   }, [captions, draftCaption]);
 
+  const sendLoveNote = useCallback(async () => {
+    if (!noteDraft.trim()) return;
+    const note = { id: `${Date.now()}`, author: currentUser, text: noteDraft.trim(), created_at: new Date().toISOString() };
+    const next = [...loveNotes, note];
+    setLoveNotes(next);
+    setNoteDraft('');
+    await upsertCoupleSettings({ couple_id: coupleId, love_notes: next, updated_at: new Date().toISOString() });
+  }, [coupleId, currentUser, loveNotes, noteDraft]);
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <AvatarChips active={currentUser} onChange={setCurrentUser} />
-      <Text style={[styles.header, { fontFamily: font }]}>Home Is Where the Heart Is 💗</Text>
-      <Text style={[styles.subtitle, { fontFamily: font }]}>Our shared space, updated live ✨</Text>
-      <Text style={styles.subheader}>Daddy 🍆 & Princess 🍑</Text>
 
-      {/* Active user selector */}
-      <View style={styles.card}>
-        <Text style={[styles.cardTitle, { fontFamily: font }]}>Who's using now?</Text>
-        <View style={styles.row}>
-          {(['daddy', 'princess'] as const).map((k) => (
-            <Pressable
-              key={k}
-              onPress={() => setCurrentUser(k)}
-              style={[styles.userBtn, currentUser === k && styles.userBtnActive]}>
-              <Text style={styles.userBtnText}>{USERS[k].label}</Text>
-            </Pressable>
-          ))}
-        </View>
-      </View>
+      <Text style={styles.header}>Home 🏠</Text>
+      <Text style={styles.subtitle}>Our shared space, updated live ✨</Text>
+      <Text style={styles.subheader}>Daddy 🍆 &amp; Princess 🍑</Text>
 
-      {/* Relationship tracker */}
-      <View style={styles.card}>
-        <Text style={[styles.cardTitle, { fontFamily: font }]}>Relationship Tracker 💞</Text>
-        <Text style={[styles.body, { fontFamily: font }]}>Together since 08/09/19</Text>
-        <Text style={[styles.big, { fontFamily: font }]}>
+      {/* 1. Relationship Tracker */}
+      <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
+        <Text style={styles.cardTitle}>Relationship Tracker 💞</Text>
+        <Text style={styles.cardHint}>Counting every second of us ❤️</Text>
+        <Text style={styles.body}>Together since 08/09/19</Text>
+        <Text style={styles.big}>
           {relationshipElapsed.days}d {relationshipElapsed.hours}h {relationshipElapsed.mins}m {relationshipElapsed.secs}s
         </Text>
         <Text style={styles.loveNote}>Every second with you is my favorite. 💗</Text>
       </View>
 
-      {/* Word & Fact */}
+      {/* 2. Cover Photo */}
+      <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
+        <Text style={styles.cardTitle}>Cover Photo 📸</Text>
+        <Text style={styles.cardHint}>Our favorite snap right now 📸✨</Text>
 
-      {/* Word & Fact */}
-      <View style={styles.card}>
-        <Text style={[styles.cardTitle, { fontFamily: font }]}>Word of the Day 📖</Text>
-        <Text style={[styles.big, { fontFamily: font }]}>{wordOfDay.word}</Text>
-        <Text style={[styles.body, { fontFamily: font }]}>{wordOfDay.pronunciation}</Text>
-        <Text style={[styles.body, { fontFamily: font }]}>{wordOfDay.definition}</Text>
-        <Text style={[styles.loveNote, { fontFamily: font }]}>{wordOfDay.example}</Text>
-        <Text style={[styles.muted, { fontFamily: font }]}>Learning and loving new words together 📖💕</Text>
-      </View>
-      <View style={styles.card}>
-        <Text style={[styles.cardTitle, { fontFamily: font }]}>Fact of the Day 🧠</Text>
-        <Text style={[styles.body, { fontFamily: font }]}>{factOfDay}</Text>
-        <Text style={styles.loveNote}>Every fact is better when shared with you. 🌸</Text>
-      </View>
+        <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={uploadCover}>
+          <Text style={styles.btnText}>Upload Cover (max 60MB)</Text>
+        </Pressable>
 
-      {/* Usage tracker */}
-      <View style={styles.card}>
-        <Text style={[styles.cardTitle, { fontFamily: font }]}>Time on App Today ⏱️</Text>
-        <Text style={[styles.body, { fontFamily: font }]}>Daddy 🍆: {formatDuration(usage.daddy)}</Text>
-        <Text style={[styles.body, { fontFamily: font }]}>Princess 🍑: {formatDuration(usage.princess)}</Text>
-        <Text style={[styles.muted, { fontFamily: font }]}>Resets at midnight. Active: {USERS[currentUser as keyof typeof USERS].label}</Text>
-        <Text style={styles.loveNote}>Every moment together counts. ⏳❤️</Text>
-      </View>
+        {coverMedia.length === 0 && (
+          <Text style={styles.muted}>No cover photos yet. Upload one.</Text>
+        )}
 
-      {/* Cover photos (shared, reset daily) */}
-      <View style={styles.card}>
-        <Text style={[styles.cardTitle, { fontFamily: font }]}>Love Notes 💌</Text>
-        <Text style={[styles.muted, { fontFamily: font }]}>Little whispers for your heart 💌</Text>
-        {loveNotes.map((n) => (
-          <View key={n.id} style={styles.noteCard}>
-            <Text style={[styles.body, { fontFamily: font }]}>{n.text}</Text>
-            <Text style={[styles.muted, { fontFamily: font }]}>{n.author} • {new Date(n.created_at).toLocaleString()}</Text>
+        {coverMedia.map((photo) => (
+          <View key={photo.id} style={[styles.photoCard, { borderColor: appTheme.borderColor }]}>
+            <ExpoImage source={{ uri: coverUrls[photo.id] || '' }} style={styles.photo} contentFit="contain" />
+            <View style={styles.captionRow}>
+              {editingCaptionId === photo.id ? (
+                <View style={styles.stretch}>
+                  <TextInput
+                    value={captionDraft}
+                    onChangeText={setCaptionDraft}
+                    placeholder="Enter caption..."
+                    placeholderTextColor="rgba(58,42,46,0.45)"
+                    style={[styles.input, { borderColor: appTheme.borderColor, color: appTheme.textColor }]}
+                    multiline
+                  />
+                  <View style={styles.row}>
+                    <Pressable
+                      onPress={async () => {
+                        await updateCaption(photo.id, currentUser, captionDraft);
+                        setEditingCaptionId(null);
+                        loadCoverMedia();
+                      }}
+                      style={[styles.smallBtn, appTheme.buttonStyle]}>
+                      <Text style={styles.smallBtnText}>Save</Text>
+                    </Pressable>
+                    <Pressable onPress={() => setEditingCaptionId(null)} style={[styles.smallBtn, styles.smallBtnSecondary]}>
+                      <Text style={styles.smallBtnText}>Cancel</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.stretch}>
+                  <Text style={styles.caption}>
+                    {(photo.captions && photo.captions[currentUser]) || photo.caption || 'No caption yet'}
+                  </Text>
+                  <Text style={styles.statusTag}>Today's cover 📸</Text>
+                  <Text style={styles.muted}>
+                    Partner: {(photo.captions && photo.captions[currentUser === 'daddy' ? 'princess' : 'daddy']) || ''}
+                  </Text>
+                  <Pressable
+                    onPress={() => {
+                      setEditingCaptionId(photo.id);
+                      setCaptionDraft((photo.captions && photo.captions[currentUser]) || photo.caption || '');
+                    }}
+                    style={[styles.smallBtn, appTheme.buttonStyle]}>
+                    <Text style={styles.smallBtnText}>Edit My Caption</Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
           </View>
         ))}
+      </View>
+
+      {/* 3. Love Notes */}
+      <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
+        <Text style={styles.cardTitle}>Love Notes 💌</Text>
+        <Text style={styles.cardHint}>Little whispers for your heart 💌</Text>
+
+        {loveNotes.map((n) => (
+          <View key={n.id} style={[styles.noteCard, { borderColor: appTheme.borderColor }]}>
+            <Text style={styles.body}>{n.text}</Text>
+            <Text style={styles.muted}>{USERS[n.author as keyof typeof USERS]?.label || n.author} • {new Date(n.created_at).toLocaleString()}</Text>
+          </View>
+        ))}
+
         <TextInput
           value={noteDraft}
           onChangeText={setNoteDraft}
           placeholder="Leave a sweet note..."
-          style={styles.input}
+          placeholderTextColor="rgba(58,42,46,0.45)"
+          style={[styles.input, { borderColor: appTheme.borderColor, color: appTheme.textColor }]}
           multiline
         />
-        <Pressable
-          style={styles.smallBtn}
-          onPress={async () => {
-            if (!noteDraft.trim()) return;
-            const note = { id: `${Date.now()}`, author: currentUser, text: noteDraft.trim(), created_at: new Date().toISOString() };
-            const next = [...loveNotes, note];
-            setLoveNotes(next);
-            setNoteDraft('');
-            const s = await getCoupleSettings(coupleId);
-            await upsertCoupleSettings({ couple_id: coupleId, love_notes: next, updated_at: new Date().toISOString() });
-          }}>
-          <Text style={[styles.smallBtnText, { fontFamily: font }]}>Send Note</Text>
+        <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={sendLoveNote}>
+          <Text style={styles.btnText}>Send Note</Text>
         </Pressable>
       </View>
-      <Text style={styles.loveNote}>Our favorite faces, every single day. 💕</Text>
-      <Text style={[styles.sectionTitle, { fontFamily: font }]}>Cover Photos 🖼️ (reset daily)</Text>
-      <Text style={[styles.muted, { fontFamily: font }]}>Our favorite snap right now 📸✨</Text>
-      <Pressable style={styles.smallBtn} onPress={uploadCover}><Text style={styles.smallBtnText}>Upload Cover (max 60MB)</Text></Pressable>
-      {coverMedia.map((photo) => (
-        <View key={photo.id} style={styles.photoCard}>
-          <ExpoImage source={{ uri: coverUrls[photo.id] || '' }} style={styles.photo} contentFit="contain" />
-          <View style={styles.captionRow}>
-            {editingCaptionId === photo.id ? (
-              <View style={{ flex: 1 }}>
-                <TextInput value={captionDraft} onChangeText={setCaptionDraft} placeholder="Enter caption..." style={styles.input} multiline />
-                <View style={styles.row}>
-                  <Pressable onPress={async () => { await updateCaption(photo.id, currentUser, captionDraft); setEditingCaptionId(null); loadCoverMedia(); }} style={styles.smallBtn}><Text style={styles.smallBtnText}>Save</Text></Pressable>
-                  <Pressable onPress={() => setEditingCaptionId(null)} style={styles.smallBtnSecondary}><Text style={styles.smallBtnText}>Cancel</Text></Pressable>
-                </View>
-              </View>
-            ) : (
-              <View style={{ flex: 1 }}>
-                <Text style={styles.caption}>{(photo.captions && photo.captions[currentUser]) || photo.caption || 'No caption yet'}</Text>
-                <Text style={[styles.muted, { fontFamily: font }]}>Status: Today's cover 📸</Text>
-                <Text style={[styles.muted, { fontFamily: font }]}>Partner: {(photo.captions && photo.captions[currentUser === 'daddy' ? 'princess' : 'daddy']) || ''}</Text>
-                <Pressable onPress={() => { setEditingCaptionId(photo.id); setCaptionDraft((photo.captions && photo.captions[currentUser]) || photo.caption || ''); }} style={styles.smallBtn}><Text style={styles.smallBtnText}>Edit My Caption</Text></Pressable>
-              </View>
-            )}
-          </View>
-        </View>
-      ))}
-      {coverMedia.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No cover photos yet. Upload one.</Text>}
 
-      {!ready && <Text style={[styles.muted, { fontFamily: font }]}>Loading...</Text>}
+      {/* 4. Word of the Day */}
+      <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
+        <Text style={styles.cardTitle}>Word of the Day 📖</Text>
+        <Text style={styles.cardHint}>Learning and loving new words together 📖💕</Text>
+        <Text style={styles.big}>{wordOfDay.word}</Text>
+        <Text style={styles.body}>{wordOfDay.pronunciation}</Text>
+        <Text style={styles.body}>{wordOfDay.definition}</Text>
+        <Text style={styles.loveNote}>{wordOfDay.example}</Text>
+      </View>
+
+      {!ready && <Text style={styles.muted}>Loading...</Text>}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 24, paddingBottom: 60, alignItems: "stretch", gap: 16 },
-  header: { fontSize: 30, fontWeight: 'bold', marginBottom: 8, color: '#111' },
-  subheader: { fontSize: 17, marginBottom: 16, opacity: 0.7, color: '#333' },
-  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 16, color: '#444', textAlign: 'center' },
+  content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 16, maxWidth: '100%' },
+  header: { fontSize: 34, fontWeight: '800', marginBottom: 4 },
+  subheader: { fontSize: 17, opacity: 0.75, marginBottom: 4 },
+  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12 },
   card: {
-    borderRadius: 16,
     padding: 18,
-    marginBottom: 16,
-    backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', width: '100%',
+    borderRadius: 22,
     shadowColor: '#000',
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 3 },
     elevation: 3,
   },
-  cardTitle: { fontSize: 18, fontWeight: '700', marginBottom: 8, color: '#111' },
-  body: { fontSize: 17, marginBottom: 6, color: '#222', lineHeight: 24 },
-  big: { fontSize: 26, fontWeight: 'bold', color: '#111' },
-  loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, textAlign: 'center' },
-  muted: { fontSize: 13, opacity: 0.6, marginTop: 4, color: '#444' },
-  noteCard: { padding: 10, marginBottom: 8, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.8)' },
-  row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 6 },
-  userBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: 'rgba(120,120,120,0.2)',
+  cardTitle: { fontSize: 19, fontWeight: '800', marginBottom: 4 },
+  cardHint: { fontSize: 13, opacity: 0.65, marginBottom: 10 },
+  body: { fontSize: 17, marginBottom: 6, lineHeight: 24 },
+  big: { fontSize: 26, fontWeight: '800', marginVertical: 4 },
+  loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 8, textAlign: 'center' },
+  muted: { fontSize: 13, opacity: 0.65, marginTop: 4 },
+  noteCard: { padding: 12, marginBottom: 8, borderRadius: 14, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.4)' },
+  row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' },
+  stretch: { flex: 1 },
+  photoCard: { marginTop: 12, borderRadius: 16, overflow: 'hidden', borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.35)' },
+  photo: { width: '100%', height: 200 },
+  captionRow: { padding: 12 },
+  caption: { fontSize: 15, marginBottom: 6, fontWeight: '600' },
+  statusTag: {
+    alignSelf: 'flex-start',
+    fontSize: 12,
+    fontWeight: '700',
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,111,145,0.22)',
+    marginBottom: 4,
+    overflow: 'hidden',
   },
-  userBtnActive: { backgroundColor: 'rgba(100,150,255,0.4)' },
-  userBtnText: { fontWeight: '600' },
-  sectionTitle: { fontSize: 20, fontWeight: '700', marginVertical: 10, color: '#111' },
-  photoCard: { marginBottom: 16, borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', width: '100%', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  photo: { width: '100%', height: 180 },
-  captionRow: { padding: 10 },
-  caption: { fontSize: 14, marginBottom: 8 },
   input: {
     borderWidth: 1,
-    borderColor: 'rgba(120,120,120,0.4)',
-    borderRadius: 8,
-    padding: 8,
-    minHeight: 40,
-    marginBottom: 8,
+    borderRadius: 14,
+    padding: 10,
+    minHeight: 44,
+    marginTop: 8,
+    marginBottom: 10,
+    backgroundColor: 'rgba(255,255,255,0.5)',
   },
-  smallBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    backgroundColor: 'rgba(100,150,255,0.4)',
-    marginRight: 8,
-  },
-  smallBtnSecondary: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    backgroundColor: 'rgba(120,120,120,0.3)',
-  },
-  smallBtnText: { fontWeight: '600' },
+  btn: { paddingVertical: 12, paddingHorizontal: 18, borderRadius: 999, alignSelf: 'flex-start' },
+  btnText: { fontWeight: '700', fontSize: 15 },
+  smallBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999, alignSelf: 'flex-start' },
+  smallBtnSecondary: { backgroundColor: 'rgba(120,120,120,0.25)' },
+  smallBtnText: { fontWeight: '700', fontSize: 14 },
 });

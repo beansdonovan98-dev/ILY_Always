@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
+import { LeafBorder } from '@/components/CannabisLeaf';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useRouter } from 'expo-router';
 
 import { getCoupleId } from '@/lib/couple';
-import { getCoupleSettings, upsertCoupleSettings, CoupleSettings } from '@/lib/appearance';
+import { getCoupleSettings, CoupleSettings } from '@/lib/appearance';
+import { useTheme } from '@/contexts/ThemeContext';
 import { FONT_OPTIONS } from '@/lib/fonts';
 import { Sentry } from '@/lib/sentry';
 import { getItem, setItem } from '@/lib/storage';
@@ -23,12 +28,14 @@ const DEFAULT_TABS = [
 ];
 
 const GRADIENT_PRESETS = [
-  { name: 'Sunset', colors: ['#ff9a9e', '#fad0c4'] },
-  { name: 'Ocean', colors: ['#a1c4fd', '#c2e9fb'] },
-  { name: 'Forest', colors: ['#d4fc79', '#96e6a1'] },
-  { name: 'Lavender', colors: ['#cfd9df', '#e2ebf0'] },
-  { name: 'Neon', colors: ['#f857a6', '#ff5858'] },
-  { name: 'Dark', colors: ['#0f2027', '#203a43', '#2c5364'] },
+  { name: 'Sunrise', colors: ['#FFE9F0', '#FFD6E8', '#F7D9FF', '#FFF3D6'] },
+  { name: 'Sunset', colors: ['#FFB199', '#FF6F91', '#C86DD7', '#FFD9A0'] },
+  { name: 'Ocean', colors: ['#A1C4FD', '#7FE0E8', '#C2E9FB', '#B8C6FF'] },
+  { name: 'Forest', colors: ['#DFF5C8', '#A8E063', '#5FBF7F', '#ECF9DD'] },
+  { name: 'Lavender', colors: ['#EFE7FF', '#C3B4F3', '#F3D9FA', '#D6E4FF'] },
+  { name: 'Neon', colors: ['#F857A6', '#FF5858', '#8E44FF', '#FFD166'] },
+  { name: 'Cannabis', colors: ['#EAF7D8', '#B8E986', '#5FBF7F', '#2E7D4F'] },
+  { name: 'Cotton Candy', colors: ['#FFD1DC', '#B5EAD7', '#C7CEEA', '#FFDAC1'] },
 ];
 
 import { useAppFont } from '@/hooks/useAppFont';
@@ -36,9 +43,11 @@ import { useAppFont } from '@/hooks/useAppFont';
 export default function SettingsScreen() {
   const router = useRouter();
   const font = useAppFont();
-  const [coupleId, setCoupleId] = useState('');
+  const appTheme = useAppTheme();
+  const { updateSettings } = useTheme();
+  const [, setCoupleId] = useState('');
   const [settings, setSettings] = useState<CoupleSettings | null>(null);
-  const [animated, setAnimated] = useState(false);
+  const [animated, setAnimated] = useState(true);
   const [fontColor, setFontColor] = useState('');
   const [borderColor, setBorderColor] = useState('');
   const [accentColor, setAccentColor] = useState('');
@@ -73,15 +82,11 @@ export default function SettingsScreen() {
   }, []);
 
   const saveSettings = useCallback(async (patch: Partial<CoupleSettings>) => {
-    try {
-      const cid = coupleId || (await getCoupleId());
-      const next = await upsertCoupleSettings({ couple_id: cid, ...patch, updated_at: new Date().toISOString() });
-      setSettings(next);
-      setStatus('Saved ✓');
-    } catch (e) {
-      setStatus('Save failed: ' + String(e));
-    }
-  }, [coupleId]);
+    // Applies to every screen immediately; Supabase syncs in the background.
+    await updateSettings(patch);
+    setSettings((prev) => (prev ? { ...prev, ...patch } : ({ ...patch } as CoupleSettings)));
+    setStatus('Saved ✓');
+  }, [updateSettings]);
 
   const applyGradient = useCallback(async (colors: string[]) => {
     await saveSettings({ background_gradient: JSON.stringify(colors) });
@@ -162,12 +167,19 @@ export default function SettingsScreen() {
       <Text style={[styles.subtitle, { fontFamily: font }]}>Make this space feel completely like ours 🛠️</Text>
       <Text style={styles.loveNote}>Make our space feel like home. 🏡</Text>
 
-      <View style={styles.card}>
+      <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
         <Text style={[styles.cardTitle, { fontFamily: font }]}>Animated Gradient Themes</Text>
         <View style={styles.row}>
           {GRADIENT_PRESETS.map((g) => (
-            <Pressable key={g.name} onPress={() => applyGradient(g.colors)} style={styles.chip}>
-              <Text style={styles.chipText}>{g.name}</Text>
+            <Pressable key={g.name} onPress={() => applyGradient(g.colors)} style={styles.gradientChip}>
+              <LinearGradient
+                colors={g.colors as [string, string, ...string[]]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.gradientChipInner}>
+                <Text style={styles.gradientChipText}>{g.name}</Text>
+              </LinearGradient>
             </Pressable>
           ))}
         </View>
@@ -177,32 +189,34 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      <View style={styles.card}>
+      <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
         <Text style={[styles.cardTitle, { fontFamily: font }]}>Colors</Text>
         <Text style={styles.label}>Font color</Text>
         <View style={styles.row}>
           {EVENT_COLORS.map((c) => (
-            <Pressable key={c} onPress={() => setFontColor(c)} style={[styles.colorSwatch, { backgroundColor: c }, fontColor === c && styles.colorSwatchSelected]} />
+            <Pressable key={c} onPress={() => { setFontColor(c); updateSettings({ font_color: c }); }} style={[styles.colorSwatch, { backgroundColor: c }, fontColor === c && [styles.colorSwatchSelected, appTheme.activeChipStyle]]} />
           ))}
         </View>
         <Text style={styles.label}>Border color</Text>
         <View style={styles.row}>
           {EVENT_COLORS.map((c) => (
-            <Pressable key={c} onPress={() => setBorderColor(c)} style={[styles.colorSwatch, { backgroundColor: c }, borderColor === c && styles.colorSwatchSelected]} />
+            <Pressable key={c} onPress={() => { setBorderColor(c); updateSettings({ border_color: c }); }} style={[styles.colorSwatch, { backgroundColor: c }, borderColor === c && [styles.colorSwatchSelected, appTheme.activeChipStyle]]} />
           ))}
         </View>
         <Text style={styles.label}>Accent color</Text>
         <View style={styles.row}>
           {EVENT_COLORS.map((c) => (
-            <Pressable key={c} onPress={() => setAccentColor(c)} style={[styles.colorSwatch, { backgroundColor: c }, accentColor === c && styles.colorSwatchSelected]} />
+            <Pressable key={c} onPress={() => { setAccentColor(c); updateSettings({ accent_color: c }); }} style={[styles.colorSwatch, { backgroundColor: c }, accentColor === c && [styles.colorSwatchSelected, appTheme.activeChipStyle]]} />
           ))}
         </View>
-        <Pressable style={styles.btn} onPress={saveColors}>
+        <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={saveColors}>
           <Text style={styles.btnText}>Save Colors</Text>
         </Pressable>
       </View>
 
-      <View style={styles.card}>
+      <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
         <Text style={[styles.cardTitle, { fontFamily: font }]}>Rename & Reorder Tabs</Text>
         {sortedTabs.map((t, idx) => (
           <View key={t.id} style={styles.tabRow}>
@@ -211,20 +225,21 @@ export default function SettingsScreen() {
               onChangeText={(v) => updateTabLabel(t.id, v)}
               style={[styles.input, { flex: 1 }]}
             />
-            <Pressable style={styles.smallBtn} onPress={() => moveTab(t.id, -1)}>
+            <Pressable style={[styles.smallBtn, appTheme.buttonStyle]} onPress={() => moveTab(t.id, -1)}>
               <Text style={styles.smallBtnText}>↑</Text>
             </Pressable>
-            <Pressable style={styles.smallBtn} onPress={() => moveTab(t.id, 1)}>
+            <Pressable style={[styles.smallBtn, appTheme.buttonStyle]} onPress={() => moveTab(t.id, 1)}>
               <Text style={styles.smallBtnText}>↓</Text>
             </Pressable>
           </View>
         ))}
-        <Pressable style={styles.btn} onPress={saveTabConfig}>
+        <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={saveTabConfig}>
           <Text style={styles.btnText}>Save Tab Layout</Text>
         </Pressable>
       </View>
 
-      <View style={styles.card}>
+      <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
         <Text style={[styles.cardTitle, { fontFamily: font }]}>Playtime Reveal</Text>
         <View style={styles.row}>
           <Text style={styles.label}>Reveal Playtime in menu</Text>
@@ -232,47 +247,51 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      <View style={styles.card}>
+      <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
         <Text style={[styles.cardTitle, { fontFamily: font }]}>Fonts</Text>
         <View style={styles.row}>
           {FONT_OPTIONS.map((f) => (
-            <Pressable key={f.id} onPress={() => setFontId(f.id)} style={[styles.chip, fontId === f.id && styles.chipActive]}>
+            <Pressable key={f.id} onPress={() => setFontId(f.id)} style={[[styles.chip, appTheme.chipStyle], fontId === f.id && [styles.chipActive, appTheme.activeChipStyle]]}>
               <Text style={styles.chipText}>{f.label}</Text>
             </Pressable>
           ))}
         </View>
-        <Pressable style={styles.btn} onPress={() => saveSettings({ font_id: fontId })}>
+        <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={() => saveSettings({ font_id: fontId })}>
           <Text style={styles.btnText}>Save Font</Text>
         </Pressable>
       </View>
 
-      <View style={styles.card}>
+      <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
         <Text style={[styles.cardTitle, { fontFamily: font }]}>Period Tracker Reveal</Text>
         <View style={styles.row}>
           <Text style={styles.label}>Show Period Tracker in Health</Text>
           <Switch value={periodRevealed} onValueChange={async (v) => { setPeriodRevealed(v); await setItem('periodRevealed', v); }} />
         </View>
       </View>
-      <View style={styles.card}>
+      <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
         <Text style={[styles.cardTitle, { fontFamily: font }]}>Lock Screen</Text>
-        <Pressable style={styles.btn} onPress={setLockBackground}>
+        <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={setLockBackground}>
           <Text style={styles.btnText}>Set Background Picture</Text>
         </Pressable>
       </View>
 
-      <Pressable style={styles.btn} onPress={() => Sentry.captureException(new Error('Test crash from settings'))}>
+      <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={() => Sentry.captureException(new Error('Test crash from settings'))}>
         <Text style={styles.btnText}>Test Crash (Sentry)</Text>
       </Pressable>
 
       {status ? <Text style={styles.muted}>{status}</Text> : null}
 
-      <View style={styles.card}>
+      <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
         <Text style={[styles.cardTitle, { fontFamily: font }]}>Partner Avatars / Emojis</Text>
         <Text style={styles.label}>Daddy emoji</Text>
         <TextInput value={avatarDaddy} onChangeText={setAvatarDaddy} style={styles.input} />
         <Text style={styles.label}>Princess emoji</Text>
         <TextInput value={avatarPrincess} onChangeText={setAvatarPrincess} style={styles.input} />
-        <Pressable style={styles.btn} onPress={() => saveSettings({ avatar_daddy: avatarDaddy, avatar_princess: avatarPrincess })}>
+        <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={() => saveSettings({ avatar_daddy: avatarDaddy, avatar_princess: avatarPrincess })}>
           <Text style={styles.btnText}>Save Avatars</Text>
         </Pressable>
       </View>
@@ -286,9 +305,9 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 24, paddingBottom: 60, alignItems: 'center' },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
-  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12, textAlign: 'center' },
+  content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 16, maxWidth: '100%' },
+  title: { fontSize: 34, fontWeight: '800', marginBottom: 4 },
+  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12 },
   card: { borderRadius: 12, padding: 14, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', width: '100%' },
   cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
   label: { fontSize: 13, fontWeight: '600', marginTop: 8, marginBottom: 4 },
@@ -297,8 +316,10 @@ const styles = StyleSheet.create({
   btnText: { fontWeight: '600' },
   row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 6 },
   chip: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 16, backgroundColor: 'rgba(120,120,120,0.2)', marginRight: 6 },
-  chipActive: { backgroundColor: 'rgba(100,150,255,0.4)' },
-  chipText: { fontWeight: '600', fontSize: 13 },
+  chipActive: { backgroundColor: 'rgba(100,150,255,0.4)' },  chipText: { fontWeight: '600', fontSize: 13 },
+  gradientChip: { borderRadius: 999, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(58,42,46,0.15)' },
+  gradientChipInner: { paddingVertical: 9, paddingHorizontal: 16 },
+  gradientChipText: { color: '#3A2A2E', fontWeight: '700', fontSize: 13 },
   tabRow: { flexDirection: 'row', gap: 6, alignItems: 'center', marginBottom: 8 },
   smallBtn: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 6, backgroundColor: 'rgba(100,150,255,0.4)' },
   smallBtnText: { fontWeight: '600', fontSize: 12 },

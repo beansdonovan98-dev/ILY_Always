@@ -1,27 +1,31 @@
 import { Tabs } from 'expo-router';
 
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
 import TabDropdown from '@/components/TabDropdown';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { settings } = useTheme();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].tint,
         headerShown: true,
+        // Each screen renders its own H1, so the nav bar only holds the menu.
+        headerTitle: '',
+        sceneStyle: { backgroundColor: 'transparent' },
+        headerStyle: { backgroundColor: 'transparent' },
+        headerShadowVisible: false,
+        headerTintColor: settings?.font_color || '#3A2A2E',
         tabBarStyle: { display: 'none' },
         headerRight: () => <TabDropdown />,
       }}>
-      <Tabs.Screen name="index" options={{ title: 'Home Is Where the Heart Is 💗' }} />
-      <Tabs.Screen name="our-log" options={{ title: 'Our Log 📜' }} />
-      <Tabs.Screen name="playtime" options={{ title: 'Playtime 😓' }} />
-      <Tabs.Screen name="ai-editor" options={{ title: 'AI Photo Editor 📷' }} />
-      <Tabs.Screen name="health" options={{ title: 'Health 🩺' }} />
-      <Tabs.Screen name="settings" options={{ title: 'Settings ⚙️' }} />
-      <Tabs.Screen name="days-of-old" options={{ title: 'The Days of Old 🧙‍♂️' }} />
+      <Tabs.Screen name="index" />
+      <Tabs.Screen name="our-log" />
+      <Tabs.Screen name="playtime" />
+      <Tabs.Screen name="ai-editor" />
+      <Tabs.Screen name="health" />
+      <Tabs.Screen name="settings" />
+      <Tabs.Screen name="days-of-old" />
     </Tabs>
   );
 }

@@ -32,33 +32,44 @@ export async function getCoupleSettings(coupleId: string): Promise<CoupleSetting
     if (error) throw error;
     if (data) {
       const row = data as CoupleSettings;
+      // Never let an older remote row stomp a newer local change.
       if (!cached || new Date(row.updated_at) >= new Date(cached.updated_at)) {
         await setItem(CACHE_KEY(coupleId), row);
+        return row;
       }
-      return row;
+      return cached;
     }
   } catch (e) {
     // fallback to cache or defaults
-    if (cached) return cached;
-    return null;
   }
   return cached;
 }
 
-export async function upsertCoupleSettings(settings: Partial<CoupleSettings> & { couple_id: string }): Promise<CoupleSettings> {
+export async function upsertCoupleSettings(
+  settings: Partial<CoupleSettings> & { couple_id: string }
+): Promise<CoupleSettings> {
+  const cached = await getItem<CoupleSettings | null>(CACHE_KEY(settings.couple_id), null);
   const payload = {
+    ...(cached || {}),
     ...settings,
     updated_at: new Date().toISOString(),
-  };
-  const { data, error } = await supabase
-    .from('couple_settings')
-    .upsert(payload, { onConflict: 'couple_id' })
-    .select()
-    .single();
-  if (error) throw error;
-  const row = data as CoupleSettings;
-  await setItem(CACHE_KEY(settings.couple_id), row);
-  return row;
+  } as CoupleSettings;
+
+  try {
+    const { data, error } = await supabase
+      .from('couple_settings')
+      .upsert(payload, { onConflict: 'couple_id' })
+      .select()
+      .single();
+    if (error) throw error;
+    const row = data as CoupleSettings;
+    await setItem(CACHE_KEY(settings.couple_id), row);
+    return row;
+  } catch (e) {
+    // Local-first: keep the change even if Supabase is unreachable.
+    await setItem(CACHE_KEY(settings.couple_id), payload);
+    return payload;
+  }
 }
 
 export function subscribeCoupleSettings(

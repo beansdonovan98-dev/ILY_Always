@@ -1,5 +1,8 @@
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, Share } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View, Share } from 'react-native';
+import { AppText as Text } from '@/components/AppText';
+import { LeafBorder } from '@/components/CannabisLeaf';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import * as ImagePicker from 'expo-image-picker';
 import { Image as ExpoImage } from 'expo-image';
 
@@ -12,6 +15,7 @@ import { useAppFont } from '@/hooks/useAppFont';
 
 export default function AIEditorScreen() {
   const font = useAppFont();
+  const appTheme = useAppTheme();
   const [prompt, setPrompt] = useState('');
   const [sourceUri, setSourceUri] = useState('');
   const [resultUri, setResultUri] = useState('');
@@ -63,7 +67,7 @@ export default function AIEditorScreen() {
       <Text style={styles.loveNote}>Create something beautiful together. ✨</Text>
       <Text style={[styles.body, { fontFamily: font }]}>Pick a photo, describe the edit, and let AI create it.</Text>
 
-      <Pressable style={styles.btn} onPress={pickSource}>
+      <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={pickSource}>
         <Text style={styles.btnText}>Pick Photo</Text>
       </Pressable>
 
@@ -77,15 +81,16 @@ export default function AIEditorScreen() {
         multiline
       />
 
-      <Pressable style={styles.btn} onPress={runEdit} disabled={loading}>
+      <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={runEdit} disabled={loading}>
         <Text style={styles.btnText}>{loading ? 'Working...' : 'AI Edit'}</Text>
       </Pressable>
 
       {resultUri ? (
-        <View style={styles.card}>
+        <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
           <Text style={[styles.cardTitle, { fontFamily: font }]}>Result</Text>
           <ExpoImage source={{ uri: resultUri }} style={styles.photo} contentFit="contain" />
-          <Pressable style={styles.btn} onPress={() => Share.share({ url: resultUri, message: 'AI edited image' })}>
+          <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={() => Share.share({ url: resultUri, message: 'AI edited image' })}>
             <Text style={styles.btnText}>Save / Download</Text>
           </Pressable>
         </View>
@@ -98,9 +103,9 @@ export default function AIEditorScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: 24, paddingBottom: 60, alignItems: 'center' },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
-  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12, textAlign: 'center' },
+  content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 16, maxWidth: '100%' },
+  title: { fontSize: 34, fontWeight: '800', marginBottom: 4 },
+  subtitle: { fontSize: 16, opacity: 0.7, marginBottom: 12 },
   body: { fontSize: 16, marginBottom: 12 },
   btn: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, backgroundColor: 'rgba(100,150,255,0.4)', marginBottom: 12, alignSelf: 'flex-start' },
   btnText: { fontWeight: '600' },

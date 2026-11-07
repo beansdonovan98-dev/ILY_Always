@@ -1,10 +1,10 @@
 import { useFonts } from 'expo-font';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavThemeProvider } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider as NavThemeProvider, type Theme } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/components/useColorScheme';
 import { initCrashReporting } from '@/lib/sentry';
 import LockScreen from '@/components/LockScreen';
 import { UsageProvider } from '@/contexts/UsageContext';
@@ -23,6 +23,24 @@ export const unstable_settings = {
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
+
+/**
+ * Always light, always transparent so the animated gradient is what you see.
+ * The OS dark-mode setting must never paint a black sheet over the app.
+ */
+const APP_NAV_THEME: Theme = {
+  ...DefaultTheme,
+  dark: false,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: '#FF6F91',
+    background: 'transparent',
+    card: 'transparent',
+    text: '#3A2A2E',
+    border: 'transparent',
+    notification: '#FF6F91',
+  },
+};
 
 export default function RootLayout() {
   const [locked, setLocked] = useState(false);
@@ -56,14 +74,17 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
-
   return (
     <UsageProvider>
       <ThemeProvider>
         <AnimatedGradientBackground>
-          <NavThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <Stack screenOptions={{ contentStyle: { backgroundColor: 'transparent' } }}>
+          <NavThemeProvider value={APP_NAV_THEME}>
+            <StatusBar style="dark" />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: 'transparent' },
+              }}>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
             </Stack>

@@ -7,7 +7,7 @@ const config = {
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   scheme: 'ilyalways',
-  userInterfaceStyle: 'automatic',
+  userInterfaceStyle: 'light',
   newArchEnabled: true,
   ios: {
     buildNumber: 1001,
