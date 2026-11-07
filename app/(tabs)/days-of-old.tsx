@@ -22,7 +22,6 @@ export const TOLKIEN_QUOTES: Array<{ quote: string; source: string }> = [
   { quote: 'Fly, you fools!', source: 'Gandalf, The Fellowship of the Ring' },
   { quote: 'My precious.', source: 'Gollum, The Fellowship of the Ring' },
   { quote: 'There is some good in this world, Mr. Frodo. And it\u2019s worth fighting for.', source: 'Samwise Gamgee, The Two Towers' },
-  { quote: 'I am no man.', source: '\u00c9owyn, The Return of the King' },
   { quote: 'Go back, to the shadow!', source: 'Gandalf, The Return of the King' },
   { quote: 'A very fine morning to you, my dear.', source: 'Bilbo Baggins, The Fellowship of the Ring' },
   { quote: 'Far away o\u2019er the Misty Mountains cold, to dungeons deep and caverns old.', source: 'Thorin Oakenshield, The Hobbit: An Unexpected Journey' },
