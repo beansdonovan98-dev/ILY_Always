@@ -169,7 +169,7 @@ export default function HomeScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.header}>Home 🏠</Text>
       <Text style={[styles.subtitle, { color: appTheme.subtitleColor }]}>
-        Our little world of sin, snuggles, and secrets — and I&apos;m obsessed with every inch of it 🔥💞
+        Our little corner of the world — snuggles, giggles, and little secrets, just us two 💞
       </Text>
 
       {/* 1. Relationship Tracker */}
