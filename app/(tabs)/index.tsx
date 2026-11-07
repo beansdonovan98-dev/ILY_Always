@@ -286,8 +286,11 @@ export default function HomeScreen() {
         <Text style={styles.body}>{wordOfDay.pronunciation}</Text>
         <Text style={styles.body}>{wordOfDay.definition}</Text>
         <Text style={[styles.loveNote, { color: appTheme.subtitleColor }]}>{wordOfDay.example}</Text>
+      </View>
 
-        <View style={[styles.factDivider, { borderColor: appTheme.borderColor }]} />
+      {/* 5. Fun Fact of the Day */}
+      <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardTitle}>Fun Fact of the Day 🧠</Text>
         <Text style={styles.cardHint}>A tiny thing to learn together today ✨</Text>
         <Text style={styles.body}>{factOfDay}</Text>
@@ -318,7 +321,6 @@ const styles = StyleSheet.create({
   body: { fontSize: 17, marginBottom: 6, lineHeight: 24 },
   big: { fontSize: 26, fontWeight: '800', marginVertical: 4 },
   loveNote: { fontSize: 14, fontStyle: 'italic', marginTop: 8, textAlign: 'center' },
-  factDivider: { borderTopWidth: 1, marginTop: 16, marginBottom: 12 },
   muted: { fontSize: 13, opacity: 0.65, marginTop: 4 },
   noteCard: { padding: 12, marginBottom: 8, borderRadius: 14, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.4)' },
   row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' },

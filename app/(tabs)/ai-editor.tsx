@@ -100,9 +100,9 @@ export default function AIEditorScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={[styles.title, { fontFamily: font }]}>AI Photo Editor 📷</Text>
+      <Text style={[styles.title, { fontFamily: font }]}>Dirty Darkroom 🔥</Text>
       <Text style={[styles.subtitle, { fontFamily: font, color: appTheme.subtitleColor }]}>
-        Re-imagining our favorite moments — naughty, dreamy, or downright filthy 🎨🔥
+        Developing our dirtiest fantasies in the dark — snapshots, but make them sinful 🔞📷
       </Text>
 
       <View style={[styles.card, appTheme.cardStyle]}>

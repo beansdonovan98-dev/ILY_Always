@@ -147,7 +147,7 @@ export default function OurLogScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={[styles.title]}>Our Log 📜</Text>
       <Text style={[styles.subtitle, { color: appTheme.subtitleColor }]}>
-        Every wild story, sweet secret, and unforgettable moment we&apos;ve shared 💋📜
+        Our filthy little diary — every wild, sweet, sinful secret we&apos;ve ever dared to live 💋📜🔥
       </Text>
 
       {/* New entry card */}
@@ -155,7 +155,7 @@ export default function OurLogScreen() {
         <LeafBorder color={appTheme.leafColor} />
 
         <Text style={styles.cardTitle}>New Entry</Text>
-        <Text style={styles.cardHint}>{prettyDate} • A little memory to keep 💭</Text>
+        <Text style={styles.cardHint}>{prettyDate} • Spill the dirty little details here, baby 😏✍️</Text>
 
         <View style={styles.form}>
             <Text style={styles.label}>What's happening?</Text>
@@ -332,7 +332,7 @@ export default function OurLogScreen() {
         <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardTitle}>Today&apos;s Log 📜</Text>
         <Text style={[styles.spicyCaption, { color: appTheme.subtitleColor }]}>
-          Every delicious little detail, kept safe for just us two 😏🔥
+          Read it, remember it, relive it — then do it all again tonight 😏🔥
         </Text>
         <Text style={styles.cardHint}>{prettyDate}</Text>
 
@@ -413,8 +413,8 @@ const styles = StyleSheet.create({
   colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   colorSwatch: { width: 30, height: 30, borderRadius: 15 },
   colorSwatchSelected: { borderWidth: 3 },
-  smallBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 50, marginLeft: 8 },
-  smallBtnText: { fontWeight: '700', fontSize: 12 },
+  smallBtn: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 50, marginLeft: 8 },
+  smallBtnText: { fontWeight: '700', fontSize: 10 },
   entryCard: {
     padding: 14,
     marginTop: 10,

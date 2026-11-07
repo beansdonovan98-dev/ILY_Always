@@ -9,7 +9,7 @@ const DEFAULT_TABS = [
   { id: 'home', label: 'Home 🏠', path: '/' },
   { id: 'our-log', label: 'Our Log 📜', path: '/our-log' },
   { id: 'playtime', label: 'Playtime 😓', path: '/playtime' },
-  { id: 'ai-editor', label: 'AI Photo Editor 📷', path: '/ai-editor' },
+  { id: 'ai-editor', label: 'Dirty Darkroom 🔥', path: '/ai-editor' },
   { id: 'health', label: 'Health 🩺', path: '/health' },
   { id: 'settings', label: 'Settings ⚙️', path: '/settings' },
   { id: 'days-of-old', label: 'The Days of Old 🧙‍♂️', path: '/days-of-old' },

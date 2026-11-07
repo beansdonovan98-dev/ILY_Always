@@ -22,21 +22,22 @@ const DEFAULT_TABS = [
   { id: 'home', label: 'Home 🏠', order: 0 },
   { id: 'our-log', label: 'Our Log 📜', order: 1 },
   { id: 'playtime', label: 'Playtime 😓', order: 2 },
-  { id: 'ai-editor', label: 'AI Photo Editor 📷', order: 3 },
+  { id: 'ai-editor', label: 'Dirty Darkroom 🔥', order: 3 },
   { id: 'health', label: 'Health 🩺', order: 4 },
   { id: 'settings', label: 'Settings ⚙️', order: 5 },
   { id: 'days-of-old', label: 'The Days of Old 🧙‍♂️', order: 6 },
 ];
 
 const GRADIENT_PRESETS = [
-  { name: 'Sunrise', colors: ['#FFE9F0', '#FFD6E8', '#F7D9FF', '#FFF3D6'] },
-  { name: 'Sunset', colors: ['#FFB199', '#FF6F91', '#C86DD7', '#FFD9A0'] },
-  { name: 'Ocean', colors: ['#A1C4FD', '#7FE0E8', '#C2E9FB', '#B8C6FF'] },
-  { name: 'Forest', colors: ['#DFF5C8', '#A8E063', '#5FBF7F', '#ECF9DD'] },
-  { name: 'Lavender', colors: ['#EFE7FF', '#C3B4F3', '#F3D9FA', '#D6E4FF'] },
-  { name: 'Neon', colors: ['#F857A6', '#FF5858', '#8E44FF', '#FFD166'] },
-  { name: 'Cannabis', colors: ['#EAF7D8', '#B8E986', '#5FBF7F', '#2E7D4F'] },
-  { name: 'Cotton Candy', colors: ['#FFD1DC', '#B5EAD7', '#C7CEEA', '#FFDAC1'] },
+  { name: 'Sunrise', colors: ['#FF8FAB', '#FFC1CC', '#F9C6E0', '#FFB5A7'] },
+  { name: 'Sunset', colors: ['#FF5E3A', '#FF2E63', '#9D4EDD', '#FFB347'] },
+  { name: 'Ocean', colors: ['#4D96FF', '#2EC4B6', '#A8DADC', '#457B9D'] },
+  { name: 'Forest', colors: ['#B7E4C7', '#95D5B2', '#40916C', '#D8F3DC'] },
+  { name: 'Lavender', colors: ['#B388FF', '#9B5DE5', '#D9B4FF', '#E0AAFF'] },
+  { name: 'Neon', colors: ['#F72585', '#B5179E', '#7209B7', '#FFD60A'] },
+  { name: 'Cannabis', colors: ['#2E7D32', '#66BB6A', '#A5D6A7', '#7B1FA2'] },
+  { name: 'Cotton Candy', colors: ['#FF8FAB', '#FFAFCC', '#BDE0FE', '#FFC8DD'] },
+  { name: 'Purple Haze', colors: ['#7B1FA2', '#9C27B0', '#BA68C8', '#4A148C'] },
 ];
 
 import { useAppFont } from '@/hooks/useAppFont';

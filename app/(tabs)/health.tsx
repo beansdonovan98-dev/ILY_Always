@@ -346,7 +346,7 @@ export default function HealthScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Health 🩺</Text>
       <Text style={[styles.subtitle, { color: theme.subtitleColor }]}>
-        Keeping our temples sinfully healthy — because this body belongs to you 🔥🌿💦
+        Keeping our dirty little temples fed, fit, and fully charged for mischief 🔥💪💦
       </Text>
 
       {/* Body measurements */}
@@ -364,7 +364,7 @@ export default function HealthScreen() {
       <View style={[styles.card, theme.cardStyle]}>
         <LeafBorder color={theme.leafColor} />
         <Text style={styles.cardTitle}>Weight Tracker ⚖️</Text>
-        <Text style={styles.cardHint}>Your full trend, kept forever — only you can edit your numbers 📈</Text>
+        <Text style={styles.cardHint}>Every number on this scale matters just as much as every number in the bedroom 😏⚖️ (only you can edit yours)</Text>
 
         <WeightChart data={chartData} accentColor={theme.accentColor} textColor={theme.textColor} />
 
@@ -419,7 +419,7 @@ export default function HealthScreen() {
         <LeafBorder color={theme.leafColor} />
         <Text style={styles.cardTitle}>Medicine &amp; Supplements 💊</Text>
         <Text style={styles.cardHint}>
-          Each dose gets logged with the exact time — the log clears at midnight 🌅
+          Twice a day, every day — so we never run out of steam when it matters most 💊🔥 The log clears at midnight 🌅
         </Text>
 
         <TextInput
@@ -513,7 +513,7 @@ export default function HealthScreen() {
         <LeafBorder color={theme.leafColor} />
         <Text style={styles.cardTitle}>Fitness Log 🏋️</Text>
         <Text style={styles.cardHint}>
-          Logging as {USERS[me].name} — your workouts reset daily 🌅
+          Working out keeps us looking dangerous and feeling even dirtier 🏋️💦 Logging as {USERS[me].name} — resets daily 🌅
         </Text>
 
         <TextInput
