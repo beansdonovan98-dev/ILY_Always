@@ -98,11 +98,13 @@ export default function SettingsScreen() {
     };
     const avg = (arr: string[]) =>
       arr.reduce((sum, c) => sum + luminance(c), 0) / arr.length;
-    const darkTheme = avg(colors) < 0.5;
+    // Saturated strain gradients are darker per-channel than pastels,
+    // so a higher threshold keeps text readable on all eight.
+    const darkTheme = avg(colors) < 0.62;
     const accent = colors[1] || colors[0];
-    const border = darkTheme ? 'rgba(255,255,255,0.5)' : 'rgba(46,125,79,0.55)';
+    const border = darkTheme ? 'rgba(255,255,255,0.55)' : 'rgba(46,125,79,0.6)';
     const font = darkTheme ? '#FFFFFF' : '#3A2A2E';
-    const subtitle = darkTheme ? 'rgba(255,255,255,0.85)' : 'rgba(58,42,46,0.75)';
+    const subtitle = darkTheme ? 'rgba(255,255,255,0.8)' : 'rgba(58,42,46,0.72)';
     return { accent_color: accent, border_color: border, subtitle_color: subtitle, font_color: font };
   };
 
@@ -211,35 +213,35 @@ export default function SettingsScreen() {
         <Text style={[styles.cardTitle, { fontFamily: font }]}>Colors</Text>
         <View style={styles.compactGrid}>
           <Text style={styles.compactLabel}>Font</Text>
-          <View style={styles.row}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.swRow}>
             {EVENT_COLORS.map((c) => (
               <Pressable key={c} onPress={() => { setFontColor(c); updateSettings({ font_color: c }); }} style={[styles.colorSwatch, styles.colorSwatchSm, { backgroundColor: c }, fontColor === c && [styles.colorSwatchSelected, appTheme.activeChipStyle]]} />
             ))}
-          </View>
+          </ScrollView>
         </View>
         <View style={styles.compactGrid}>
           <Text style={styles.compactLabel}>Subtitle</Text>
-          <View style={styles.row}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.swRow}>
             {EVENT_COLORS.map((c) => (
               <Pressable key={c} onPress={() => { setSubtitleColor(c); updateSettings({ subtitle_color: c }); }} style={[styles.colorSwatch, styles.colorSwatchSm, { backgroundColor: c }, subtitleColor === c && [styles.colorSwatchSelected, appTheme.activeChipStyle]]} />
             ))}
-          </View>
+          </ScrollView>
         </View>
         <View style={styles.compactGrid}>
           <Text style={styles.compactLabel}>Border</Text>
-          <View style={styles.row}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.swRow}>
             {EVENT_COLORS.map((c) => (
               <Pressable key={c} onPress={() => { setBorderColor(c); updateSettings({ border_color: c }); }} style={[styles.colorSwatch, styles.colorSwatchSm, { backgroundColor: c }, borderColor === c && [styles.colorSwatchSelected, appTheme.activeChipStyle]]} />
             ))}
-          </View>
+          </ScrollView>
         </View>
         <View style={styles.compactGrid}>
           <Text style={styles.compactLabel}>Accent</Text>
-          <View style={styles.row}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.swRow}>
             {EVENT_COLORS.map((c) => (
               <Pressable key={c} onPress={() => { setAccentColor(c); updateSettings({ accent_color: c }); }} style={[styles.colorSwatch, styles.colorSwatchSm, { backgroundColor: c }, accentColor === c && [styles.colorSwatchSelected, appTheme.activeChipStyle]]} />
             ))}
-          </View>
+          </ScrollView>
         </View>
         <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={saveColors}>
           <Text style={styles.btnText}>Save Colors</Text>
@@ -349,6 +351,7 @@ const styles = StyleSheet.create({
   smallBtnText: { fontWeight: '600', fontSize: 12 },
   colorSwatch: { width: 24, height: 24, borderRadius: 12, margin: 3 },
   colorSwatchSm: { width: 18, height: 18, borderRadius: 9, margin: 2 },
+  swRow: { flex: 1 },
   compactGrid: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
   compactLabel: { fontSize: 11, fontWeight: '700', width: 52, paddingTop: 3, opacity: 0.8 },
   tabInput: { minHeight: 32, paddingVertical: 5, marginBottom: 2 },

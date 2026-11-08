@@ -151,37 +151,39 @@ export default function DBTScreen() {
     setNoteSaved(true);
   };
 
+  const renderJournal = () => (
+    <>
+      <Text style={styles.label}>Response Journal ✍️</Text>
+      <Text style={styles.responseHint}>
+        Write about it — what came up, what surprised you. Saved to this skill window. 💭
+      </Text>
+      <TextInput
+        value={response}
+        onChangeText={(v) => {
+          setResponse(v);
+          setNoteSaved(false);
+        }}
+        placeholder="Dear journal..."
+        placeholderTextColor="rgba(58,42,46,0.45)"
+        multiline
+        style={[styles.responseInput, { borderColor: theme.borderColor, color: theme.textColor }]}
+      />
+      <Pressable onPress={saveResponse} style={styles.pillPress}>
+        <LinearGradient
+          colors={[theme.accentColor, '#C86DD7']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.pill}>
+          <Text style={styles.pillText}>{noteSaved && response === savedNote ? 'Saved ✓' : 'Save Response 💾'}</Text>
+        </LinearGradient>
+      </Pressable>
+      {noteSaved && <Text style={styles.doneNote}>Saved to this skill's window 💚</Text>}
+    </>
+  );
+
   const renderTaskBlock = () => {
     if (skill.taskType === 'journal') {
-      return (
-        <>
-          <Text style={styles.label}>Response Journal ✍️</Text>
-          <Text style={styles.responseHint}>
-            Write about it — what came up, what surprised you. Saved to this skill window. 💭
-          </Text>
-          <TextInput
-            value={response}
-            onChangeText={(v) => {
-              setResponse(v);
-              setNoteSaved(false);
-            }}
-            placeholder="Dear journal..."
-            placeholderTextColor="rgba(58,42,46,0.45)"
-            multiline
-            style={[styles.responseInput, { borderColor: theme.borderColor, color: theme.textColor }]}
-          />
-          <Pressable onPress={saveResponse} style={styles.pillPress}>
-            <LinearGradient
-              colors={[theme.accentColor, '#C86DD7']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.pill}>
-              <Text style={styles.pillText}>{noteSaved && response === savedNote ? 'Saved ✓' : 'Save Response 💾'}</Text>
-            </LinearGradient>
-          </Pressable>
-          {noteSaved && <Text style={styles.doneNote}>Saved to this skill's window 💚</Text>}
-        </>
-      );
+      return renderJournal();
     }
 
     if (skill.taskType === 'select') {
@@ -206,6 +208,7 @@ export default function DBTScreen() {
             })}
           </View>
           {answer !== '' && <Text style={styles.doneNote}>Locked in — no overthinking it 💚</Text>}
+          {renderJournal()}
         </>
       );
     }
@@ -236,6 +239,7 @@ export default function DBTScreen() {
               Today you rated it {answer}/10 — that's honest data, darling 💚
             </Text>
           )}
+          {renderJournal()}
         </>
       );
     }
@@ -243,7 +247,7 @@ export default function DBTScreen() {
     // 'check'
     return (
       <>
-        <Text style={styles.responseHint}>Doable right now — no writing needed, just do it.</Text>
+        <Text style={styles.responseHint}>Do it for real — then say how it went below.</Text>
         <Pressable
           onPress={markDone}
           style={[
@@ -255,6 +259,7 @@ export default function DBTScreen() {
           <Text style={[styles.checkLabel, done && styles.checkLabelDone]}>Done today</Text>
         </Pressable>
         {done && <Text style={styles.doneNote}>Beautiful. That counts, darling 💚</Text>}
+        {renderJournal()}
       </>
     );
   };
@@ -269,8 +274,8 @@ export default function DBTScreen() {
       {/* Skill of the day */}
       <View style={[styles.card, theme.cardStyle]}>
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Skill of the Day 🌤️</Text>
-        <Text style={styles.cardHint}>Rotates daily — practice it once, even tiny 🌿</Text>
+        <Text style={styles.cardTitle}>Skill for the Next 2 Days 🌤️</Text>
+        <Text style={styles.cardHint}>A new skill drops every 2 days — practice it once, even tiny 🌿</Text>
 
         <View style={[styles.skillHead, { borderColor: theme.borderColor }]}>
           <Text style={styles.skillEmoji}>{skill.emoji}</Text>
