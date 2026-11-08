@@ -50,7 +50,7 @@ export default function TabDropdown() {
         <Text style={[styles.buttonText, { color: theme.textColor }]}>Menu ☰</Text>
       </Pressable>
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <Pressable style={[styles.backdrop, { backgroundColor: 'rgba(20,10,15,0.45)' }]} onPress={() => setOpen(false)}>
+        <Pressable style={[styles.backdrop, { backgroundColor: 'rgba(20,10,15,0.35)' }]} onPress={() => setOpen(false)}>
           <View style={[styles.menu, theme.cardStyle]}>
             <LeafBorder color={theme.leafColor} size={20} />
             <View style={[styles.handle, { backgroundColor: theme.borderColor }]} />
