@@ -261,18 +261,33 @@ export function WeedPlant({ height = 80, color = '#2E7D32', budColor = '#7B1FA2'
   );
 }
 
-/** A soft smoke puff made of overlapping translucent circles. */
-export function SmokePuff({ size = 60, color = '#9AA0A6', opacity = 0.16 }: {
+/** A soft smoke puff: a cloud of overlapping translucent billows. */
+export function SmokePuff({ size = 60, color = '#CBD5E1', opacity = 0.16 }: {
   size?: number;
   color?: string;
   opacity?: number;
 }) {
-  const w = size * 1.6;
+  const w = size * 1.7;
+  // billow circles: cx, cy, r, alpha multiplier
+  const billows: Array<[number, number, number, number]> = [
+    [26, 38, 13, 0.5],
+    [40, 26, 16, 0.65],
+    [58, 20, 20, 0.8],
+    [76, 26, 15, 0.7],
+    [90, 36, 12, 0.5],
+    [50, 38, 15, 0.45],
+    [66, 38, 14, 0.5],
+    [32, 48, 10, 0.35],
+    [84, 48, 9, 0.35],
+    [58, 46, 16, 0.4],
+  ];
   return (
-    <Svg width={w} height={size} viewBox="0 0 96 60" style={{ opacity }}>
-      <Ellipse cx={26} cy={38} rx={20} ry={14} fill={color} />
-      <Ellipse cx={52} cy={26} rx={24} ry={16} fill={color} />
-      <Ellipse cx={74} cy={38} rx={18} ry={12} fill={color} />
+    <Svg width={w} height={size} viewBox="0 0 110 68" style={{ opacity }}>
+      {billows.map(([cx, cy, r, a], i) => (
+        <Ellipse key={i} cx={cx} cy={cy} rx={r * 1.6} ry={r} fill={color} opacity={a} />
+      ))}
+      {/* brighter core billow */}
+      <Ellipse cx={58} cy={28} rx={24} ry={14} fill="#FFFFFF" opacity={0.18} />
     </Svg>
   );
 }
