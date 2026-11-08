@@ -12,7 +12,7 @@ import { useUsage } from '@/contexts/UsageContext';
 import { getCoupleId } from '@/lib/couple';
 import { notifyPartner } from '@/lib/push';
 import { getCoupleSettings, upsertCoupleSettings } from '@/lib/appearance';
-import { getSignedUrl, MediaRow, resolveMime, updateCaption, uploadMedia, validateSize } from '@/lib/media';
+import { getSignedUrl, MediaRow, deleteMedia, resolveMime, updateCaption, uploadMedia, validateSize } from '@/lib/media';
 import { supabase } from '@/lib/supabase';
 
 const CAPTIONS_KEY = 'coverCaptions';
@@ -238,14 +238,24 @@ export default function HomeScreen() {
                   <Text style={styles.muted}>
                     Partner: {(photo.captions && photo.captions[currentUser === 'daddy' ? 'princess' : 'daddy']) || ''}
                   </Text>
-                  <Pressable
-                    onPress={() => {
-                      setEditingCaptionId(photo.id);
-                      setCaptionDraft((photo.captions && photo.captions[currentUser]) || photo.caption || '');
-                    }}
-                    style={[styles.smallBtn, appTheme.buttonStyle]}>
-                    <Text style={styles.smallBtnText}>Edit My Caption</Text>
-                  </Pressable>
+                  <View style={styles.row}>
+                    <Pressable
+                      onPress={() => {
+                        setEditingCaptionId(photo.id);
+                        setCaptionDraft((photo.captions && photo.captions[currentUser]) || photo.caption || '');
+                      }}
+                      style={[styles.smallBtn, appTheme.buttonStyle]}>
+                      <Text style={styles.smallBtnText}>Edit My Caption</Text>
+                    </Pressable>
+                    <Pressable style={[styles.smallBtn, styles.smallBtnSecondary]} onPress={() => {
+                      deleteMedia(photo).then(
+                        () => setCoverMedia((prev) => prev.filter((p) => p.id !== photo.id)),
+                        () => {}
+                      );
+                    }}>
+                      <Text style={styles.smallBtnText}>Delete 🗑️</Text>
+                    </Pressable>
+                  </View>
                 </View>
               )}
             </View>
