@@ -574,7 +574,7 @@ export default function HealthScreen() {
     const label = personLabel(person);
 
     return (
-      <View style={[styles.subCard, { borderColor: theme.borderColor }]}>
+      <View style={[styles.subCard, styles.sideCard, { borderColor: theme.borderColor }]}>
         <View style={styles.subHeader}>
           <Text style={styles.subTitle}>{label}</Text>
           <Text style={[styles.tag, isMe ? styles.tagYou : styles.tagLock]}>
@@ -583,7 +583,7 @@ export default function HealthScreen() {
         </View>
 
         {BODY_FIELDS.map((field) => (
-          <View key={field.key} style={styles.metricRow}>
+          <View key={field.key} style={styles.metricColumn}>
             <Text style={styles.metricLabel}>
               {field.emoji} {field.label}
             </Text>
@@ -594,7 +594,7 @@ export default function HealthScreen() {
                 placeholder="—"
                 placeholderTextColor="rgba(58,42,46,0.4)"
                 keyboardType="decimal-pad"
-                style={[styles.metricInput, { borderColor: theme.borderColor, color: theme.textColor }]}
+                style={[styles.metricInput, styles.metricInputFull, { borderColor: theme.borderColor, color: theme.textColor }]}
               />
             ) : (
               <Text style={styles.metricValue}>{metrics[field.key] || '—'}</Text>
@@ -1144,6 +1144,9 @@ const styles = StyleSheet.create({
   empty: { fontSize: 14, opacity: 0.6, marginTop: 10 },
   sideRow: { flexDirection: 'row', gap: 10, marginTop: 2 },
   sidePanel: { flex: 1 },
+  sideCard: { flex: 1, marginTop: 0 },
+  metricColumn: { flexDirection: 'column', alignItems: 'stretch', gap: 4, marginBottom: 10 },
+  metricInputFull: { width: '100%', textAlign: 'left' },
   fitnessRow: {
     flexDirection: 'row',
     alignItems: 'center',
