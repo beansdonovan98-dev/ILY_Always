@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 
@@ -59,19 +59,39 @@ const SKILLS: Skill[] = [
 ];
 
 const DONE_KEY = (dateKey: string) => `dbt:done:${dateKey}`;
+const RESPONSE_KEY = (windowKey: string, skillId: string) => `dbt:response:${windowKey}:${skillId}`;
+
+/** Skills rotate on a 2-day window (a new skill drops every other day). */
+function twoDayWindow(date = new Date()): { index: number; windowKey: string; daysLeft: number } {
+  const epoch = new Date('2026-01-04T12:00:00').getTime(); // a Sunday
+  const days = Math.floor((date.getTime() - epoch) / (24 * 60 * 60 * 1000));
+  const safeDays = Math.max(days, 0);
+  const index = Math.floor(safeDays / 2);
+  const windowStart = new Date(epoch + index * 2 * 24 * 60 * 60 * 1000);
+  const windowKey = `${windowStart.getFullYear()}-${String(windowStart.getMonth() + 1).padStart(2, '0')}-${String(windowStart.getDate()).padStart(2, '0')}`;
+  const daysLeft = 2 - (safeDays % 2) > 0 ? 2 - (safeDays % 2) : 1;
+  return { index, windowKey, daysLeft };
+}
 
 export default function DBTScreen() {
   const theme = useAppTheme();
   const [done, setDone] = useState(false);
   const [streak, setStreak] = useState(0);
   const [celebration, setCelebration] = useState<{ mode: 'small' | 'big'; message: string } | null>(null);
+  const [response, setResponse] = useState('');
+  const [savedNote, setSavedNote] = useState('');
+  const [noteSaved, setNoteSaved] = useState(false);
 
   const today = todayKey(new Date());
-  const seed = daySeed(new Date());
-  const skill = SKILLS[seed % SKILLS.length];
+  const window2 = twoDayWindow(new Date());
+  const skill = SKILLS[window2.index % SKILLS.length];
 
   const load = useCallback(async () => {
     setDone(await getItem<boolean>(DONE_KEY(today), false));
+    const resp = await getItem<string>(RESPONSE_KEY(window2.windowKey, skill.id), '');
+    setResponse(resp);
+    setSavedNote(resp);
+    setNoteSaved(resp.length > 0);
     let s = 0;
     for (let back = 0; back < 365; back++) {
       const d = new Date(`${today}T12:00:00`);
@@ -85,13 +105,19 @@ export default function DBTScreen() {
       s += 1;
     }
     setStreak(s);
-  }, [today]);
+  }, [today, skill.id, window2.windowKey]);
 
   useFocusEffect(
     useCallback(() => {
       void load();
     }, [load])
   );
+
+  const saveResponse = async () => {
+    await setItem(RESPONSE_KEY(window2.windowKey, skill.id), response);
+    setSavedNote(response);
+    setNoteSaved(true);
+  };
 
   const markDone = async () => {
     const next = !done;
@@ -149,7 +175,31 @@ export default function DBTScreen() {
             <Text style={styles.pillText}>{done ? 'Practiced ✓' : 'I practiced it today ✓'}</Text>
           </LinearGradient>
         </Pressable>
-        {done && <Text style={styles.doneNote}>Beautiful. That counts, darling 💚</Text>}
+        <Text style={styles.label}>Response Journal ✍️</Text>
+        <Text style={styles.responseHint}>
+          Write about it — what came up, what surprised you. Saved to this skill window. 💭
+        </Text>
+        <TextInput
+          value={response}
+          onChangeText={(v) => {
+            setResponse(v);
+            setNoteSaved(false);
+          }}
+          placeholder="Dear journal..."
+          placeholderTextColor="rgba(58,42,46,0.45)"
+          multiline
+          style={[styles.responseInput, { borderColor: theme.borderColor, color: theme.textColor }]}
+        />
+        <Pressable onPress={saveResponse} style={styles.pillPress}>
+          <LinearGradient
+            colors={[theme.accentColor, '#C86DD7']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.pill}>
+            <Text style={styles.pillText}>{noteSaved && response === savedNote ? 'Saved ✓' : 'Save Response 💾'}</Text>
+          </LinearGradient>
+        </Pressable>
+        {noteSaved && <Text style={styles.doneNote}>Saved to this skill's window 💚</Text>}
       </View>
 
       {/* Streak */}
@@ -222,6 +272,16 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '700', marginTop: 14, marginBottom: 6, opacity: 0.8 },
   step: { fontSize: 14, lineHeight: 21, marginBottom: 4, opacity: 0.85 },
   practice: { fontSize: 14, lineHeight: 21, fontStyle: 'italic', opacity: 0.9 },
+  responseHint: { fontSize: 12, fontStyle: 'italic', opacity: 0.7, marginBottom: 6, lineHeight: 17 },
+  responseInput: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    minHeight: 90,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    fontSize: 14,
+    textAlignVertical: 'top',
+  },
   pillPress: { alignSelf: 'flex-start', marginTop: 14 },
   pill: { paddingVertical: 13, paddingHorizontal: 26, borderRadius: 50 },
   pillText: { fontWeight: '800', fontSize: 15, color: '#FFFFFF' },
