@@ -95,7 +95,7 @@ export function subscribeCoupleSettings(
   onChange: (settings: CoupleSettings) => void
 ): () => void {
   const channel = supabase
-    .channel(`couple_settings:${coupleId}`)
+    .channel(`couple_settings:${coupleId}:${Math.random().toString(36).slice(2, 9)}`)
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'couple_settings', filter: `couple_id=eq.${coupleId}` },

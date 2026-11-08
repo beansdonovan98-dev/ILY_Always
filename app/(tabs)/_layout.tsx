@@ -43,7 +43,7 @@ function PresencePill() {
     (async () => {
       const cid = await getCoupleId();
       const channel = supabase
-        .channel(`presence:${cid}:${partner}`)
+        .channel(`presence:${cid}:${partner}:${Math.random().toString(36).slice(2, 9)}`)
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'presence', filter: `couple_id=eq.${cid},user_key=eq.${partner}` },
