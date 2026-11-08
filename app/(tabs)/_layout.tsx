@@ -4,6 +4,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, w
 
 import TabDropdown from '@/components/TabDropdown';
 import { SmokeTransition, bongHaptic } from '@/components/CannabisFeatures';
+import { PassTheJoint } from '@/components/PassTheJoint';
 import { SMOKE_BURST_EVENT } from '@/components/CannabisOverlay';
 import { JointVector } from '@/components/CannabisHardware';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -175,7 +176,12 @@ export default function TabLayout() {
             <Text style={{ fontWeight: '600', fontSize: 14, color: settings?.font_color || '#3A2A2E', fontFamily: appTheme.fontFamily }}>Log out 🔒</Text>
           </Pressable>
         ),
-        headerRight: () => <TabDropdown />,
+        headerRight: () => (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginRight: 12 }}>
+            <PassTheJoint />
+            <TabDropdown />
+          </View>
+        ),
       }}>
       <Tabs.Screen name="index" />
       <Tabs.Screen name="our-log" />

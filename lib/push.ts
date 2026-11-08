@@ -4,7 +4,7 @@ import { hasSupabaseEnv, supabase } from '@/lib/supabase';
 import { getItem, setItem } from '@/lib/storage';
 import { HealthUser } from '@/lib/health';
 
-export type PushEventKind = 'login' | 'cover' | 'playtime' | 'dose';
+export type PushEventKind = 'login' | 'cover' | 'playtime' | 'dose' | 'joint';
 
 const TOKEN_KEY = (coupleId: string, user: HealthUser) => `pushToken:${coupleId}:${user}`;
 

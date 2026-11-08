@@ -23,6 +23,10 @@ const COPY: Record<string, (from: string) => { title: string; body: string }> = 
   cover: () => ({ title: 'New Daily Cover Photo 📸', body: 'Your lover just posted today\'s cover — go look 🔥' }),
   playtime: () => ({ title: 'Playtime message 🥵', body: 'Someone is thinking dirty thoughts about you 💋' }),
   dose: () => ({ title: 'Dose taken 💊', body: 'Your lover just tapped "Take now" — nice work, gorgeous 🌿' }),
+  joint: (from) =>
+    from === 'daddy'
+      ? { title: 'Your lover passed you a joint 🔥', body: 'He lit it for you — take a hit, gorgeous 🌿' }
+      : { title: 'Your lover passed you a joint 🔥', body: 'She lit it for you — take a hit, gorgeous 🌿' },
 };
 
 Deno.serve(async (req) => {

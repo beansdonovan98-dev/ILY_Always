@@ -135,8 +135,6 @@ export function SmokeTransition({ pathname }: { pathname: string }) {
     return () => clearTimeout(t);
   }, [pathname, x1, x2]);
 
-  if (!active) return null;
-
   const s1 = useAnimatedStyle(() => ({
     transform: [{ translateX: x1.value }],
     opacity: 0.85,
@@ -145,6 +143,8 @@ export function SmokeTransition({ pathname }: { pathname: string }) {
     transform: [{ translateX: x2.value }],
     opacity: 0.6,
   }));
+
+  if (!active) return null;
 
   return (
     <View pointerEvents="none" style={styles.transition}>

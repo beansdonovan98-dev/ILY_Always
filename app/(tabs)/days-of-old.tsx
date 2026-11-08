@@ -11,6 +11,7 @@ import { getItem } from '@/lib/storage';
 import { daySeed, USERS } from '@/constants/content';
 import { getDayLogEntries, LogEntry, formatTimeForDisplay } from '@/lib/log';
 import { getCoupleSettings } from '@/lib/appearance';
+import { StashBox } from '@/components/StashBox';
 import { getSignedUrl, MediaRow } from '@/lib/media';
 import { supabase } from '@/lib/supabase';
 import { loadDailyTasks, loadDailyChecks } from '@/lib/health';
@@ -114,18 +115,9 @@ export default function DaysOfOldScreen() {
       <Text style={[styles.subtitle, { fontFamily: font, color: appTheme.subtitleColor }]}>
         “{quoteOfDay.quote}” — {quoteOfDay.source} 🧙‍♂️
       </Text>
-      {dates.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No past days yet.</Text>}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-        <View style={styles.row}>
-          {dates.map((d) => (
-            <Pressable key={d} onPress={() => openDate(d)} style={[[styles.dateChip, appTheme.chipStyle], selectedDate === d && [styles.dateChipSelected, appTheme.activeChipStyle]]}>
-              <Text style={styles.dateChipText}>{d}</Text>
-            </Pressable>
-          ))}
-        </View>
-      </ScrollView>
 
-      {selectedDate && (
+      {/* Stash Box right under the quote: jar archive + strain badges */}
+      <StashBox dates={dates} selectedDate={selectedDate} onPick={openDate} detail={selectedDate ? (
         <View>
           <Text style={styles.sectionTitle}>{selectedDate} (read-only)</Text>
           <Text style={styles.sectionSub}>Our Log 📜</Text>
@@ -175,7 +167,7 @@ export default function DaysOfOldScreen() {
             </View>
           ))}
         </View>
-      )}
+      ) : null} />
     </ScrollView>
   );
 }

@@ -11,6 +11,7 @@ import { UsageProvider, useUsage } from '@/contexts/UsageContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import AnimatedGradientBackground from '@/components/AnimatedGradientBackground';
 import CannabisOverlay from '@/components/CannabisOverlay';
+import Mode420 from '@/components/Mode420';
 import { Caveat_400Regular } from '@expo-google-fonts/caveat';
 import { ComicNeue_400Regular } from '@expo-google-fonts/comic-neue';
 
@@ -125,6 +126,7 @@ function RootLayoutNav() {
           </NavThemeProvider>
           {/* Ambient smoke + falling leaves across every screen (untappable) */}
           <CannabisOverlay color={settings?.accent_color || '#2E7D4F'} />
+          <Mode420 />
         </AnimatedGradientBackground>
       </ThemeProvider>
     </UsageProvider>
