@@ -7,6 +7,7 @@ import { useUsage } from '@/contexts/UsageContext';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { getCoupleId } from '@/lib/couple';
 import { pingPresence, readPresence, isOnline } from '@/lib/presence';
+import { supabase } from '@/lib/supabase';
 import { USERS, UserKey } from '@/constants/content';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -29,9 +30,38 @@ function PresencePill() {
 
   useEffect(() => {
     refresh();
-    const t = setInterval(() => void refresh(), 15000);
+    const t = setInterval(() => void refresh(), 5000);
     return () => clearInterval(t);
   }, [refresh]);
+
+  // Live: the moment her phone pings, our row updates — no polling lag.
+  useEffect(() => {
+    if (!authenticated) return;
+    let alive = true;
+    let unsub: (() => void) | undefined;
+    (async () => {
+      const cid = await getCoupleId();
+      const channel = supabase
+        .channel(`presence:${cid}:${partner}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'presence', filter: `couple_id=eq.${cid},user_key=eq.${partner}` },
+          async (payload) => {
+            if (!alive) return;
+            const row = payload.new as { last_seen?: string } | undefined;
+            if (row?.last_seen) setOnline(isOnline(Date.parse(row.last_seen)));
+          }
+        )
+        .subscribe();
+      unsub = () => {
+        supabase.removeChannel(channel);
+      };
+    })();
+    return () => {
+      alive = false;
+      unsub?.();
+    };
+  }, [authenticated, partner]);
 
   useEffect(() => {
     if (!authenticated) return;
