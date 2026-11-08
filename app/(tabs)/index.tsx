@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { daySeed, FACTS_OF_THE_DAY, RELATIONSHIP_START, todayKey, USERS, WORDS_OF_THE_DAY } from '@/constants/content';
 import { getItem, setItem } from '@/lib/storage';
+import { localDateKey } from '@/lib/days';
 import { useUsage } from '@/contexts/UsageContext';
 import { getCoupleId } from '@/lib/couple';
 import { notifyPartner } from '@/lib/push';
@@ -269,7 +270,7 @@ export default function HomeScreen() {
         <Text style={styles.cardTitle}>Love Notes 💌</Text>
         <Text style={styles.cardHint}>Little whispers for your heart 💌</Text>
 
-        {loveNotes.filter((n) => n.created_at.slice(0, 10) === today).map((n) => (
+        {loveNotes.filter((n) => localDateKey(new Date(n.created_at)) === todayKey()).map((n) => (
           <View key={n.id} style={[styles.noteCard, { borderColor: appTheme.borderColor }]}>
             <Text style={styles.body}>{n.text}</Text>
             <Text style={styles.muted}>{USERS[n.author as keyof typeof USERS]?.label || n.author} • {new Date(n.created_at).toLocaleString()}</Text>

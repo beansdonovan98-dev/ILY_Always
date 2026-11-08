@@ -66,11 +66,13 @@ export default function PlaytimeScreen() {
   }, []);
 
   const loadMedia = useCallback(async (cid: string) => {
+    const today = localDateKey();
     const { data, error } = await supabase
       .from('media')
       .select('*')
       .eq('couple_id', cid)
       .eq('kind', 'private')
+      .eq('daily_date', today)
       .order('created_at', { ascending: false });
     if (error) return;
     const rows = (data || []) as MediaRow[];

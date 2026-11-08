@@ -384,16 +384,17 @@ export default function HealthScreen() {
 
   /* --------------------- weight + fitness panels --------------------- */
 
-  const renderWeightPanel = () => {
+  const renderWeightChartCard = () => {
     const hisList = me === 'daddy' ? weights : theirWeights;
     const hersList = me === 'princess' ? weights : theirWeights;
 
     return (
-      <View style={[styles.subCard, { borderColor: theme.borderColor }]}>
-        <View style={styles.subHeader}>
-          <Text style={styles.subTitle}>His 🍆 + Hers 🍑</Text>
-          <Text style={[styles.tag, styles.tagYou]}>Shared chart</Text>
-        </View>
+      <View style={[styles.card, theme.cardStyle]}>
+        <LeafBorder color={theme.leafColor} />
+        <Text style={styles.cardTitle}>Weight Chart 📈</Text>
+        <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
+          One chart for both of us — your line, her line, same scale, gorgeous 📊
+        </Text>
 
         <WeightChart
           series={[
@@ -402,6 +403,21 @@ export default function HealthScreen() {
           ]}
           textColor={theme.textColor}
         />
+      </View>
+    );
+  };
+
+  const renderWeightTrackerCard = () => {
+    const hisList = me === 'daddy' ? weights : theirWeights;
+    const hersList = me === 'princess' ? weights : theirWeights;
+
+    return (
+      <View style={[styles.card, theme.cardStyle]}>
+        <LeafBorder color={theme.leafColor} />
+        <Text style={styles.cardTitle}>Weight Tracker ⚖️</Text>
+        <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
+          Every number on this scale matters just as much as every number in the bedroom 😏⚖️ (only you can edit yours — lbs)
+        </Text>
 
         <Text style={styles.ownLine}>
           {me === 'daddy' ? 'His' : 'Hers'} — only you can edit yours
@@ -806,14 +822,11 @@ export default function HealthScreen() {
         {renderStreakDots(waterDoneDay(theirWater))}
       </View>
 
-      {/* Weight */}
-      <View style={[styles.card, theme.cardStyle]}>
-        <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Weight Tracker ⚖️</Text>
-        <Text style={styles.cardHint}>Every number on this scale matters just as much as every number in the bedroom 😏⚖️ (only you can edit yours — lbs)</Text>
+      {/* Weight chart (shared) */}
+      {renderWeightChartCard()}
 
-        {renderWeightPanel()}
-      </View>
+      {/* Weight */}
+      {renderWeightTrackerCard()}
 
       {/* Body measurements */}
       <View style={[styles.card, theme.cardStyle]}>
