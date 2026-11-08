@@ -12,6 +12,7 @@ import { useUsage } from '@/contexts/UsageContext';
 
 import { getCoupleId } from '@/lib/couple';
 import { notifyPartner } from '@/lib/push';
+import { markActivity } from '@/lib/activity';
 import { getItem } from '@/lib/storage';
 import { localDateKey } from '@/lib/days';
 import { USERS } from '@/constants/content';
@@ -209,6 +210,7 @@ export default function HealthScreen() {
   const addWeight = async () => {
     const value = parseFloat(wVal.replace(',', '.'));
     if (!isFinite(value) || value <= 0) return;
+    void markActivity('health', me);
     if (editingWeightId) {
       setWeights(await updateWeightEntry(coupleId, me, editingWeightId, value));
       setEditingWeightId(null);
@@ -237,6 +239,7 @@ export default function HealthScreen() {
 
   const addMed = async () => {
     if (!mName.trim()) return;
+    void markActivity('health', me);
     const next = await addMedRow(coupleId, {
       name: mName.trim(),
       dosage: mDose.trim(),
@@ -252,6 +255,7 @@ export default function HealthScreen() {
   };
 
   const takeMed = async (med: Med) => {
+    void markActivity('health', me);
     setMedLogs(await logMedDose(coupleId, med));
     if (coupleId) void notifyPartner(coupleId, me, 'dose');
   };
@@ -277,6 +281,7 @@ export default function HealthScreen() {
 
   const addFitness = async () => {
     if (!fEx.trim()) return;
+    void markActivity('health', me);
     const entry: FitnessEntry = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       exercise: fEx.trim(),
@@ -303,6 +308,7 @@ export default function HealthScreen() {
     Boolean(checks[`${taskId}|${dateKey}`]);
 
   const toggleTask = async (task: DailyTask) => {
+    void markActivity('health', me);
     const today = localDateKey();
     const next = await toggleDailyCheck(coupleId, me, myDaily, task.id, today);
     setMyDaily(next);

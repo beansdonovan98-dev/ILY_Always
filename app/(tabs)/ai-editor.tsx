@@ -6,7 +6,7 @@ import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import * as ImagePicker from 'expo-image-picker';
-import * as MediaLibrary from 'expo-media-library';
+import * as MediaLibrary from 'expo-media-library/legacy';
 import { Image as ExpoImage } from 'expo-image';
 
 import { getCoupleId } from '@/lib/couple';
@@ -15,6 +15,7 @@ import { uploadMedia, getSignedUrl, MediaRow } from '@/lib/media';
 import { supabase } from '@/lib/supabase';
 import { localDateKey } from '@/lib/days';
 import { useUsage } from '@/contexts/UsageContext';
+import { markActivity } from '@/lib/activity';
 
 import { useAppFont } from '@/hooks/useAppFont';
 
@@ -100,6 +101,7 @@ export default function AIEditorScreen() {
         dailyDate: localDateKey(),
       });
       await getSignedUrl(row);
+      void markActivity('ai-editor', currentUser);
       setStatus('Saved to shared covers! It will show up on Home 📸');
     } catch (e) {
       const msg = e instanceof Error ? e.message : JSON.stringify(e);

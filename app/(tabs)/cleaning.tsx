@@ -10,6 +10,7 @@ import { useUsage } from '@/contexts/UsageContext';
 
 import { getCoupleId } from '@/lib/couple';
 import { localDateKey } from '@/lib/days';
+import { markActivity } from '@/lib/activity';
 import {
   Cadence,
   Chore,
@@ -62,6 +63,7 @@ export default function CleaningScreen() {
     allDone(next, cadence, chores, currentCycleKey(cadence, today));
 
   const toggle = async (cadence: Cadence, chore: Chore) => {
+    void markActivity('cleaning', currentUser);
     const cycleKey = currentCycleKey(cadence, today);
     const next = await toggleCheck(coupleId, checks, cadence, chore.id, cycleKey);
     setChecks(next);

@@ -6,6 +6,8 @@ import { getCoupleId } from '@/lib/couple';
 import { getCoupleSettings } from '@/lib/appearance';
 import { LeafBorder } from '@/components/CannabisLeaf';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useUsage } from '@/contexts/UsageContext';
+import { loadActivityDots } from '@/lib/activity';
 
 const DEFAULT_TABS = [
   { id: 'home', label: 'Home 🏠', path: '/' },
@@ -23,8 +25,10 @@ export default function TabDropdown() {
   const router = useRouter();
   const pathname = usePathname();
   const theme = useAppTheme();
+  const { currentUser } = useUsage();
   const [open, setOpen] = useState(false);
   const [tabs, setTabs] = useState(DEFAULT_TABS);
+  const [activity, setActivity] = useState<Record<string, { daddy: boolean; princess: boolean }>>({});
 
   useEffect(() => {
     (async () => {
@@ -42,6 +46,17 @@ export default function TabDropdown() {
     })();
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    loadActivityDots().then((dots) => {
+      if (alive) setActivity(dots);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [open]);
+
   const current = tabs.find((o) => o.path === pathname || (o.id === 'home' && (pathname === '/' || pathname === '/index' || pathname === '/(tabs)'))) || tabs[0] || DEFAULT_TABS[0];
 
   return (
@@ -56,7 +71,11 @@ export default function TabDropdown() {
             <View style={[styles.handle, { backgroundColor: theme.borderColor }]} />
             <Text style={[styles.menuTitle, { color: theme.textColor }]}>Where are we going? 🌿</Text>
             <ScrollView showsVerticalScrollIndicator={false}>
-              {tabs.map((o, i) => (
+              {tabs.map((o, i) => {
+                const dots = activity[o.id];
+                const mine = dots?.[currentUser as 'daddy' | 'princess'] ?? false;
+                const hers = dots?.[currentUser === 'daddy' ? 'princess' : 'daddy'] ?? false;
+                return (
                 <Pressable
                   key={o.id}
                   style={[
@@ -69,9 +88,12 @@ export default function TabDropdown() {
                     router.push(o.path as any);
                   }}>
                   <Text style={[styles.itemText, { color: theme.textColor }]}>{o.label}</Text>
+                  {mine ? <View style={[styles.dot, { backgroundColor: '#7B1FA2' }]} /> : null}
+                  {hers ? <View style={[styles.dot, { backgroundColor: '#FF8FAB' }]} /> : null}
                   <Text style={[styles.itemChevron, { color: theme.accentColor }]}>{o.path === pathname ? '●' : '›'}</Text>
                 </Pressable>
-              ))}
+                );
+              })}
             </ScrollView>
             <Pressable style={[styles.closeBtn, { backgroundColor: theme.accentSoft }]} onPress={() => setOpen(false)}>
               <Text style={[styles.closeBtnText, { color: theme.textColor }]}>Stay here ✕</Text>
@@ -102,6 +124,7 @@ const styles = StyleSheet.create({
   menuTitle: { fontSize: 20, fontWeight: '800', marginBottom: 12, textAlign: 'center' },
   item: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 6, borderRadius: 12, borderBottomWidth: 1 },
   itemText: { fontSize: 17, fontWeight: '700', flex: 1 },
+  dot: { width: 9, height: 9, borderRadius: 5, marginLeft: 6, marginRight: 2 },
   itemChevron: { fontSize: 15, fontWeight: '700' },
   closeBtn: { marginTop: 12, alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 28, borderRadius: 50 },
   closeBtnText: { fontWeight: '700', fontSize: 13 },

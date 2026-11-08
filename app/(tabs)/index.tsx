@@ -14,6 +14,7 @@ import { getCoupleId } from '@/lib/couple';
 import { notifyPartner } from '@/lib/push';
 import { getCoupleSettings, upsertCoupleSettings } from '@/lib/appearance';
 import { getSignedUrl, MediaRow, deleteMedia, resolveMime, updateCaption, uploadMedia, validateSize } from '@/lib/media';
+import { markActivity } from '@/lib/activity';
 import { supabase } from '@/lib/supabase';
 
 const CAPTIONS_KEY = 'coverCaptions';
@@ -128,6 +129,7 @@ export default function HomeScreen() {
           dailyDate: today,
         });
         setCoverMedia((prev) => [row, ...prev]);
+        void markActivity('home', currentUser);
         void notifyPartner(cid, currentUser, 'cover');
         try {
           const url = await getSignedUrl(row);
@@ -163,6 +165,7 @@ export default function HomeScreen() {
     const next = [...loveNotes, note];
     setLoveNotes(next);
     setNoteDraft('');
+    void markActivity('home', currentUser);
     await upsertCoupleSettings({ couple_id: coupleId, love_notes: next, updated_at: new Date().toISOString() });
   }, [coupleId, currentUser, loveNotes, noteDraft]);
 

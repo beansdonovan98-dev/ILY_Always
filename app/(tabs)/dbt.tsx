@@ -7,9 +7,11 @@ import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
 import { Celebration } from '@/components/Celebration';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { useUsage } from '@/contexts/UsageContext';
 
 import { getItem, setItem } from '@/lib/storage';
 import { todayKey } from '@/constants/content';
+import { markActivity } from '@/lib/activity';
 
 interface Skill {
   id: string;
@@ -78,6 +80,7 @@ function twoDayWindow(date = new Date()): { index: number; windowKey: string; da
 
 export default function DBTScreen() {
   const theme = useAppTheme();
+  const { currentUser } = useUsage();
   const [done, setDone] = useState(false);
   const [streak, setStreak] = useState(0);
   const [celebration, setCelebration] = useState<{ mode: 'small' | 'big'; message: string } | null>(null);
@@ -137,6 +140,7 @@ export default function DBTScreen() {
 
   const markDone = async () => {
     if (!assignmentComplete()) return;
+    void markActivity('dbt', currentUser);
     const next = !done;
     setDone(next);
     await setItem(DONE_KEY(today), next);
@@ -381,6 +385,9 @@ export default function DBTScreen() {
         <LeafBorder color={theme.leafColor} />
         <Text style={styles.cardTitle}>Skill for the Next 2 Days 🌤️</Text>
         <Text style={styles.cardHint}>A new skill drops every 2 days — practice it once, even tiny 🌿</Text>
+        <Text style={[styles.countdown, { color: theme.accentColor }]}>
+          ⏳ New skill in {window2.daysLeft} day{window2.daysLeft === 1 ? '' : 's'}
+        </Text>
 
         <View style={[styles.skillHead, { borderColor: theme.borderColor }]}>
           <Text style={styles.skillEmoji}>{skill.emoji}</Text>
@@ -481,6 +488,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 19, fontWeight: '800', marginBottom: 4 },
   cardHint: { fontSize: 13, fontStyle: 'italic', opacity: 0.72, marginBottom: 10, lineHeight: 18 },
+  countdown: { fontSize: 13, fontWeight: '800', marginBottom: 8 },
   flex: { flex: 1 },
   skillHead: {
     flexDirection: 'row',

@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 
 import { getCoupleId } from '@/lib/couple';
 import { localDateKey } from '@/lib/days';
+import { markActivity } from '@/lib/activity';
 import { getItem, setItem } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 import { USERS, UserKey } from '@/constants/content';
@@ -111,6 +112,7 @@ export default function PlaytimeScreen() {
     const next = [...messages, msg];
     await persistMessages(next);
     setDraftMessage('');
+    void markActivity('playtime', activeUser);
     if (coupleId) void notifyPartner(coupleId, activeUser, 'playtime');
   }, [draftMessage, activeUser, messages, persistMessages, coupleId]);
 
