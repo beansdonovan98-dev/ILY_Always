@@ -1,15 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
+import * as ImageManipulator from 'expo-image-manipulator';
 
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
-
-function mimeForUri(uri: string): string {
-  const ext = uri.split('?')[0].split('.').pop()?.toLowerCase();
-  if (ext === 'png') return 'image/png';
-  if (ext === 'gif') return 'image/gif';
-  if (ext === 'webp') return 'image/webp';
-  if (ext === 'heic' || ext === 'heif') return 'image/heic';
-  return 'image/jpeg';
-}
 
 const FRIENDLY: Record<number, string> = {
   401: 'Your OpenAI API key is invalid or missing.',
@@ -19,11 +11,24 @@ const FRIENDLY: Record<number, string> = {
 };
 
 export async function editImageWithAI(imageUrl: string, prompt: string): Promise<string> {
-  const mimeType = mimeForUri(imageUrl);
+  // OpenAI only accepts PNG/JPEG. iPhones shoot HEIC by default -> convert
+  // to JPEG first so the AI never sees an unsupported file type.
+  let uri = imageUrl;
+  let mimeType = 'image/jpeg';
+  try {
+    const converted = await ImageManipulator.manipulateAsync(uri, [], {
+      compress: 0.9,
+      format: ImageManipulator.SaveFormat.JPEG,
+    });
+    uri = converted.uri;
+    mimeType = 'image/jpeg';
+  } catch {
+    // Fall through with the original pick if the converter is unavailable.
+  }
 
   let imageBase64: string;
   try {
-    imageBase64 = await FileSystem.readAsStringAsync(imageUrl, {
+    imageBase64 = await FileSystem.readAsStringAsync(uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
   } catch {
