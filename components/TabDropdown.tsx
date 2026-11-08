@@ -84,7 +84,7 @@ export default function TabDropdown() {
 }
 
 const styles = StyleSheet.create({
-  root: { marginRight: 12 },
+  root: { marginRight: 12, marginTop: 2 },
   button: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: 'rgba(120,120,120,0.2)', borderWidth: 1 },
   buttonText: { fontWeight: '600', fontSize: 14 },
   backdrop: { flex: 1, justifyContent: 'flex-end' },

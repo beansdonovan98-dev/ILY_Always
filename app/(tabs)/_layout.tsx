@@ -21,7 +21,7 @@ export default function TabLayout() {
         headerTintColor: settings?.font_color || '#3A2A2E',
         tabBarStyle: { display: 'none' },
         headerLeft: () => (
-          <Pressable onPress={logout} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: 'rgba(120,120,120,0.2)', marginLeft: 12 }}>
+          <Pressable onPress={logout} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: 'rgba(120,120,120,0.2)', marginLeft: 12, marginTop: 4 }}>
             <Text style={{ fontWeight: '600', fontSize: 14, color: settings?.font_color || '#3A2A2E' }}>Log out 🔒</Text>
           </Pressable>
         ),
