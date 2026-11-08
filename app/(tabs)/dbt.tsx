@@ -126,14 +126,13 @@ export default function DBTScreen() {
   );
 
   const assignmentComplete = () => {
+    // No shortcuts: every day you must fill out whatever this skill asks
+    // before the app will count you as practiced.
     if (skill.taskType === 'journal') return noteSaved && response.trim().length > 0;
-    if (skill.taskType === 'check') return done;
-    if (skill.taskType === 'diagram') {
-      const fields = JSON.parse(diagramCache.current[skill.id] ?? '[]') as string[];
-      return fields.some((f) => f && f.trim().length > 0);
-    }
-    if (skill.taskType === 'emotions') return emotionAnswer.length > 0;
-    return answer !== '';
+    if (skill.taskType === 'check') return done && noteSaved && response.trim().length > 0;
+    const answered = answer !== '';
+    const noted = noteSaved && response.trim().length > 0;
+    return answered && noted;
   };
 
   const markDone = async () => {
@@ -361,6 +360,9 @@ export default function DBTScreen() {
           <Text style={[styles.checkMark, { color: theme.accentColor }]}>{done ? '✓' : '○'}</Text>
           <Text style={[styles.checkLabel, done && styles.checkLabelDone]}>Done today</Text>
         </Pressable>
+        {!done && !(noteSaved && response.trim().length > 0) ? (
+          <Text style={styles.doneNote}>Save your journal note below first — then tap ✓, gorgeous 💋</Text>
+        ) : null}
         {done && <Text style={styles.doneNote}>Beautiful. That counts, darling 💚</Text>}
         {renderJournal()}
       </>
@@ -371,7 +373,7 @@ export default function DBTScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>DBT Cards 🧠</Text>
       <Text style={[styles.subtitle, { color: theme.subtitleColor }]}>
-        One little skill a day for our stormy moments — we practice together, darling 🌿
+        One little skill every two days for our stormy moments — we practice together, darling 🌿
       </Text>
 
       {/* Skill of the day */}
