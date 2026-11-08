@@ -62,7 +62,7 @@ function gradientColors(palette: string[]): [string, string, ...string[]] {
  * artwork, with NO Animated loops and NO SVG layers. If the crash persists
  * on this build, the background is innocent and the search moves on.
  */
-export const SAFEMODE = true;
+export const SAFEMODE = false;
 
 export default function AnimatedGradientBackground({ children }: { children: React.ReactNode }) {
   const { settings } = useTheme();
