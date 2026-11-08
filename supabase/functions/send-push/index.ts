@@ -19,6 +19,7 @@ const COPY: Record<string, { title: string; body: string }> = {
   login: { title: 'Your baby just logged in 💞', body: 'Come say hi — they missed you 🌿' },
   cover: { title: 'New Daily Cover Photo 📸', body: 'Your partner just posted today\'s cover — go look 🔥' },
   playtime: { title: 'Playtime message 🥵', body: 'Someone is thinking dirty thoughts about you 💋' },
+  dose: { title: 'Dose taken 💊', body: 'Your partner just tapped "Take now" — nice work, gorgeous 🌿' },
 };
 
 Deno.serve(async (req) => {

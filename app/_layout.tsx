@@ -7,6 +7,7 @@ import 'react-native-reanimated';
 
 import { initCrashReporting } from '@/lib/sentry';
 import LoginScreen from '@/components/LoginScreen';
+import PresenceBanner from '@/components/PresenceBanner';
 import { UsageProvider, useUsage } from '@/contexts/UsageContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import AnimatedGradientBackground from '@/components/AnimatedGradientBackground';
@@ -79,14 +80,17 @@ function AuthGate() {
   if (!authenticated) return <LoginScreen />;
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: 'transparent' },
-      }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-    </Stack>
+    <>
+      <PresenceBanner />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: 'transparent' },
+        }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+      </Stack>
+    </>
   );
 }
 

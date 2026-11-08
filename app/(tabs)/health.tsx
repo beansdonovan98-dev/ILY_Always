@@ -11,6 +11,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUsage } from '@/contexts/UsageContext';
 
 import { getCoupleId } from '@/lib/couple';
+import { notifyPartner } from '@/lib/push';
 import { getItem } from '@/lib/storage';
 import { localDateKey } from '@/lib/days';
 import { USERS } from '@/constants/content';
@@ -252,6 +253,7 @@ export default function HealthScreen() {
 
   const takeMed = async (med: Med) => {
     setMedLogs(await logMedDose(coupleId, med));
+    if (coupleId) void notifyPartner(coupleId, me, 'dose');
   };
 
   const undoDose = async (id: string) => {
