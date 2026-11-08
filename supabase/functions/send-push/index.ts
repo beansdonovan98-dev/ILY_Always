@@ -1,6 +1,6 @@
 // Supabase Edge Function: send-push
-// Notifies the *other* partner when something happens on this phone
-// (login, daily cover photo, playtime message).
+// Notifies your lover when something happens on this phone
+// (login, daily cover photo, playtime message, dose taken).
 //
 // Deploy (one time, from the repo root):
 //   supabase functions deploy send-push
@@ -15,11 +15,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const COPY: Record<string, { title: string; body: string }> = {
-  login: { title: 'Your baby just logged in 💞', body: 'Come say hi — they missed you 🌿' },
-  cover: { title: 'New Daily Cover Photo 📸', body: 'Your partner just posted today\'s cover — go look 🔥' },
-  playtime: { title: 'Playtime message 🥵', body: 'Someone is thinking dirty thoughts about you 💋' },
-  dose: { title: 'Dose taken 💊', body: 'Your partner just tapped "Take now" — nice work, gorgeous 🌿' },
+const COPY: Record<string, (from: string) => { title: string; body: string }> = {
+  login: (from) =>
+    from === 'daddy'
+      ? { title: 'Your lover just logged in 💞', body: 'Come say hi — he missed you 🌿' }
+      : { title: 'Your lover just logged in 💞', body: 'Come say hi — she missed you 🌿' },
+  cover: () => ({ title: 'New Daily Cover Photo 📸', body: 'Your lover just posted today\'s cover — go look 🔥' }),
+  playtime: () => ({ title: 'Playtime message 🥵', body: 'Someone is thinking dirty thoughts about you 💋' }),
+  dose: () => ({ title: 'Dose taken 💊', body: 'Your lover just tapped "Take now" — nice work, gorgeous 🌿' }),
 };
 
 Deno.serve(async (req) => {
@@ -29,13 +32,14 @@ Deno.serve(async (req) => {
 
   try {
     const { couple_id, from_user, kind } = await req.json();
-    const copy = COPY[kind];
-    if (!couple_id || !copy || (from_user !== 'daddy' && from_user !== 'princess')) {
+    const makeCopy = COPY[kind];
+    if (!couple_id || !makeCopy || (from_user !== 'daddy' && from_user !== 'princess')) {
       return new Response(JSON.stringify({ error: 'bad request' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    const copy = makeCopy(from_user);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
