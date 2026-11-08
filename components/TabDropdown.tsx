@@ -9,6 +9,7 @@ import { LeafBorder } from '@/components/CannabisLeaf';
 const DEFAULT_TABS = [
   { id: 'home', label: 'Home 🏠', path: '/', icon: '🏠', hint: 'Our shared space' },
   { id: 'our-log', label: 'Our Log 📜', path: '/our-log', icon: '📜', hint: 'Daily memories' },
+  { id: 'dbt', label: 'DBT Cards 🧠', path: '/dbt', icon: '🧠', hint: 'Daily skill practice' },
   { id: 'playtime', label: 'Playtime 😓', path: '/playtime', icon: '🥵', hint: 'Adults only' },
   { id: 'ai-editor', label: 'Dirty Darkroom 🔥', path: '/ai-editor', icon: '📷', hint: 'AI photo editor' },
   { id: 'health', label: 'Health 🩺', path: '/health', icon: '🩺', hint: 'Body & wellness' },
@@ -50,28 +51,31 @@ export default function TabDropdown() {
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
           <View style={styles.menu}>
             <LeafBorder color="#2E7D4F" size={20} />
-            <Text style={styles.menuTitle}>Where to next? 🌿</Text>
-            <Text style={styles.menuSubtitle}>Pick a page, lover 💋</Text>
-            <ScrollView style={styles.menuScroll}>
-              {tabs.map((o) => (
+            <View style={styles.handle} />
+            <Text style={styles.menuTitle}>Where are we going? 🌿</Text>
+            <Text style={styles.menuSubtitle}>I love you — pick a page, gorgeous 💋</Text>
+            <ScrollView style={styles.menuScroll} showsVerticalScrollIndicator={false}>
+              {tabs.map((o, i) => (
                 <Pressable
                   key={o.id}
-                  style={[styles.item, o.path === pathname && styles.itemActive]}
+                  style={[styles.item, i < tabs.length - 1 && styles.itemDivider, o.path === pathname && styles.itemActive]}
                   onPress={() => {
                     setOpen(false);
                     router.push(o.path as any);
                   }}>
-                  <Text style={styles.itemIcon}>{o.icon}</Text>
+                  <View style={[styles.iconChip, o.path === pathname && styles.iconChipActive]}>
+                    <Text style={styles.itemIcon}>{o.icon}</Text>
+                  </View>
                   <View style={styles.itemTextWrap}>
                     <Text style={styles.itemText}>{o.label}</Text>
                     <Text style={styles.itemHint}>{o.hint}</Text>
                   </View>
-                  {o.path === pathname && <Text style={styles.itemActiveDot}>●</Text>}
+                  <Text style={styles.itemChevron}>{o.path === pathname ? '●' : '›'}</Text>
                 </Pressable>
               ))}
             </ScrollView>
             <Pressable style={styles.closeBtn} onPress={() => setOpen(false)}>
-              <Text style={styles.closeBtnText}>Close ✕</Text>
+              <Text style={styles.closeBtnText}>Stay here ✕</Text>
             </Pressable>
           </View>
         </Pressable>
@@ -86,25 +90,30 @@ const styles = StyleSheet.create({
   buttonText: { fontWeight: '600', fontSize: 14 },
   backdrop: { flex: 1, backgroundColor: 'rgba(20,10,15,0.45)', justifyContent: 'flex-end' },
   menu: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
     padding: 20,
-    paddingBottom: 32,
-    maxHeight: '80%',
+    paddingBottom: 30,
+    paddingTop: 12,
+    maxHeight: '84%',
     position: 'relative',
     overflow: 'hidden',
   },
+  handle: { alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: 'rgba(58,42,46,0.18)', marginBottom: 12 },
   menuTitle: { fontSize: 22, fontWeight: '800', marginBottom: 2, textAlign: 'center' },
   menuSubtitle: { fontSize: 13, opacity: 0.6, marginBottom: 14, textAlign: 'center', fontStyle: 'italic' },
-  menuScroll: { maxHeight: 420 },
-  item: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 14, marginBottom: 6 },
-  itemActive: { backgroundColor: 'rgba(46,125,79,0.12)' },
-  itemIcon: { fontSize: 26 },
+  menuScroll: { maxHeight: 440 },
+  item: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 14 },
+  itemDivider: { borderBottomWidth: 1, borderBottomColor: 'rgba(46,125,79,0.12)' },
+  itemActive: { backgroundColor: 'rgba(46,125,79,0.1)' },
+  iconChip: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(46,125,79,0.1)' },
+  iconChipActive: { backgroundColor: 'rgba(46,125,79,0.24)' },
+  itemIcon: { fontSize: 22 },
   itemTextWrap: { flex: 1 },
   itemText: { fontSize: 16, fontWeight: '700' },
   itemHint: { fontSize: 11, opacity: 0.55, marginTop: 1 },
-  itemActiveDot: { fontSize: 10, color: '#2E7D4F' },
-  closeBtn: { marginTop: 10, alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 24, borderRadius: 50, backgroundColor: 'rgba(46,125,79,0.12)' },
+  itemChevron: { fontSize: 16, color: '#2E7D4F', fontWeight: '700' },
+  closeBtn: { marginTop: 12, alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 28, borderRadius: 50, backgroundColor: 'rgba(46,125,79,0.12)' },
   closeBtnText: { fontWeight: '700', fontSize: 13 },
 });

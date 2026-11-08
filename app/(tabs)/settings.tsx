@@ -21,12 +21,13 @@ import { EVENT_COLORS } from '@/lib/log';
 const DEFAULT_TABS = [
   { id: 'home', label: 'Home 🏠', order: 0 },
   { id: 'our-log', label: 'Our Log 📜', order: 1 },
-  { id: 'playtime', label: 'Playtime 😓', order: 2 },
-  { id: 'ai-editor', label: 'Dirty Darkroom 🔥', order: 3 },
-  { id: 'health', label: 'Health 🩺', order: 4 },
-  { id: 'cleaning', label: 'Get It Squeaky Clean 🫧', order: 5 },
-  { id: 'settings', label: 'Settings ⚙️', order: 6 },
-  { id: 'days-of-old', label: 'The Days of Old 🧙‍♂️', order: 7 },
+  { id: 'dbt', label: 'DBT Cards 🧠', order: 2 },
+  { id: 'playtime', label: 'Playtime 😓', order: 3 },
+  { id: 'ai-editor', label: 'Dirty Darkroom 🔥', order: 4 },
+  { id: 'health', label: 'Health 🩺', order: 5 },
+  { id: 'cleaning', label: 'Get It Squeaky Clean 🫧', order: 6 },
+  { id: 'settings', label: 'Settings ⚙️', order: 7 },
+  { id: 'days-of-old', label: 'The Days of Old 🧙‍♂️', order: 8 },
 ];
 
 const STRAIN_PRESETS = [

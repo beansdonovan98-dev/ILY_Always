@@ -21,6 +21,7 @@ export default function TabLayout() {
       }}>
       <Tabs.Screen name="index" />
       <Tabs.Screen name="our-log" />
+      <Tabs.Screen name="dbt" />
       <Tabs.Screen name="playtime" />
       <Tabs.Screen name="ai-editor" />
       <Tabs.Screen name="health" />
