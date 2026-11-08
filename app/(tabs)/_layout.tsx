@@ -1,9 +1,10 @@
 import { Tabs } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text } from 'react-native';
 
 import TabDropdown from '@/components/TabDropdown';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUsage } from '@/contexts/UsageContext';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { getCoupleId } from '@/lib/couple';
 import { pingPresence, readPresence, isOnline } from '@/lib/presence';
 import { USERS, UserKey } from '@/constants/content';
@@ -13,6 +14,7 @@ import { useCallback, useEffect, useState } from 'react';
 function PresencePill() {
   const { currentUser, authenticated } = useUsage();
   const { settings } = useTheme();
+  const appTheme = useAppTheme();
   const [online, setOnline] = useState(false);
   const partner: UserKey = currentUser === 'daddy' ? 'princess' : 'daddy';
 
@@ -78,6 +80,7 @@ function PresencePill() {
           fontWeight: '700',
           color: settings?.font_color || '#3A2A2E',
           fontStyle: 'italic' as const,
+          fontFamily: appTheme.fontFamily,
         }}>
         {online ? `${USERS[partner].name} here 💚` : `${USERS[partner].name} off ☁️`}
       </Text>
@@ -88,6 +91,7 @@ function PresencePill() {
 export default function TabLayout() {
   const { settings } = useTheme();
   const { logout } = useUsage();
+  const appTheme = useAppTheme();
 
   return (
     <Tabs
@@ -102,7 +106,7 @@ export default function TabLayout() {
         tabBarStyle: { display: 'none' },
         headerLeft: () => (
           <Pressable onPress={logout} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: 'rgba(120,120,120,0.2)', marginLeft: 12, marginTop: 4 }}>
-            <Text style={{ fontWeight: '600', fontSize: 14, color: settings?.font_color || '#3A2A2E' }}>Log out 🔒</Text>
+            <Text style={{ fontWeight: '600', fontSize: 14, color: settings?.font_color || '#3A2A2E', fontFamily: appTheme.fontFamily }}>Log out 🔒</Text>
           </Pressable>
         ),
         headerRight: () => <TabDropdown />,
