@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
+import { CannabisDivider, WeedCard } from '@/components/CannabisHardware';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -195,24 +196,28 @@ export default function HomeScreen() {
       </Text>
 
       {/* 1. Relationship Tracker */}
-      <View style={[styles.card, appTheme.cardStyle]}>
+      <WeedCard
+        badge="bong"
+        title={<Text style={styles.cardTitle}>Relationship Tracker</Text>}
+        style={appTheme.cardStyle}>
         <LeafBorder color={appTheme.leafColor} />
-        <Text style={styles.cardTitle}>Relationship Tracker 💞</Text>
-        <Text style={styles.cardHint}>Counting every second of us ❤️</Text>
+        <Text style={styles.cardHint}>Counting every second of us</Text>
         <Text style={styles.body}>Together since 08/09/19</Text>
         <Text style={styles.big}>
           {relationshipElapsed.days}d {relationshipElapsed.hours}h {relationshipElapsed.mins}m {relationshipElapsed.secs}s
         </Text>
         <Text style={[styles.loveNote, { color: appTheme.subtitleColor }]}>
-          Every second with you is my favorite — and I still want more. 💗
+          Every second with you is my favorite — and I still want more.
         </Text>
-      </View>
+      </WeedCard>
 
       {/* 2. Cover Photo */}
-      <View style={[styles.card, appTheme.cardStyle]}>
+      <WeedCard
+        badge="joint"
+        title={<Text style={styles.cardTitle}>Cover Photo</Text>}
+        style={appTheme.cardStyle}>
         <LeafBorder color={appTheme.leafColor} />
-        <Text style={styles.cardTitle}>Cover Photo 📸</Text>
-        <Text style={styles.cardHint}>Our favorite snap right now 📸✨</Text>
+        <Text style={styles.cardHint}>Our favorite snap right now</Text>
 
         <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={uploadCover}>
           <Text style={styles.btnText}>Upload Cover (max 60MB)</Text>
@@ -283,13 +288,13 @@ export default function HomeScreen() {
             </View>
           </View>
         ))}
-      </View>
+      </WeedCard>
+      <CannabisDivider color={appTheme.leafColor} />
 
       {/* 3. Love Notes */}
-      <View style={[styles.card, appTheme.cardStyle]}>
+      <WeedCard badge="joint" title={<Text style={styles.cardTitle}>Love Notes</Text>} style={appTheme.cardStyle}>
         <LeafBorder color={appTheme.leafColor} />
-        <Text style={styles.cardTitle}>Love Notes 💌</Text>
-        <Text style={styles.cardHint}>Little whispers for your heart 💌</Text>
+        <Text style={styles.cardHint}>Little whispers for your heart</Text>
 
         {loveNotes.filter((n) => localDateKey(new Date(n.created_at)) === todayKey()).map((n) => (
           <View key={n.id} style={[styles.noteCard, { borderColor: appTheme.borderColor }]}>
@@ -311,26 +316,26 @@ export default function HomeScreen() {
         <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={sendLoveNote}>
           <Text style={styles.btnText}>Send Note</Text>
         </Pressable>
-      </View>
+      </WeedCard>
+      <CannabisDivider color={appTheme.leafColor} />
 
       {/* 4. Word of the Day */}
-      <View style={[styles.card, appTheme.cardStyle]}>
+      <WeedCard badge="bong" title={<Text style={styles.cardTitle}>Word of the Day</Text>} style={appTheme.cardStyle}>
         <LeafBorder color={appTheme.leafColor} />
-        <Text style={styles.cardTitle}>Word of the Day 📖</Text>
-        <Text style={styles.cardHint}>Learning and loving new words together 📖💕</Text>
+        <Text style={styles.cardHint}>Learning and loving new words together</Text>
         <Text style={styles.big}>{wordOfDay.word}</Text>
         <Text style={styles.body}>{wordOfDay.pronunciation}</Text>
         <Text style={styles.body}>{wordOfDay.definition}</Text>
         <Text style={[styles.loveNote, { color: appTheme.subtitleColor }]}>{wordOfDay.example}</Text>
-      </View>
+      </WeedCard>
+      <CannabisDivider color={appTheme.leafColor} />
 
       {/* 5. Fun Fact of the Day */}
-      <View style={[styles.card, appTheme.cardStyle]}>
+      <WeedCard badge="joint" title={<Text style={styles.cardTitle}>Fun Fact of the Day</Text>} style={appTheme.cardStyle}>
         <LeafBorder color={appTheme.leafColor} />
-        <Text style={styles.cardTitle}>Fun Fact of the Day 🧠</Text>
-        <Text style={styles.cardHint}>A tiny thing to learn together today ✨</Text>
+        <Text style={styles.cardHint}>A tiny thing to learn together today</Text>
         <Text style={styles.body}>{factOfDay}</Text>
-      </View>
+      </WeedCard>
 
       {!ready && <Text style={styles.muted}>Loading...</Text>}
     </ScrollView>

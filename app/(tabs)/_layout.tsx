@@ -1,7 +1,10 @@
 import { Tabs, usePathname } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import { DeviceEventEmitter, Pressable, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 
 import TabDropdown from '@/components/TabDropdown';
+import { JointVector } from '@/components/CannabisHardware';
+import { SMOKE_BURST_EVENT } from '@/components/CannabisOverlay';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUsage } from '@/contexts/UsageContext';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -19,6 +22,20 @@ function PresencePill() {
   const appTheme = useAppTheme();
   const [online, setOnline] = useState(false);
   const partner: UserKey = currentUser === 'daddy' ? 'princess' : 'daddy';
+
+  // Smoke pulse next to the pill; tapping fires a burst of puffs overlay-wide.
+  const pulse = useSharedValue(1);
+  useEffect(() => {
+    pulse.value = withRepeat(withSequence(withTiming(1.25, { duration: 700 }), withTiming(1, { duration: 700 })), -1, true);
+  }, [pulse]);
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value }],
+    opacity: 0.6 + 0.4 * pulse.value,
+  }));
+
+  const handleTap = () => {
+    DeviceEventEmitter.emit(SMOKE_BURST_EVENT);
+  };
 
   const refresh = useCallback(async () => {
     if (!authenticated) {
@@ -84,7 +101,8 @@ function PresencePill() {
   }, [authenticated, currentUser]);
 
   return (
-    <View
+    <Pressable
+      onPress={handleTap}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -96,6 +114,9 @@ function PresencePill() {
         borderWidth: 1,
         borderColor: settings?.border_color || 'rgba(46,125,79,0.3)',
       }}>
+      <Animated.View style={pulseStyle}>
+        <JointVector size={26} color="#F5E6C8" />
+      </Animated.View>
       <View
         style={{
           width: 7,
@@ -115,7 +136,7 @@ function PresencePill() {
         }}>
         {online ? `${USERS[partner].name} here 💚` : `${USERS[partner].name} off ☁️`}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 
