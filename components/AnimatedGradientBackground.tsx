@@ -57,7 +57,13 @@ function gradientColors(palette: string[]): [string, string, ...string[]] {
  * Continuously drifting mesh gradient.
  * A full-screen gradient base plus three oversized gradient sheets that move at
  * different speeds/directions, so the theme is always visibly animated.
+ *
+ * TEMPORARY SAFE MODE (crash bisect): renders a static gradient + static
+ * artwork, with NO Animated loops and NO SVG layers. If the crash persists
+ * on this build, the background is innocent and the search moves on.
  */
+export const SAFEMODE = true;
+
 export default function AnimatedGradientBackground({ children }: { children: React.ReactNode }) {
   const { settings } = useTheme();
 
@@ -68,6 +74,15 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
   const c2 = palette[1] ?? LIGHT_FALLBACK[1];
   const c3 = palette[2] ?? c2;
   const c4 = palette[3] ?? c1;
+
+  if (SAFEMODE) {
+    return (
+      <View style={[styles.root, { backgroundColor: base }]}>
+        <LinearGradient colors={gradientColors(palette)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+        <View style={styles.content}>{children}</View>
+      </View>
+    );
+  }
 
   const drift = useRef(new Animated.Value(0)).current;
   const drift2 = useRef(new Animated.Value(0)).current;
