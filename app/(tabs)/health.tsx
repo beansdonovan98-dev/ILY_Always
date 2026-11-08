@@ -20,6 +20,7 @@ import { localDateKey } from '@/lib/days';
 import { subscribeMany } from '@/lib/subscribe';
 import { USERS } from '@/constants/content';
 import { formatReminderTime, syncMedReminders } from '@/lib/med-reminders';
+import { LighterToggle } from '@/components/CannabisFeatures';
 import {
   BODY_FIELDS,
   BodyField,
@@ -845,7 +846,7 @@ export default function HealthScreen() {
       {renderWeightTrackerCard()}
 
       {/* Body measurements */}
-      <MylarPouch title={<Text style={styles.cardTitle}>His &amp; Hers Body Measurements 💪</Text>} defaultStrain="OG KUSH" stampRight="THC: 25.5%">
+      <MylarPouch title={<Text style={styles.cardTitle}>His &amp; Hers Body Measurements 💪</Text>} defaultStrain="GRANDDADDY P." stampRight="THC: 25.5%">
         <LeafBorder color={theme.leafColor} />
         <Text style={styles.cardHint}>
           Only you can edit your own numbers — measurements refresh every 3 days 🍃
@@ -889,7 +890,7 @@ export default function HealthScreen() {
 
         <View style={styles.reminderRow}>
           <Text style={styles.reminderLabel}>🔔 Daily reminder</Text>
-          <Switch value={mReminder} onValueChange={setMReminder} />
+          <LighterToggle value={mReminder} onValueChange={setMReminder} />
         </View>
 
         <Pill label="+ Add Medication" onPress={addMed} />
@@ -950,7 +951,7 @@ export default function HealthScreen() {
       </MylarPouch>
 
       {/* Fitness */}
-      <MylarPouch title={<Text style={styles.cardTitle}>Fitness Log 🏋️</Text>} defaultStrain="AK-47" stampRight="THC: 23.5%">
+      <MylarPouch title={<Text style={styles.cardTitle}>Fitness Log 🏋️</Text>} defaultStrain="PINEAPPLE EXP." stampRight="THC: 23.5%">
         <LeafBorder color={theme.leafColor} />
         <Text style={styles.cardHint}>
           Working out keeps us looking dangerous and feeling even dirtier 🏋️💦
@@ -968,7 +969,7 @@ export default function HealthScreen() {
 
       {/* Period tracker */}
       {revealed && (
-        <MylarPouch title={<Text style={styles.cardTitle}>Period Tracker 🌸</Text>} defaultStrain="LAVENDER" stampRight="THC: 20.5%">
+        <MylarPouch title={<Text style={styles.cardTitle}>Period Tracker 🌸</Text>} defaultStrain="STRAWBERRY COUGH" stampRight="THC: 20.5%">
           <LeafBorder color={theme.leafColor} />
           <Text style={styles.cardHint}>
             {period.startDate

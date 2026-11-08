@@ -196,7 +196,7 @@ export default function CleaningScreen() {
       </MylarPouch>
 
       {/* Weekly */}
-      <MylarPouch title={<Text style={styles.cardTitle}>The Weekly Ritual</Text>} defaultStrain="OG KUSH" stampRight="THC: 25.5%">
+      <MylarPouch title={<Text style={styles.cardTitle}>The Weekly Ritual</Text>} defaultStrain="GRANDDADDY P." stampRight="THC: 25.5%">
         <LeafBorder color={theme.leafColor} />
         <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
           The Sunday ritual that keeps our nest fit for royalty

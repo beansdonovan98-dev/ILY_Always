@@ -4,7 +4,7 @@ import Svg, { Circle, Ellipse, G, Path } from 'react-native-svg';
 import { CannabisLeaf } from '@/components/CannabisLeaf';
 
 /** Glass water bong — hi-end beaker: water line, percolator, downstem, bubbles. */
-export function BongVector({ size = 52, color = '#2E7D4F', opacity = 0.95 }: {
+export function BongVector({ size = 72, color = '#2E7D4F', opacity = 0.95 }: {
   size?: number; color?: string; opacity?: number;
 }) {
   const w = size * 0.62;

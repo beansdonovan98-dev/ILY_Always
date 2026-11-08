@@ -158,7 +158,7 @@ export function FanLeaf({ x, y, s = 1, rot = 0, color, opacity = 1 }: {
       {FAN_ANGLES.map((a, i) => (
         <G key={i} transform={`rotate(${a}) scale(${FAN_SCALES[i]})`}>
           <Path d={LEAFLET} fill={color} opacity={opacity} stroke={color} strokeWidth={0.2} />
-          <Path d="M0,0 L0,-16" stroke="#000000" strokeOpacity={0.22} strokeWidth={0.4} />
+          <Path d="M0,0 L0,-16" stroke="#FFFFFF" strokeOpacity={0.35} strokeWidth={0.5} strokeLinecap="round" />
           <Path d="M0,-4 L-1.6,-6.2 M0,-4 L1.6,-6.2 M0,-8 L-1.4,-10.4 M0,-8 L1.4,-10.4 M0,-12 L-1,-14 M0,-12 L1,-14" stroke="#000000" strokeOpacity={0.15} strokeWidth={0.3} />
         </G>
       ))}

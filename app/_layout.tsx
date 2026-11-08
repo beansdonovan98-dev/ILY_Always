@@ -125,7 +125,7 @@ function RootLayoutNav() {
             <AuthGate />
           </NavThemeProvider>
           {/* Ambient smoke + falling leaves across every screen (untappable) */}
-          <CannabisOverlay color={settings?.accent_color || '#2E7D4F'} />
+          <CannabisOverlay color={settings?.accent_color || '#2E7D4F'} smoke={palette[7] || '#CBD5E1'} />
           <Mode420 />
         </AnimatedGradientBackground>
       </ThemeProvider>

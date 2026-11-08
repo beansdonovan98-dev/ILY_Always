@@ -242,7 +242,7 @@ export default function PlaytimeScreen() {
   if (!consent) {
     return (
       <View style={styles.gate}>
-      <MylarPouch title={<Text style={[styles.title, { fontFamily: font }]}>{playtimeTitle}</Text>} defaultStrain="PURPLE HAZE" stampRight="THC: 25.5%">
+      <MylarPouch title={<Text style={[styles.title, { fontFamily: font }]}>{playtimeTitle}</Text>} defaultStrain="GRANDDADDY P." stampRight="THC: 25.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={[styles.subtitle, { fontFamily: font, color: appTheme.subtitleColor }]}>
           Where our deepest desires and hottest secrets come alive 💋🔥
@@ -264,7 +264,7 @@ export default function PlaytimeScreen() {
         Where our deepest desires and hottest secrets come alive 💋🔥
       </Text>
 
-      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Posting as {USERS[activeUser].label}</Text>} defaultStrain="GG4" stampRight="THC: 26.5%">
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Posting as {USERS[activeUser].label}</Text>} defaultStrain="SOUR DIESEL" stampRight="THC: 26.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.muted}>You are locked to this account from login — messages and photos are always yours.</Text>
       </MylarPouch>
@@ -278,16 +278,18 @@ export default function PlaytimeScreen() {
           );
           return (
             <>
-              <View style={styles.chatBox}>
-                {todayMsgs.map((m) => (
-                  <MylarPouch key={m.id} title={<Text style={styles.chatAuthor}>{USERS[m.author].label}</Text>} defaultStrain="SOUR DIESEL" stampRight="THC: 21.5%">
+              <ScrollView style={styles.chatScroll} showsVerticalScrollIndicator>
+                <View style={styles.chatBox}>
+                  {todayMsgs.map((m) => (
+                  <View key={m.id} style={[styles.chatMsg, { borderColor: appTheme.borderColor }]}>
                     <Text style={styles.chatAuthor}>{USERS[m.author].label}</Text>
                     <Text style={styles.chatText}>{m.text}</Text>
                     <Text style={styles.chatTime}>{new Date(m.timestamp).toLocaleString()}</Text>
-                  </MylarPouch>
-               ))}
+                  </View>
+      ))}
                 {todayMsgs.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No messages yet today — yesterday's are in The Days of Old 🧙‍♂️</Text>}
               </View>
+              </ScrollView>
               <View style={styles.row}>
                 <TextInput value={draftMessage} onChangeText={setDraftMessage} placeholder="Type a message..." style={[styles.input, { flex: 1 }]} />
                 <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={sendMessage}>
@@ -299,14 +301,16 @@ export default function PlaytimeScreen() {
         })()}
         </MylarPouch>
 
-        <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Pictures & GIFs 📸 (max 60 MB)</Text>} defaultStrain="AMNESIA HAZE" stampRight="THC: 20.5%">
+        <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Pictures & GIFs 📸 (max 60 MB)</Text>} defaultStrain="BLUE DREAM" stampRight="THC: 20.5%">
         <LeafBorder color={appTheme.leafColor} />
           <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={pickPhotos}>
             <Text style={styles.btnText}>Upload (multiple)</Text>
           </Pressable>
           {uploadStatus ? <Text style={styles.muted}>{uploadStatus}</Text> : null}
+          <ScrollView style={styles.photoScroll} showsVerticalScrollIndicator>
+          <View style={styles.photoGrid}>
           {media.map((m) => (
-            <MylarPouch key={m.id} title={<Text style={styles.chatAuthor}>{m.file_name}</Text>} defaultStrain="BLUE DREAM" stampRight="THC: 22.5%">
+            <View key={m.id} style={[styles.photoCard, { borderColor: appTheme.borderColor }]}>
               <Pressable onPress={() => router.push(`/media/${m.id}`)}>
                 <Image source={{ uri: signedUrls[m.id] || '' }} style={styles.photo} contentFit="contain" />
               </Pressable>
@@ -314,8 +318,10 @@ export default function PlaytimeScreen() {
               <Pressable onPress={() => router.push(`/media/${m.id}`)} style={styles.commentHeader}>
                 <Text style={styles.commentHeaderText}>Comments ({(m.comments || []).length}) — tap to open</Text>
               </Pressable>
-            </MylarPouch>
+            </View>
           ))}
+          </View>
+          </ScrollView>
         </MylarPouch>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -335,7 +341,11 @@ const styles = StyleSheet.create({
   userBtn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, backgroundColor: 'rgba(120,120,120,0.2)' },
   userBtnActive: { backgroundColor: 'rgba(100,150,255,0.4)' },
   userBtnText: { fontWeight: '600' },
-  chatBox: { maxHeight: 300, marginBottom: 8 },
+  chatBox: { marginBottom: 8 },
+  chatScroll: { maxHeight: 380, marginBottom: 8 },
+  photoScroll: { maxHeight: 380, marginTop: 6 },
+  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  photoCard: { width: '31%', borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', marginBottom: 8 },
   chatMsg: { marginBottom: 8, padding: 8, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
   chatAuthor: { fontWeight: '700', fontSize: 13 },
   chatText: { fontSize: 15 },
@@ -345,7 +355,6 @@ const styles = StyleSheet.create({
   btnText: { fontWeight: '600' },
   muted: { fontSize: 12, opacity: 0.6 },
   loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, marginBottom: 12, textAlign: 'center' },
-  photoCard: { marginTop: 12, borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', width: '100%' },
   photo: { width: '100%', height: 220 },
   commentHeader: { padding: 10 },
   commentHeaderText: { fontWeight: '600' },

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View, ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { AppText as Text } from '@/components/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
@@ -73,19 +74,18 @@ export function MylarPouch({ title, hint, defaultStrain, stampRight, children, s
       </View>
 
       {/* boutique sticker with foil trim — height-locked & scrollable (max-height 760) */}
-      <View style={[styles.foilWrap, { backgroundColor: foilColors[0] }]}>
-        <View style={[styles.foilMid, { backgroundColor: foilColors[1] }]}>
+      <View style={styles.foilWrap}>
+        <LinearGradient colors={[foilColors[0], foilColors[1], '#E2E8F0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.foilMid}>
           <ScrollView style={styles.labelWindow} showsVerticalScrollIndicator contentContainerStyle={{ gap: 6 }}>
             <View style={styles.badgeRow}>
-              <Text style={styles.badgeSmall}>⭐ Premium Reserve</Text>
-              <Text style={styles.badgeSmall}>100% Indoor</Text>
+              <Text style={styles.badgeSmall}>⭐ 100% INDOOR TOP-SHELF</Text>
+              <Text style={styles.badgeSmall}>LAB TESTED 🌿</Text>
             </View>
             <View style={{ marginBottom: 6 }}>{title}</View>
             {hint ? <Text style={{ fontFamily: font, color: '#52525b', fontSize: 13, marginBottom: 10, fontStyle: 'italic' as const }}>{hint}</Text> : null}
             {children}
           </ScrollView>
-        </View>
-        <View style={[styles.foilSmoke, { backgroundColor: foilColors[2] }]} />
+        </LinearGradient>
       </View>
 
       {/* stamped footer */}

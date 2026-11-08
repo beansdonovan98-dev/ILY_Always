@@ -38,7 +38,7 @@ export default function Mode420() {
     const check = () => {
       const now = new Date();
       const key = `${now.getFullYear()}-${now.getDate()}-${now.getHours()}-${now.getMinutes()}`;
-      const is420 = now.getHours() === 4 && now.getMinutes() === 20;
+      const is420 = (now.getHours() === 4 || now.getHours() === 16) && now.getMinutes() === 20;
       if (is420 && firedRef.current !== key) {
         firedRef.current = key;
         setActive(true);

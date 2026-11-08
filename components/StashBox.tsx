@@ -31,7 +31,7 @@ export function StashBox({ dates, selectedDate, onPick, detail }: {
       {/* lid seam + brass clasp */}
       <View style={styles.lidSeam}>
         <View style={styles.clasp}>
-          <Text style={{ fontWeight: '900', fontSize: 11, color: '#1C1917' }}>🔒 ARCHIVE LATCH</Text>
+          <Text style={{ fontWeight: '900', fontSize: 11, color: '#1C1917' }}>🔒 MASTER STASH LATCH</Text>
         </View>
       </View>
 
@@ -43,19 +43,19 @@ export function StashBox({ dates, selectedDate, onPick, detail }: {
       </View>
 
       {expanded && (
-        <>
-          <ScrollView style={styles.chips} showsVerticalScrollIndicator contentContainerStyle={{ gap: 8 }}>
-          {dates.map((d) => (
+        <ScrollView style={styles.chips} showsVerticalScrollIndicator contentContainerStyle={{ gap: 10, paddingBottom: 16 }}>
+          <View style={styles.chipsGrid}>
+            {dates.map((d) => (
               <Pressable
                 key={d}
                 onPress={() => onPick(d)}
                 style={[styles.chip, selectedDate === d && styles.chipActive]}>
-                <Text style={[styles.chipText, { fontFamily: font }]}>{d}</Text>
+                <Text style={[styles.chipText, { fontFamily: font }]}>🫙 {d}</Text>
               </Pressable>
             ))}
-          </ScrollView>
+          </View>
           {selectedDate && detail}
-        </>
+        </ScrollView>
       )}
     </View>
   );
@@ -85,7 +85,8 @@ const styles = StyleSheet.create({
   badge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 999, borderWidth: 1, borderColor: '#D97706', backgroundColor: 'rgba(0,0,0,0.5)' },
   badgeName: { fontSize: 12, fontWeight: '800', color: '#FEF3C7' },
   badgeClaim: { fontSize: 10, opacity: 0.75, color: '#FDE68A' },
-  chips: { maxHeight: 240, marginTop: 6 },
+  chips: { flex: 1, maxHeight: 520, marginTop: 6 },
+  chipsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
   chip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, borderColor: '#D97706', backgroundColor: 'rgba(0,0,0,0.5)' },
   chipActive: { backgroundColor: '#D97706' },
   chipText: { fontSize: 12, fontWeight: '600', color: '#FEF3C7' },

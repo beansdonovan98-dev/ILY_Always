@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
@@ -81,6 +81,25 @@ function twoDayWindow(date = new Date()): { index: number; windowKey: string; da
   return { index, windowKey, daysLeft };
 }
 
+/** Seconds until the next 2-day window switch, synced to the twoDayWindow epoch. */
+function secondsToNextSwitch(now = new Date()): number {
+  const epoch = new Date('2026-01-04T12:00:00').getTime();
+  const nowMs = now.getTime();
+  if (nowMs < epoch) return Math.max(0, Math.ceil((epoch - nowMs) / 1000));
+  const windowMs = 2 * 24 * 60 * 60 * 1000;
+  const elapsed = nowMs - epoch;
+  const nextSwitch = epoch + (Math.floor(elapsed / windowMs) + 1) * windowMs;
+  return Math.max(0, Math.ceil((nextSwitch - nowMs) / 1000));
+}
+
+function formatCountdown(totalSeconds: number): string {
+  const s = Math.max(0, totalSeconds);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${h}h ${m}m ${sec}s`;
+}
+
 export default function DBTScreen() {
   const theme = useAppTheme();
   const dbtTitle = useTabLabel('dbt', 'DBT Cards 🧠');
@@ -95,6 +114,12 @@ export default function DBTScreen() {
   const [emotionAnswer, setEmotionAnswer] = useState('');
   const [diagramVersion, setDiagramVersion] = useState(0);
   const diagramCache = useRef<Record<string, string>>({});
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const today = todayKey(new Date());
   const window2 = twoDayWindow(new Date());
@@ -198,9 +223,10 @@ export default function DBTScreen() {
     </>
   );
 
-  const renderTaskBlock = () => {
+  /** Non-journal task inputs for Bag 2 (DBT Assignment). Journal lives in Bag 3. */
+  const renderAssignmentInputs = () => {
     if (skill.taskType === 'journal') {
-      return renderJournal();
+      return null;
     }
 
     if (skill.taskType === 'diagram') {
@@ -318,7 +344,6 @@ export default function DBTScreen() {
             })}
           </View>
           {answer !== '' && <Text style={styles.doneNote}>Locked in — no overthinking it 💚</Text>}
-          {renderJournal()}
         </>
       );
     }
@@ -349,7 +374,6 @@ export default function DBTScreen() {
               Today you rated it {answer}/10 — that's honest data, darling 💚
             </Text>
           )}
-          {renderJournal()}
         </>
       );
     }
@@ -372,9 +396,24 @@ export default function DBTScreen() {
           <Text style={styles.doneNote}>Save your journal note below first — then tap ✓, gorgeous 💋</Text>
         ) : null}
         {done && <Text style={styles.doneNote}>Beautiful. That counts, darling 💚</Text>}
-        {renderJournal()}
       </>
     );
+  };
+
+  /** Bag 3 content: journal for journal/select/rate/check, short note for diagram/emotions. */
+  const renderResponseJournal = () => {
+    if (skill.taskType === 'diagram' || skill.taskType === 'emotions') {
+      return (
+        <>
+          <Text style={styles.label}>Response Journal ✍️</Text>
+          <Text style={styles.responseHint}>
+            This skill uses the diagram / picks above instead of a journal — your answers there are saved to this skill window. 💭
+          </Text>
+          {noteSaved && <Text style={styles.doneNote}>Saved to this skill's window 💚</Text>}
+        </>
+      );
+    }
+    return renderJournal();
   };
 
   return (
@@ -384,12 +423,15 @@ export default function DBTScreen() {
         One little skill every two days for our stormy moments — we practice together, darling 🌿
       </Text>
 
-      {/* Skill of the day */}
-      <MylarPouch title={<Text style={styles.cardTitle}>Skill for the Next 2 Days 🌤️</Text>} defaultStrain="GLUE #4" stampRight="THC: 26.5%">
+      {/* Bag 1 — DBT Skill */}
+      <MylarPouch title={<Text style={styles.cardTitle}>DBT Skill 🌤️</Text>} defaultStrain="GRANDDADDY P." stampRight="THC: 26.5%">
         <LeafBorder color={theme.leafColor} />
         <Text style={styles.cardHint}>A new skill drops every 2 days — practice it once, even tiny 🌿</Text>
         <Text style={[styles.countdown, { color: theme.accentColor }]}>
           New skill in {window2.daysLeft} day{window2.daysLeft === 1 ? '' : 's'}
+        </Text>
+        <Text style={[styles.countdown, { color: theme.accentColor }]}>
+          Next skill in: {formatCountdown(secondsToNextSwitch(now))}
         </Text>
         <JointBurnTimer ratio={window2.daysLeft / 2} />
 
@@ -410,7 +452,11 @@ export default function DBTScreen() {
             {i + 1}. {step}
           </Text>
         ))}
+      </MylarPouch>
 
+      {/* Bag 2 — DBT Assignment */}
+      <MylarPouch title={<Text style={styles.cardTitle}>DBT Assignment ✍️</Text>} defaultStrain="SKYWALKER" stampRight="THC: 24%">
+        <LeafBorder color={theme.leafColor} />
         <Text style={styles.label}>Today's assignment ✍️</Text>
         <Text style={styles.practice}>{skill.practice}</Text>
 
@@ -437,11 +483,17 @@ export default function DBTScreen() {
           </>
         )}
 
-        {renderTaskBlock()}
+        {renderAssignmentInputs()}
+      </MylarPouch>
+
+      {/* Bag 3 — Response Journal */}
+      <MylarPouch title={<Text style={styles.cardTitle}>Response Journal 📓</Text>} defaultStrain="SOUR DIESEL" stampRight="THC: 23.5%">
+        <LeafBorder color={theme.leafColor} />
+        {renderResponseJournal()}
       </MylarPouch>
 
       {/* Streak */}
-      <MylarPouch title={<Text style={styles.cardTitle}>Practice Streak 🔥</Text>} defaultStrain="TANGIE" stampRight="THC: 23.5%">
+      <MylarPouch title={<Text style={styles.cardTitle}>Practice Streak 🔥</Text>} defaultStrain="SOUR DIESEL" stampRight="THC: 23.5%">
         <LeafBorder color={theme.leafColor} />
         <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
           Show up for yourself, one day at a time — seven in a row earns the grand celebration, gorgeous 🎉

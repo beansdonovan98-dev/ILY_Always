@@ -73,7 +73,7 @@ function SmokePuffRise({ left, size, dur, sway, delay, col }: {
     bottom: 0,
     opacity: 0.5 * Math.sin(Math.PI * p.value),
     transform: [
-      { translateY: -420 * p.value },
+      { translateY: -500 * p.value },
       { translateX: Math.sin(p.value * Math.PI * 2) * sway },
       { scale: 0.7 + 1.4 * p.value },
     ],
@@ -90,7 +90,7 @@ function SmokePuffRise({ left, size, dur, sway, delay, col }: {
  * Ambient overlay: continuous smoke + gently falling leaves.
  * Untappable; mount once at the root so every screen gets it.
  */
-export default function CannabisOverlay({ color = '#2E7D4F' }: { color?: string }) {
+export default function CannabisOverlay({ color = '#2E7D4F', smoke = '#CBD5E1' }: { color?: string; smoke?: string }) {
   const [burst, setBurst] = useState(0);
 
   useEffect(() => {
@@ -106,10 +106,10 @@ export default function CannabisOverlay({ color = '#2E7D4F' }: { color?: string 
     { left: 320, leafSize: 28, dur: 25000, delay: 2000 },
   ];
   const smokes = [
-    { left: 20, size: 56, dur: 11000, sway: 14, delay: 0, col: '#CBD5E1' },
-    { left: 120, size: 44, dur: 13000, sway: -16, delay: 3200, col: '#E2E8F0' },
-    { left: 220, size: 62, dur: 12000, sway: 12, delay: 6000, col: '#CBD5E1' },
-    { left: 300, size: 48, dur: 14000, sway: -12, delay: 9000, col: '#E7E5E4' },
+    { left: 20, size: 56, dur: 11000, sway: 14, delay: 0, col: smoke },
+    { left: 120, size: 44, dur: 13000, sway: -16, delay: 3200, col: smoke },
+    { left: 220, size: 62, dur: 12000, sway: 12, delay: 6000, col: smoke },
+    { left: 300, size: 48, dur: 14000, sway: -12, delay: 9000, col: smoke },
   ];
 
   return (

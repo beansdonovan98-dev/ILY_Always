@@ -59,13 +59,88 @@ export default function DaysOfOldScreen() {
       setCoupleId(cid);
       const { data, error } = await supabase
         .from('days')
-        .select('local_date')
+        .select('local_date, payload')
         .eq('couple_id', cid)
         .order('local_date', { ascending: false });
       if (error) return;
       const today = localDateKey();
-      const list = (data || []).map((d: any) => d.local_date).filter((d: string) => d !== today);
-      setDates(list);
+      const rows: Array<{ local_date: string; payload?: Record<string, unknown> | null }> = (data || []) as any;
+      const payloadByDate: Record<string, Record<string, unknown> | null> = {};
+      const candidate: string[] = [];
+      for (const r of rows) {
+        const d = r.local_date as string;
+        if (!d || d === today || (payloadByDate[d] !== undefined && candidate.includes(d))) continue;
+        if (!candidate.includes(d)) {
+          candidate.push(d);
+          payloadByDate[d] = (r.payload as Record<string, unknown> | null) ?? null;
+        }
+      }
+
+      // Bulk sources checked once per mount (existing loaders + storage).
+      const settings: any = await getCoupleSettings(cid);
+      const allNotes: Array<{ created_at?: string }> = settings?.love_notes || [];
+      const noteDates = new Set(allNotes.map((n: any) => (n.created_at || '').slice(0, 10)).filter(Boolean));
+
+      const allMsgs = await getItem<Array<{ timestamp: number; dateKey?: string }>>('playtimeMessages', []);
+      const chatDates = new Set(
+        allMsgs.map((m: any) => m.dateKey ?? localDateKey(new Date(m.timestamp))).filter(Boolean)
+      );
+
+      const tasks = await loadDailyTasks(cid);
+      const hisChecks = await loadDailyChecks(cid, 'daddy');
+      const hersChecks = await loadDailyChecks(cid, 'princess');
+      const healthDates = new Set<string>();
+      const taskIds = new Set(tasks.map((t) => t.id));
+      for (const [k, v] of Object.entries(hisChecks)) {
+        if (!v) continue;
+        const [taskId, date] = k.split('|');
+        if (taskIds.has(taskId) && date) healthDates.add(date);
+      }
+      for (const [k, v] of Object.entries(hersChecks)) {
+        if (!v) continue;
+        const [taskId, date] = k.split('|');
+        if (taskIds.has(taskId) && date) healthDates.add(date);
+      }
+
+      // Media daily dates in one query.
+      const mediaDates = new Set<string>();
+      if (candidate.length > 0) {
+        const { data: mediaData } = await supabase
+          .from('media')
+          .select('daily_date')
+          .eq('couple_id', cid)
+          .in('daily_date', candidate);
+        for (const m of (mediaData || []) as Array<{ daily_date?: string | null }>) {
+          if (m.daily_date) mediaDates.add(m.daily_date);
+        }
+      }
+
+      // Per-date log entries (existing loader).
+      const logDates = new Set<string>();
+      await Promise.all(
+        candidate.map(async (date) => {
+          try {
+            const logs = await getDayLogEntries(cid, date);
+            if (logs && logs.length > 0) logDates.add(date);
+          } catch {
+            // treat as no logs
+          }
+        })
+      );
+
+      const hasPayload = (date: string) => {
+        const p: any = payloadByDate[date];
+        if (!p) return false;
+        if (Array.isArray(p)) return p.length > 0;
+        if (typeof p === 'object') return Object.keys(p).length > 0;
+        return Boolean(p);
+      };
+
+      const filtered = candidate.filter(
+        (date) =>
+          hasPayload(date) || logDates.has(date) || noteDates.has(date) || chatDates.has(date) || mediaDates.has(date) || healthDates.has(date)
+      );
+      setDates(filtered);
     })();
   }, []);
 
