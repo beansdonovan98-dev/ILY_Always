@@ -119,7 +119,7 @@ export default function CleaningScreen() {
       {/* Deep clean focus — hidden until Sunday 12:00 AM */}
       <View style={[styles.card, theme.cardStyle]}>
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Deep Clean Focus 🔥</Text>
+        <Text style={styles.cardTitle}>Sunday Deep Dive 🌊</Text>
         <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
           One room gets the full filthy treatment each week 😏
         </Text>
@@ -189,9 +189,9 @@ export default function CleaningScreen() {
       {/* Weekly */}
       <View style={[styles.card, theme.cardStyle]}>
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Weekly Reset 👑</Text>
+        <Text style={styles.cardTitle}>The Weekly Ritual 🌸</Text>
         <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
-          The Sunday ritual that keeps our nest fit for royalty — done as {currentUser === 'daddy' ? 'his' : 'hers'} 💚
+          The Sunday ritual that keeps our nest fit for royalty 👑
         </Text>
         <Text style={styles.streakLine}>🔥 {streaks.weekly}-week streak</Text>
         {WEEKLY_CHORES.map((c) => renderCheckRow('weekly', c))}

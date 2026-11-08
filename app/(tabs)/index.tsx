@@ -259,12 +259,14 @@ export default function HomeScreen() {
         <Text style={styles.cardTitle}>Love Notes 💌</Text>
         <Text style={styles.cardHint}>Little whispers for your heart 💌</Text>
 
-        {loveNotes.map((n) => (
+        {loveNotes.filter((n) => n.created_at.slice(0, 10) === today).map((n) => (
           <View key={n.id} style={[styles.noteCard, { borderColor: appTheme.borderColor }]}>
             <Text style={styles.body}>{n.text}</Text>
             <Text style={styles.muted}>{USERS[n.author as keyof typeof USERS]?.label || n.author} • {new Date(n.created_at).toLocaleString()}</Text>
           </View>
         ))}
+
+        <Text style={styles.muted}>Yesterday's notes live in The Days of Old 🧙‍♂️</Text>
 
         <TextInput
           value={noteDraft}

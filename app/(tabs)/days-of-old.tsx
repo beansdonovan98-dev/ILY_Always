@@ -6,10 +6,14 @@ import { Image as ExpoImage } from 'expo-image';
 
 import { getCoupleId } from '@/lib/couple';
 import { getDay, localDateKey } from '@/lib/days';
-import { daySeed } from '@/constants/content';
+import { getItem } from '@/lib/storage';
+import { daySeed, USERS } from '@/constants/content';
 import { getDayLogEntries, LogEntry, formatTimeForDisplay } from '@/lib/log';
+import { getCoupleSettings } from '@/lib/appearance';
 import { getSignedUrl, MediaRow } from '@/lib/media';
 import { supabase } from '@/lib/supabase';
+import { loadDailyTasks, loadDailyChecks } from '@/lib/health';
+import { UserKey } from '@/constants/content';
 
 import { useAppFont } from '@/hooks/useAppFont';
 
@@ -39,6 +43,9 @@ export default function DaysOfOldScreen() {
   const [dates, setDates] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [entries, setEntries] = useState<LogEntry[]>([]);
+  const [notes, setNotes] = useState<Array<{ id: string; author: string; text: string; created_at: string }>>([]);
+  const [chat, setChat] = useState<Array<{ id: string; text: string; author: UserKey; timestamp: number }>>([]);
+  const [healthRows, setHealthRows] = useState<Array<{ label: string; emoji: string; hisDone: boolean; hersDone: boolean }>>([]);
   const [media, setMedia] = useState<MediaRow[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
 
@@ -63,6 +70,30 @@ export default function DaysOfOldScreen() {
     const cid = coupleId || (await getCoupleId());
     const logs = await getDayLogEntries(cid, date);
     setEntries(logs);
+
+    const settings = await getCoupleSettings(cid);
+    const allNotes = settings?.love_notes || [];
+    setNotes(allNotes.filter((n: any) => (n.created_at || '').slice(0, 10) === date));
+
+    const allMsgs = await getItem<Array<{ id: string; text: string; author: UserKey; timestamp: number; dateKey?: string }>>('playtimeMessages', []);
+    setChat(
+      allMsgs
+        .filter((m) => (m.dateKey ?? localDateKey(new Date(m.timestamp))) === date)
+        .sort((a, b) => a.timestamp - b.timestamp)
+    );
+
+    const tasks = await loadDailyTasks(cid);
+    const hisChecks = await loadDailyChecks(cid, 'daddy');
+    const hersChecks = await loadDailyChecks(cid, 'princess');
+    setHealthRows(
+      tasks.map((t) => ({
+        label: t.label,
+        emoji: t.emoji,
+        hisDone: Boolean(hisChecks[`${t.id}|${date}`]),
+        hersDone: Boolean(hersChecks[`${t.id}|${date}`]),
+      }))
+    );
+
     const { data } = await supabase
       .from('media')
       .select('*')
@@ -95,12 +126,44 @@ export default function DaysOfOldScreen() {
       {selectedDate && (
         <View>
           <Text style={styles.sectionTitle}>{selectedDate} (read-only)</Text>
+          <Text style={styles.sectionSub}>Our Log 📜</Text>
           {entries.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No log entries.</Text>}
           {entries.map((e) => (
             <View key={e.id} style={[[styles.entryCard, appTheme.cardStyle], { borderLeftColor: e.eventColor, borderLeftWidth: 4 }]}>
               <Text style={styles.entryTime}>{formatTimeForDisplay(e.time)}</Text>
               <Text style={styles.entryEvent}>{e.eventEmoji} {e.eventName}</Text>
               <Text style={styles.entryText}>{e.whatHappened}</Text>
+            </View>
+          ))}
+
+          <Text style={styles.sectionSub}>Love Notes 💌</Text>
+          {notes.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No love notes this day.</Text>}
+          {notes.map((n) => (
+            <View key={n.id} style={[styles.noteCard, { borderColor: appTheme.borderColor }]}>
+              <Text style={styles.entryText}>{n.text}</Text>
+              <Text style={styles.muted}>{USERS[n.author as keyof typeof USERS]?.label || n.author} • {new Date(n.created_at).toLocaleString()}</Text>
+            </View>
+          ))}
+
+          <Text style={styles.sectionSub}>Daily Health List 🌿</Text>
+          {healthRows.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No checks logged.</Text>}
+          {healthRows.map((h) => (
+            <View key={h.label} style={[styles.healthRow, { borderColor: appTheme.borderColor }]}>
+              <Text style={styles.entryText}>{h.emoji} {h.label}</Text>
+              <View style={styles.healthMarks}>
+                <Text style={styles.healthMark}>{h.hisDone ? '✓ His 🍆' : '○ His'}</Text>
+                <Text style={styles.healthMark}>{h.hersDone ? '✓ Hers 🍑' : '○ Hers'}</Text>
+              </View>
+            </View>
+          ))}
+
+          <Text style={styles.sectionSub}>Covers & Playtime 📸</Text>
+          {chat.length === 0 && media.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No chats or photos this day.</Text>}
+          {chat.map((m) => (
+            <View key={m.id} style={[styles.chatRow, appTheme.cardStyle]}>
+              <Text style={styles.chatAuthor}>{USERS[m.author]?.label || m.author}</Text>
+              <Text style={styles.entryText}>{m.text}</Text>
+              <Text style={styles.muted}>{new Date(m.timestamp).toLocaleTimeString()}</Text>
             </View>
           ))}
           {media.map((m) => (
@@ -127,6 +190,13 @@ const styles = StyleSheet.create({
   dateChipSelected: { backgroundColor: 'rgba(46,125,79,0.3)' },
   dateChipText: { fontWeight: '600', fontSize: 12 },
   sectionTitle: { fontSize: 19, fontWeight: '800', marginVertical: 8 },
+  sectionSub: { fontSize: 15, fontWeight: '800', opacity: 0.8, marginTop: 16, marginBottom: 6 },
+  noteCard: { padding: 12, marginBottom: 8, borderRadius: 14, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.4)' },
+  healthRow: { padding: 12, marginBottom: 8, borderRadius: 14, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.4)' },
+  healthMarks: { flexDirection: 'row', gap: 12, marginTop: 4 },
+  healthMark: { fontSize: 12, fontWeight: '700', opacity: 0.8 },
+  chatRow: { padding: 12, marginBottom: 8, borderRadius: 14, opacity: 0.95 },
+  chatAuthor: { fontWeight: '700', fontSize: 12, marginBottom: 2 },
   entryCard: { padding: 14, marginBottom: 10, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.45)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', width: '100%' },
   entryTime: { fontSize: 11, opacity: 0.6 },
   entryEvent: { fontSize: 15, fontWeight: '700', marginVertical: 2 },

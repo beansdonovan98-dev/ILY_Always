@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 
 import { getCoupleId } from '@/lib/couple';
+import { localDateKey } from '@/lib/days';
 import { getItem, setItem } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 import { USERS, UserKey } from '@/constants/content';
@@ -31,6 +32,7 @@ interface ChatMessage {
   text: string;
   author: UserKey;
   timestamp: number;
+  dateKey?: string;
 }
 
 import { useAppFont } from '@/hooks/useAppFont';
@@ -102,6 +104,7 @@ export default function PlaytimeScreen() {
       text,
       author: activeUser,
       timestamp: Date.now(),
+      dateKey: localDateKey(),
     };
     const next = [...messages, msg];
     await persistMessages(next);
@@ -196,22 +199,32 @@ export default function PlaytimeScreen() {
         <View style={[styles.card, appTheme.cardStyle]}>
         <LeafBorder color={appTheme.leafColor} />
           <Text style={[styles.cardTitle, { fontFamily: font }]}>Chat Log 💬</Text>
-          <View style={styles.chatBox}>
-            {messages.map((m) => (
-              <View key={m.id} style={[styles.chatMsg, appTheme.cardStyle]}>
-                <Text style={styles.chatAuthor}>{USERS[m.author].label}</Text>
-                <Text style={styles.chatText}>{m.text}</Text>
-                <Text style={styles.chatTime}>{new Date(m.timestamp).toLocaleString()}</Text>
+          {(() => {
+          const today = localDateKey();
+          const todayMsgs = messages.filter(
+            (m) => (m.dateKey ?? localDateKey(new Date(m.timestamp))) === today
+          );
+          return (
+            <>
+              <View style={styles.chatBox}>
+                {todayMsgs.map((m) => (
+                  <View key={m.id} style={[styles.chatMsg, appTheme.cardStyle]}>
+                    <Text style={styles.chatAuthor}>{USERS[m.author].label}</Text>
+                    <Text style={styles.chatText}>{m.text}</Text>
+                    <Text style={styles.chatTime}>{new Date(m.timestamp).toLocaleString()}</Text>
+                  </View>
+               ))}
+                {todayMsgs.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No messages yet today — yesterday's are in The Days of Old 🧙‍♂️</Text>}
               </View>
-            ))}
-            {messages.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No messages yet.</Text>}
-          </View>
-          <View style={styles.row}>
-            <TextInput value={draftMessage} onChangeText={setDraftMessage} placeholder="Type a message..." style={[styles.input, { flex: 1 }]} />
-            <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={sendMessage}>
-              <Text style={styles.btnText}>Send</Text>
-            </Pressable>
-          </View>
+              <View style={styles.row}>
+                <TextInput value={draftMessage} onChangeText={setDraftMessage} placeholder="Type a message..." style={[styles.input, { flex: 1 }]} />
+                <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={sendMessage}>
+                  <Text style={styles.btnText}>Send</Text>
+                </Pressable>
+              </View>
+            </>
+          );
+        })()}
         </View>
 
         <View style={[styles.card, appTheme.cardStyle]}>

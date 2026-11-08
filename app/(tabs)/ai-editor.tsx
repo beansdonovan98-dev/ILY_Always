@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFocusEffect } from 'expo-router';
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -10,7 +11,8 @@ import { Image as ExpoImage } from 'expo-image';
 
 import { getCoupleId } from '@/lib/couple';
 import { editImageWithAI } from '@/lib/aiImage';
-import { uploadMedia, getSignedUrl } from '@/lib/media';
+import { uploadMedia, getSignedUrl, MediaRow } from '@/lib/media';
+import { supabase } from '@/lib/supabase';
 import { localDateKey } from '@/lib/days';
 import { useUsage } from '@/contexts/UsageContext';
 
@@ -26,6 +28,32 @@ export default function AIEditorScreen() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
+  const [savedPhotos, setSavedPhotos] = useState<MediaRow[]>([]);
+  const [savedUrls, setSavedUrls] = useState<Record<string, string>>({});
+
+  const loadSaved = useCallback(async () => {
+    try {
+      const cid = await getCoupleId();
+      const { data, error } = await supabase
+        .from('media')
+        .select('*')
+        .eq('couple_id', cid)
+        .eq('kind', 'shared')
+        .order('created_at', { ascending: false });
+      if (error) return;
+      const rows = ((data || []) as MediaRow[]).filter((r) => (r.file_name || '').startsWith('ai-edit-'));
+      setSavedPhotos(rows);
+      const urls: Record<string, string> = {};
+      await Promise.all(rows.map(async (r) => { try { urls[r.id] = await getSignedUrl(r); } catch {} }));
+      setSavedUrls(urls);
+    } catch {}
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadSaved();
+    }, [loadSaved])
+  );
 
   const pickSource = useCallback(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -192,6 +220,40 @@ export default function AIEditorScreen() {
       ) : null}
 
       {status ? <Text style={[styles.muted, { fontFamily: font }]}>{status}</Text> : null}
+
+      {/* Saved creations */}
+      <View style={[styles.card, appTheme.cardStyle]}>
+        <LeafBorder color={appTheme.leafColor} />
+        <Text style={[styles.cardTitle, { fontFamily: font }]}>Saved Creations 🎞️</Text>
+        <Text style={[styles.cardHint, { color: appTheme.subtitleColor }]}>
+          Every edit you saved, kept forever — they never clear, gorgeous 💚
+        </Text>
+        {savedPhotos.length === 0 ? (
+          <Text style={styles.muted}>No saved creations yet — save your first edit above ✨</Text>
+        ) : (
+          <View style={styles.grid}>
+            {savedPhotos.map((photo) => (
+              <Pressable
+                key={photo.id}
+                style={[styles.thumbWrap, { borderColor: appTheme.borderColor }]}
+                onPress={async () => {
+                  try {
+                    const url = savedUrls[photo.id];
+                    if (!url) return;
+                    const { status: perm } = await MediaLibrary.requestPermissionsAsync();
+                    if (perm === 'granted') {
+                      await MediaLibrary.saveToLibraryAsync(url);
+                      setStatus('Saved to your photo library 💾');
+                    }
+                  } catch {}
+                }}>
+                <ExpoImage source={{ uri: savedUrls[photo.id] || '' }} style={styles.thumb} contentFit="cover" />
+              </Pressable>
+            ))}
+          </View>
+        )}
+        {savedPhotos.length > 0 && <Text style={styles.muted}>Tap any creation to save it to your photos 💾</Text>}
+      </View>
     </ScrollView>
   );
 }
@@ -238,6 +300,9 @@ const styles = StyleSheet.create({
   ghostPillText: { fontWeight: '700', fontSize: 13 },
   photoWrap: { marginTop: 12, borderRadius: 18, overflow: 'hidden', borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.35)' },
   photo: { width: '100%', height: 240 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+  thumbWrap: { width: '31%', aspectRatio: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.35)' },
+  thumb: { width: '100%', height: '100%' },
   muted: { fontSize: 13, opacity: 0.65, textAlign: 'center' },
   hint: { fontSize: 12, opacity: 0.6, marginTop: 8, lineHeight: 17 },
 });
