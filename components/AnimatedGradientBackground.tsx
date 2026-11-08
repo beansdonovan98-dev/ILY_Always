@@ -86,11 +86,23 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
 
   const drift = useRef(new Animated.Value(0)).current;
   const drift2 = useRef(new Animated.Value(0)).current;
-  // One clock per smoke puff so they rise on independent rhythms.
-  const smoke1 = useRef(new Animated.Value(0)).current;
-  const smoke2 = useRef(new Animated.Value(0)).current;
-  const smoke3 = useRef(new Animated.Value(0)).current;
-  const smoke4 = useRef(new Animated.Value(0)).current;
+  // 8 smoke clocks so puffs appear at random times/places, not in a pattern.
+  const smokeClocksRef = useRef<Animated.Value[] | null>(null);
+  if (!smokeClocksRef.current) {
+    smokeClocksRef.current = Array.from({ length: 8 }, () => new Animated.Value(0));
+  }
+  const smokeClocks = smokeClocksRef.current;
+  // Irregular launch points, sizes, sway and durations (deterministic but scattered).
+  const SMOKE = [
+    { left: '4%', bottom: '3%', size: 56, sway: 14, dur: 9800, delay: 0, col: '#CBD5E1' },
+    { left: '18%', bottom: '6%', size: 42, sway: -18, dur: 11200, delay: 3400, col: '#E2E8F0' },
+    { left: '12%', bottom: '2%', size: 74, sway: 10, dur: 13400, delay: 6200, col: '#CBD5E1' },
+    { left: '30%', bottom: '5%', size: 48, sway: -12, dur: 8600, delay: 1800, col: '#E7E5E4' },
+    { left: '44%', bottom: '4%', size: 88, sway: 20, dur: 14200, delay: 5100, col: '#CBD5E1' },
+    { left: '56%', bottom: '7%', size: 52, sway: -16, dur: 10400, delay: 7600, col: '#E2E8F0' },
+    { left: '66%', bottom: '3%', size: 64, sway: 12, dur: 11800, delay: 2600, col: '#CBD5E1' },
+    { left: '80%', bottom: '5%', size: 44, sway: -10, dur: 9200, delay: 4800, col: '#E7E5E4' },
+  ] as const;
 
   useEffect(() => {
     // Sheets animate on the native driver (smooth, off the JS thread) so
@@ -133,7 +145,7 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
     loopB.start();
 
     // Smoke: each puff rises, expands and dissolves, then a fresh one
-    // starts near the joint — a continuous, staggered plume.
+    // starts at a different spot — 8 independent plumes, no visible pattern.
     const rise = (v: Animated.Value, duration: number, delay = 0) =>
       Animated.loop(
         Animated.sequence([
@@ -151,19 +163,14 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
           }),
         ])
       );
-    const loops = [
-      rise(smoke1, 9000, 0),
-      rise(smoke2, 11000, 2800),
-      rise(smoke3, 10000, 5600),
-      rise(smoke4, 12500, 1200),
-    ];
+    const loops = SMOKE.map((s, i) => rise(smokeClocks[i], s.dur, s.delay));
     loops.forEach((l) => l.start());
     return () => {
       loopA.stop();
       loopB.stop();
       loops.forEach((l) => l.stop());
     };
-  }, [drift, drift2, smoke1, smoke2, smoke3, smoke4]);
+  }, [drift, drift2, smokeClocks]);
 
   const sheetA = {
     transform: [
@@ -209,19 +216,15 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
     ],
   };
 
-  // Smoke puff cycle: rise ~160pt, drift sideways, swell, fade out.
+  // Smoke puff cycle: rise ~170pt, drift sideways, swell, fade out.
   const smokeStyle = (v: Animated.Value, sway = 12) => ({
-    opacity: v.interpolate({ inputRange: [0, 0.15, 0.75, 1], outputRange: [0, 0.55, 0.35, 0] }),
+    opacity: v.interpolate({ inputRange: [0, 0.18, 0.72, 1], outputRange: [0, 0.5, 0.3, 0] }),
     transform: [
-      { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, -180] }) },
-      { translateX: v.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, sway, -sway * 0.4] }) },
-      { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.7, 2.1] }) },
+      { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, -190] }) },
+      { translateX: v.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, sway, -sway * 0.35] }) },
+      { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.65, 2.15] }) },
     ],
   });
-  const smoke1Style = smokeStyle(smoke1, 14);
-  const smoke2Style = smokeStyle(smoke2, -18);
-  const smoke3Style = smokeStyle(smoke3, 10);
-  const smoke4Style = smokeStyle(smoke4, -12);
 
   return (
     <View style={[styles.root, { backgroundColor: base }]}>
@@ -266,12 +269,19 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
         <View style={styles.leafB4}><CannabisLeaf size={14} color={leafColor} opacity={0.08} style={styles.tiltLeft} /></View>
       </View>
 
-      {/* Animated smoke plumes rising from the plants */}
+      {/* Animated smoke plumes rising from scattered spots */}
       <View pointerEvents="none" style={styles.leafLayer}>
-        <Animated.View style={[styles.smokeA, smoke1Style]}><SmokePuff size={68} /></Animated.View>
-        <Animated.View style={[styles.smokeB, smoke2Style]}><SmokePuff size={54} /></Animated.View>
-        <Animated.View style={[styles.smokeC, smoke3Style]}><SmokePuff size={80} /></Animated.View>
-        <Animated.View style={[styles.smokeD, smoke4Style]}><SmokePuff size={48} /></Animated.View>
+        {SMOKE.map((s, i) => (
+          <Animated.View
+            key={i}
+            style={[
+              styles.smokeSlot,
+              { left: s.left as any, bottom: s.bottom as any },
+              smokeStyle(smokeClocks[i], s.sway),
+            ]}>
+            <SmokePuff size={s.size} color={s.col} />
+          </Animated.View>
+        ))}
       </View>
 
       {/* Rooted plants on the edges — bud colour follows the active theme */}
@@ -299,10 +309,7 @@ const styles = StyleSheet.create({
   leafB2: { position: 'absolute', top: '38%', left: '6%' },
   leafB3: { position: 'absolute', top: '64%', left: '-4%' },
   leafB4: { position: 'absolute', top: '86%', left: '88%' },
-  smokeA: { position: 'absolute', bottom: '6%', left: '34%' },
-  smokeB: { position: 'absolute', bottom: '4%', left: '52%' },
-  smokeC: { position: 'absolute', bottom: '8%', left: '12%' },
-  smokeD: { position: 'absolute', bottom: '2%', left: '66%' },
+  smokeSlot: { position: 'absolute' },
   plantLeft: { position: 'absolute', bottom: '-6%', left: '-3%', transform: [{ rotate: '-4deg' }] },
   plantRight: { position: 'absolute', bottom: '-6%', right: '-3%', transform: [{ rotate: '4deg' }] },
   bongSlot: { position: 'absolute', bottom: '10%', right: '6%', transform: [{ rotate: '6deg' }] },
