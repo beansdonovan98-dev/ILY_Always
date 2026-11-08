@@ -9,8 +9,9 @@ interface CannabisLeafProps {
 }
 
 /**
- * Stylised seven-leaflet cannabis leaf.
- * Drawn as SVG so it stays crisp and can follow the couple's accent colour.
+ * Seven-leaflet cannabis leaf with serrated leaflets (saw-tooth edges),
+ * like a real fan leaf. Drawn as SVG so it stays crisp and can follow
+ * the couple's accent colour.
  */
 export function CannabisLeaf({ size = 14, color = '#2E7D4F', opacity = 0.9, style }: CannabisLeafProps) {
   const leaflets = [
@@ -28,13 +29,22 @@ export function CannabisLeaf({ size = 14, color = '#2E7D4F', opacity = 0.9, styl
       <G transform="translate(12, 23)">
         {leaflets.map((leaf, i) => (
           <G key={i} transform={`rotate(${leaf.angle}) scale(${leaf.scale})`}>
+            {/* Serrated leaflet: saw-tooth outline with a central vein. */}
             <Path
-              d="M0,0 C-2.1,-3.1 -1.8,-7.6 0,-11.5 C1.8,-7.6 2.1,-3.1 0,0 Z"
+              d="M0,0 L-1.5,-2.4 L-0.9,-3.1 L-1.8,-4.6 L-1.1,-5.3 L-1.8,-6.9 L-1,-7.6 L-1.4,-9.2 L-0.4,-9.8 L0,-11.5 L0.4,-9.8 L1.4,-9.2 L1,-7.6 L1.8,-6.9 L1.1,-5.3 L1.8,-4.6 L0.9,-3.1 L1.5,-2.4 Z"
               fill={color}
               opacity={opacity}
             />
+            <Path
+              d="M0,0 L0,-11"
+              stroke={color}
+              strokeOpacity={opacity}
+              strokeWidth={0.35}
+            />
           </G>
         ))}
+        {/* stem to the leaflets */}
+        <Path d="M0,0 L0,1" stroke={color} strokeOpacity={opacity} strokeWidth={0.8} />
       </G>
     </Svg>
   );
@@ -153,9 +163,12 @@ export function WeedPlant({ height = 80, color = '#2E7D32', budColor = '#7B1FA2'
         <G transform="rotate(-30)"><Path d="M0,0 C-1.6,-7 -1.4,-14 0,-18 C1.4,-14 1.6,-7 0,0 Z" fill={color} /></G>
         <G transform="rotate(30)"><Path d="M0,0 C-1.6,-7 -1.4,-14 0,-18 C1.4,-14 1.6,-7 0,0 Z" fill={color} /></G>
       </G>
-      {/* top bud */}
-      <Path d="M30,28 C24,20 24,10 30,2 C36,10 36,20 30,28 Z" fill={budColor} opacity={0.85} />
-      <Path d="M30,22 C27,17 27,11 30,7 C33,11 33,17 30,22 Z" fill={budColor} opacity={0.5} />
+      {/* top fan leaves — no bud, just leaves like a wild plant */}
+      <G transform="translate(30,28)">
+        <G transform="rotate(-18)"><Path d="M0,0 C-1.9,-6 -1.6,-13 0,-20 C1.6,-13 1.9,-6 0,0 Z" fill={color} /></G>
+        <G transform="rotate(18)"><Path d="M0,0 C-1.9,-6 -1.6,-13 0,-20 C1.6,-13 1.9,-6 0,0 Z" fill={color} /></G>
+        <G><Path d="M0,0 C-2.1,-7 -1.9,-15 0,-24 C1.9,-15 2.1,-7 0,0 Z" fill={color} /></G>
+      </G>
       {/* soil line */}
       <Path d="M12,78 L48,78" stroke={color} strokeWidth={1.6} opacity={0.6} strokeLinecap="round" />
     </Svg>

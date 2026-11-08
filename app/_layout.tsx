@@ -8,7 +8,7 @@ import 'react-native-reanimated';
 import { initCrashReporting } from '@/lib/sentry';
 import LoginScreen from '@/components/LoginScreen';
 import { UsageProvider, useUsage } from '@/contexts/UsageContext';
-import { ThemeProvider } from '@/contexts/ThemeContext';
+import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import AnimatedGradientBackground from '@/components/AnimatedGradientBackground';
 import { Caveat_400Regular } from '@expo-google-fonts/caveat';
 import { ComicNeue_400Regular } from '@expo-google-fonts/comic-neue';
@@ -72,7 +72,7 @@ export default function RootLayout() {
   return <RootLayoutNav />;
 }
 
-/** Requires the partner to log in before the app (and user identity) is exposed. */
+/** True glassmorphism — everything frosted over the animated gradient. */
 function AuthGate() {
   const { authenticated, ready } = useUsage();
   if (!ready) return null;
@@ -91,12 +91,34 @@ function AuthGate() {
 }
 
 function RootLayoutNav() {
+  const { settings } = useTheme();
+  const palette = (settings?.background_gradient
+    ? ((): string[] => {
+        try {
+          const parsed = JSON.parse(settings.background_gradient as string);
+          return Array.isArray(parsed) ? parsed.map(String) : [];
+        } catch {
+          return (settings.background_gradient as string).split(',').map((s: string) => s.trim());
+        }
+      })()
+    : []) as string[];
+  const luminance = (hex: string): number => {
+    const h = hex.replace('#', '');
+    if (h.length < 6) return 0.9;
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  };
+  const avgLum = palette.length ? palette.reduce((sum, c) => sum + luminance(c), 0) / palette.length : 0.9;
+  const statusStyle = avgLum < 0.62 ? 'light' : 'dark';
+
   return (
     <UsageProvider>
       <ThemeProvider>
         <AnimatedGradientBackground>
           <NavThemeProvider value={APP_NAV_THEME}>
-            <StatusBar style="dark" />
+            <StatusBar style={statusStyle} />
             <AuthGate />
           </NavThemeProvider>
         </AnimatedGradientBackground>
