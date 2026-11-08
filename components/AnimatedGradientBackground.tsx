@@ -218,7 +218,7 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
 
   // Smoke puff cycle: rise ~170pt, drift sideways, swell, fade out.
   const smokeStyle = (v: Animated.Value, sway = 12) => ({
-    opacity: v.interpolate({ inputRange: [0, 0.18, 0.72, 1], outputRange: [0, 0.5, 0.3, 0] }),
+    opacity: v.interpolate({ inputRange: [0, 0.18, 0.72, 1], outputRange: [0, 0.85, 0.55, 0] }),
     transform: [
       { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [0, -190] }) },
       { translateX: v.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, sway, -sway * 0.35] }) },
@@ -259,14 +259,16 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
 
       {/* Weed scene sprites (static so scrolling stays smooth) */}
       <View style={styles.leafLayer}>
-        <View style={styles.leafA1}><CannabisLeaf size={30} color={leafColor} opacity={0.14} /></View>
-        <View style={styles.leafA2}><CannabisLeaf size={20} color={leafColor} opacity={0.1} /></View>
-        <View style={styles.leafA3}><CannabisLeaf size={24} color={leafColor} opacity={0.12} style={styles.tiltLeft} /></View>
-        <View style={styles.leafA4}><CannabisLeaf size={16} color={leafColor} opacity={0.09} /></View>
-        <View style={styles.leafB1}><CannabisLeaf size={26} color={leafColor} opacity={0.12} style={styles.tiltRight} /></View>
-        <View style={styles.leafB2}><CannabisLeaf size={18} color={leafColor} opacity={0.1} /></View>
-        <View style={styles.leafB3}><CannabisLeaf size={22} color={leafColor} opacity={0.11} /></View>
-        <View style={styles.leafB4}><CannabisLeaf size={14} color={leafColor} opacity={0.08} style={styles.tiltLeft} /></View>
+        <View style={styles.leafA1}><CannabisLeaf size={52} color={leafColor} opacity={0.38} /></View>
+        <View style={styles.leafA2}><CannabisLeaf size={44} color={leafColor} opacity={0.34} /></View>
+        <View style={styles.leafA3}><CannabisLeaf size={48} color={leafColor} opacity={0.36} style={styles.tiltLeft} /></View>
+        <View style={styles.leafA4}><CannabisLeaf size={38} color={leafColor} opacity={0.3} /></View>
+        <View style={styles.leafB1}><CannabisLeaf size={50} color={leafColor} opacity={0.36} style={styles.tiltRight} /></View>
+        <View style={styles.leafB2}><CannabisLeaf size={40} color={leafColor} opacity={0.32} /></View>
+        <View style={styles.leafB3}><CannabisLeaf size={46} color={leafColor} opacity={0.34} /></View>
+        <View style={styles.leafB4}><CannabisLeaf size={34} color={leafColor} opacity={0.28} style={styles.tiltLeft} /></View>
+        <View style={styles.leafC1}><CannabisLeaf size={36} color={leafColor} opacity={0.3} /></View>
+        <View style={styles.leafC2}><CannabisLeaf size={42} color={leafColor} opacity={0.32} style={styles.tiltRight} /></View>
       </View>
 
       {/* Animated smoke plumes rising from scattered spots */}
@@ -285,8 +287,8 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
       </View>
 
       {/* Rooted plants on the edges — bud colour follows the active theme */}
-      <View pointerEvents="none" style={styles.plantLeft}><WeedPlant height={190} color={leafColor} budColor={c3} opacity={0.85} /></View>
-      <View pointerEvents="none" style={styles.plantRight}><WeedPlant height={150} color={leafColor} budColor={c4} opacity={0.65} /></View>
+      <View pointerEvents="none" style={styles.plantLeft}><WeedPlant height={260} color={leafColor} budColor={c3} opacity={1} /></View>
+      <View pointerEvents="none" style={styles.plantRight}><WeedPlant height={210} color={leafColor} budColor={c4} opacity={0.95} /></View>
 
       <View style={styles.content}>{children}</View>
     </View>
@@ -309,6 +311,8 @@ const styles = StyleSheet.create({
   leafB2: { position: 'absolute', top: '38%', left: '6%' },
   leafB3: { position: 'absolute', top: '64%', left: '-4%' },
   leafB4: { position: 'absolute', top: '86%', left: '88%' },
+  leafC1: { position: 'absolute', top: '40%', left: '44%' },
+  leafC2: { position: 'absolute', top: '68%', left: '38%' },
   smokeSlot: { position: 'absolute' },
   plantLeft: { position: 'absolute', bottom: '-6%', left: '-3%', transform: [{ rotate: '-4deg' }] },
   plantRight: { position: 'absolute', bottom: '-6%', right: '-3%', transform: [{ rotate: '4deg' }] },
