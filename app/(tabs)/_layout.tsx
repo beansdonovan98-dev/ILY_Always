@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Pressable, Text } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import TabDropdown from '@/components/TabDropdown';
 import { useTheme } from '@/contexts/ThemeContext';
