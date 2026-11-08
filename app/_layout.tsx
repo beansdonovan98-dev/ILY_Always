@@ -2,7 +2,7 @@ import { useFonts } from 'expo-font';
 import { DefaultTheme, Stack, ThemeProvider as NavThemeProvider, type Theme } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import 'react-native-reanimated';
 
 import { initCrashReporting } from '@/lib/sentry';
@@ -45,6 +45,9 @@ const APP_NAV_THEME: Theme = {
 };
 
 export default function RootLayout() {
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [fontsError, setFontsError] = useState<Error | null>(null);
+
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ComicNeue_400Regular,
@@ -60,9 +63,7 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
+    if (loaded) SplashScreen.hideAsync();
   }, [loaded]);
 
   if (!loaded) {
