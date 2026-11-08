@@ -18,7 +18,7 @@ const config = {
       CFBundleVersion: '1001',
       CFBundleShortVersionString: '1.0.0',
       NSPhotoLibraryUsageDescription: 'This app needs access to your photo library to upload and share photos and GIFs.',
-      NSUserNotificationsUsageDescription: 'This app uses notifications to keep you and your partner in sync.',
+      NSUserNotificationsUsageDescription: 'This app uses notifications to keep you and your lover in sync.',
     },
   },
   plugins: [
