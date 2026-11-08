@@ -432,7 +432,7 @@ export default function HealthScreen() {
               .map((w) => (
                 <View key={w.id} style={styles.listRow}>
                   <Text style={styles.listText}>
-                    {w.value} — {w.dateKey}
+                    {w.value} lbs — {w.dateKey}
                   </Text>
                   {isMe && (
                     <>
@@ -619,17 +619,6 @@ export default function HealthScreen() {
         Keeping our dirty little temples fed, fit, and fully charged for mischief 🔥💪💦
       </Text>
 
-      {/* Body measurements */}
-      <View style={[styles.card, theme.cardStyle]}>
-        <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>His &amp; Hers Body Measurements 💪</Text>
-        <Text style={styles.cardHint}>
-          Only you can edit your own numbers — measurements refresh every 3 days 🍃
-        </Text>
-        {renderBodyPanel('daddy')}
-        {renderBodyPanel('princess')}
-      </View>
-
       {/* Daily Health List */}
       <View style={[styles.card, theme.cardStyle]}>
         <LeafBorder color={theme.leafColor} />
@@ -698,19 +687,35 @@ export default function HealthScreen() {
           const hisStreak = streakEndingToday((d) => dailyDone(me === 'daddy' ? myDaily : theirDaily, task.id, d));
           const hersStreak = streakEndingToday((d) => dailyDone(me === 'princess' ? myDaily : theirDaily, task.id, d));
           return (
-            <View key={task.id} style={[styles.trackerRow, { borderColor: theme.borderColor }]}>
+            <View key={task.id} style={styles.trackerRow}>
               <Text style={styles.trackerName}>
                 {task.emoji} {task.label}
               </Text>
               <View style={styles.trackerLine}>
                 <Text style={styles.trackerWho}>His 🍆</Text>
-                <View style={styles.flex}>{renderStreakDots((d) => dailyDone(me === 'daddy' ? myDaily : theirDaily, task.id, d))}</View>
-                <Text style={styles.streakCount}>🔥 {hisStreak}</Text>
+                <View style={styles.streakDots}>{[0, 1, 2, 3, 4, 5, 6].map((i) => {
+                  const d = shiftDateKey(localDateKey(), i - 6);
+                  const done = dailyDone(me === 'daddy' ? myDaily : theirDaily, task.id, d);
+                  return (
+                    <View key={i} style={[styles.streakDot, done ? { backgroundColor: theme.accentColor, borderColor: theme.accentColor } : { borderColor: theme.borderColor }]}>
+                      <Text style={[styles.streakDotText, done && { color: '#FFFFFF' }]}>{done ? '✓' : ''}</Text>
+                    </View>
+                  );
+                })}</View>
+                <Text style={styles.streakCount}>🔥{hisStreak}</Text>
               </View>
               <View style={styles.trackerLine}>
                 <Text style={styles.trackerWho}>Hers 🍑</Text>
-                <View style={styles.flex}>{renderStreakDots((d) => dailyDone(me === 'princess' ? myDaily : theirDaily, task.id, d))}</View>
-                <Text style={styles.streakCount}>🔥 {hersStreak}</Text>
+                <View style={styles.streakDots}>{[0, 1, 2, 3, 4, 5, 6].map((i) => {
+                  const d = shiftDateKey(localDateKey(), i - 6);
+                  const done = dailyDone(me === 'princess' ? myDaily : theirDaily, task.id, d);
+                  return (
+                    <View key={i} style={[styles.streakDot, done ? { backgroundColor: theme.accentColor, borderColor: theme.accentColor } : { borderColor: theme.borderColor }]}>
+                      <Text style={[styles.streakDotText, done && { color: '#FFFFFF' }]}>{done ? '✓' : ''}</Text>
+                    </View>
+                  );
+                })}</View>
+                <Text style={styles.streakCount}>🔥{hersStreak}</Text>
               </View>
             </View>
           );
@@ -773,6 +778,19 @@ export default function HealthScreen() {
 
         {renderWeightPanel('daddy')}
         {renderWeightPanel('princess')}
+      </View>
+
+      {/* Body measurements */}
+      <View style={[styles.card, theme.cardStyle]}>
+        <LeafBorder color={theme.leafColor} />
+        <Text style={styles.cardTitle}>His &amp; Hers Body Measurements 💪</Text>
+        <Text style={styles.cardHint}>
+          Only you can edit your own numbers — measurements refresh every 3 days 🍃
+        </Text>
+        <View style={styles.sideRow}>
+          <View style={styles.sidePanel}>{renderBodyPanel('daddy')}</View>
+          <View style={styles.sidePanel}>{renderBodyPanel('princess')}</View>
+        </View>
       </View>
 
       {/* Medicine */}
@@ -1085,10 +1103,21 @@ const styles = StyleSheet.create({
   bubbleLabel: { flex: 1, alignItems: 'center', gap: 4 },
   bubbleName: { fontSize: 15, fontWeight: '700', textAlign: 'center' },
   taskEmojiInput: { width: 56 },
-  trackerRow: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderStyle: 'dashed' },
-  trackerName: { fontSize: 14, fontWeight: '800', marginBottom: 6 },
-  trackerLine: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-  trackerWho: { fontSize: 12, fontWeight: '800', opacity: 0.7, width: 62 },
+  trackerRow: { marginTop: 8 },
+  trackerName: { fontSize: 13, fontWeight: '800', marginBottom: 3 },
+  trackerLine: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
+  trackerWho: { fontSize: 11, fontWeight: '800', opacity: 0.7, width: 52 },
+  streakDots: { flexDirection: 'row', gap: 3, flex: 1 },
+  streakDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.5)',
+  },
+  streakDotText: { fontSize: 10, fontWeight: '800' },
   streakRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
   streakWithCount: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 2 },
   streakCount: { fontSize: 12, fontWeight: '700', opacity: 0.75 },
@@ -1113,6 +1142,8 @@ const styles = StyleSheet.create({
   },
   listText: { fontSize: 14, flex: 1 },
   empty: { fontSize: 14, opacity: 0.6, marginTop: 10 },
+  sideRow: { flexDirection: 'row', gap: 10, marginTop: 2 },
+  sidePanel: { flex: 1 },
   fitnessRow: {
     flexDirection: 'row',
     alignItems: 'center',

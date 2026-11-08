@@ -1,10 +1,13 @@
 import { Tabs } from 'expo-router';
+import { Pressable, Text } from 'react-native';
 
 import TabDropdown from '@/components/TabDropdown';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useUsage } from '@/contexts/UsageContext';
 
 export default function TabLayout() {
   const { settings } = useTheme();
+  const { logout } = useUsage();
 
   return (
     <Tabs
@@ -17,6 +20,11 @@ export default function TabLayout() {
         headerShadowVisible: false,
         headerTintColor: settings?.font_color || '#3A2A2E',
         tabBarStyle: { display: 'none' },
+        headerLeft: () => (
+          <Pressable onPress={logout} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: 'rgba(120,120,120,0.2)', marginLeft: 12 }}>
+            <Text style={{ fontWeight: '600', fontSize: 14, color: settings?.font_color || '#3A2A2E' }}>Log out 🔒</Text>
+          </Pressable>
+        ),
         headerRight: () => <TabDropdown />,
       }}>
       <Tabs.Screen name="index" />

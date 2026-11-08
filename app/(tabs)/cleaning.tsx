@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 
 import { AppText as Text } from '@/components/AppText';
@@ -90,7 +90,7 @@ export default function CleaningScreen() {
     }
   };
 
-  const renderCheckRow = (cadence: Cadence, chore: Chore) => {
+  const renderCheckRow = (cadence: Cadence, chore: Chore, extra?: ViewStyle) => {
     const cycleKey = currentCycleKey(cadence, today);
     const done = isDone(checks, cadence, chore.id, cycleKey);
     return (
@@ -101,15 +101,9 @@ export default function CleaningScreen() {
           styles.checkRow,
           { borderColor: theme.borderColor },
           done && { backgroundColor: theme.accentSoft },
+          extra,
         ]}>
-        <View
-          style={[
-            styles.checkCircle,
-            { borderColor: theme.accentColor },
-            done && { backgroundColor: theme.accentColor },
-          ]}>
-          <Text style={[styles.checkMark, done && { color: '#FFFFFF' }]}>{done ? '✓' : '○'}</Text>
-        </View>
+        <Text style={[styles.checkMark, { color: theme.accentColor }]}>{done ? '✓' : '○'}</Text>
         <Text style={[styles.checkLabel, done && styles.checkLabelDone]}>{chore.label}</Text>
       </Pressable>
     );
@@ -174,7 +168,9 @@ export default function CleaningScreen() {
           A little effort every day keeps the dirty boys away 🌿
         </Text>
         <Text style={styles.streakLine}>🔥 {streaks.daily}-day streak</Text>
-        {DAILY_CHORES.map((c) => renderCheckRow('daily', c))}
+        <View style={styles.twoCol}>
+          {DAILY_CHORES.map((c) => renderCheckRow('daily', c, styles.twoColItem))}
+        </View>
       </View>
 
       {/* Every 2 days */}
@@ -237,13 +233,16 @@ const styles = StyleSheet.create({
   checkRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    padding: 12,
-    marginTop: 8,
-    borderRadius: 14,
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginTop: 6,
+    borderRadius: 10,
     borderWidth: 1,
     backgroundColor: 'rgba(255,255,255,0.45)',
   },
+  twoCol: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  twoColItem: { flex: 1, minWidth: '47%' },
   checkCircle: {
     width: 32,
     height: 32,

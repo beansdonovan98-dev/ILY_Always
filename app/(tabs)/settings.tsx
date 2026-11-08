@@ -60,8 +60,6 @@ export default function SettingsScreen() {
   const [fontId, setFontId] = useState('sans');
   const [tabConfig, setTabConfig] = useState(DEFAULT_TABS);
   const [periodRevealed, setPeriodRevealed] = useState(false);
-  const [avatarDaddy, setAvatarDaddy] = useState('🍆');
-  const [avatarPrincess, setAvatarPrincess] = useState('🍑');
   const [status, setStatus] = useState('');
   const [taps, setTaps] = useState(0);
 
@@ -78,8 +76,6 @@ export default function SettingsScreen() {
         setAccentColor(s.accent_color || '');
         setFontId(s.font_id || 'sans');
         setPeriodRevealed(await getItem<boolean>('periodRevealed', false));
-        setAvatarDaddy(s.avatar_daddy || '🍆');
-        setAvatarPrincess(s.avatar_princess || '🍑');
         if (s.tab_config && Array.isArray(s.tab_config)) setTabConfig(s.tab_config);
       }
     })();
@@ -93,10 +89,20 @@ export default function SettingsScreen() {
   }, [updateSettings]);
 
   const autoThemeColors = (colors: string[]) => {
+    const luminance = (hex: string): number => {
+      const h = hex.replace('#', '');
+      const r = parseInt(h.slice(0, 2), 16);
+      const g = parseInt(h.slice(2, 4), 16);
+      const b = parseInt(h.slice(4, 6), 16);
+      return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    };
+    const avg = (arr: string[]) =>
+      arr.reduce((sum, c) => sum + luminance(c), 0) / arr.length;
+    const darkTheme = avg(colors) < 0.5;
     const accent = colors[1] || colors[0];
-    const border = colors[colors.length - 1];
-    const subtitle = colors[0];
-    const font = colors[colors.length - 1];
+    const border = darkTheme ? 'rgba(255,255,255,0.5)' : 'rgba(46,125,79,0.55)';
+    const font = darkTheme ? '#FFFFFF' : '#3A2A2E';
+    const subtitle = darkTheme ? 'rgba(255,255,255,0.85)' : 'rgba(58,42,46,0.75)';
     return { accent_color: accent, border_color: border, subtitle_color: subtitle, font_color: font };
   };
 
@@ -203,29 +209,37 @@ export default function SettingsScreen() {
       <View style={[styles.card, appTheme.cardStyle]}>
         <LeafBorder color={appTheme.leafColor} />
         <Text style={[styles.cardTitle, { fontFamily: font }]}>Colors</Text>
-        <Text style={styles.label}>Font color</Text>
-        <View style={styles.row}>
-          {EVENT_COLORS.map((c) => (
-            <Pressable key={c} onPress={() => { setFontColor(c); updateSettings({ font_color: c }); }} style={[styles.colorSwatch, { backgroundColor: c }, fontColor === c && [styles.colorSwatchSelected, appTheme.activeChipStyle]]} />
-          ))}
+        <View style={styles.compactGrid}>
+          <Text style={styles.compactLabel}>Font</Text>
+          <View style={styles.row}>
+            {EVENT_COLORS.map((c) => (
+              <Pressable key={c} onPress={() => { setFontColor(c); updateSettings({ font_color: c }); }} style={[styles.colorSwatch, styles.colorSwatchSm, { backgroundColor: c }, fontColor === c && [styles.colorSwatchSelected, appTheme.activeChipStyle]]} />
+            ))}
+          </View>
         </View>
-        <Text style={styles.label}>Subtitle color</Text>
-        <View style={styles.row}>
-          {EVENT_COLORS.map((c) => (
-            <Pressable key={c} onPress={() => { setSubtitleColor(c); updateSettings({ subtitle_color: c }); }} style={[styles.colorSwatch, { backgroundColor: c }, subtitleColor === c && [styles.colorSwatchSelected, appTheme.activeChipStyle]]} />
-          ))}
+        <View style={styles.compactGrid}>
+          <Text style={styles.compactLabel}>Subtitle</Text>
+          <View style={styles.row}>
+            {EVENT_COLORS.map((c) => (
+              <Pressable key={c} onPress={() => { setSubtitleColor(c); updateSettings({ subtitle_color: c }); }} style={[styles.colorSwatch, styles.colorSwatchSm, { backgroundColor: c }, subtitleColor === c && [styles.colorSwatchSelected, appTheme.activeChipStyle]]} />
+            ))}
+          </View>
         </View>
-        <Text style={styles.label}>Border color</Text>
-        <View style={styles.row}>
-          {EVENT_COLORS.map((c) => (
-            <Pressable key={c} onPress={() => { setBorderColor(c); updateSettings({ border_color: c }); }} style={[styles.colorSwatch, { backgroundColor: c }, borderColor === c && [styles.colorSwatchSelected, appTheme.activeChipStyle]]} />
-          ))}
+        <View style={styles.compactGrid}>
+          <Text style={styles.compactLabel}>Border</Text>
+          <View style={styles.row}>
+            {EVENT_COLORS.map((c) => (
+              <Pressable key={c} onPress={() => { setBorderColor(c); updateSettings({ border_color: c }); }} style={[styles.colorSwatch, styles.colorSwatchSm, { backgroundColor: c }, borderColor === c && [styles.colorSwatchSelected, appTheme.activeChipStyle]]} />
+            ))}
+          </View>
         </View>
-        <Text style={styles.label}>Accent color</Text>
-        <View style={styles.row}>
-          {EVENT_COLORS.map((c) => (
-            <Pressable key={c} onPress={() => { setAccentColor(c); updateSettings({ accent_color: c }); }} style={[styles.colorSwatch, { backgroundColor: c }, accentColor === c && [styles.colorSwatchSelected, appTheme.activeChipStyle]]} />
-          ))}
+        <View style={styles.compactGrid}>
+          <Text style={styles.compactLabel}>Accent</Text>
+          <View style={styles.row}>
+            {EVENT_COLORS.map((c) => (
+              <Pressable key={c} onPress={() => { setAccentColor(c); updateSettings({ accent_color: c }); }} style={[styles.colorSwatch, styles.colorSwatchSm, { backgroundColor: c }, accentColor === c && [styles.colorSwatchSelected, appTheme.activeChipStyle]]} />
+            ))}
+          </View>
         </View>
         <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={saveColors}>
           <Text style={styles.btnText}>Save Colors</Text>
@@ -240,7 +254,7 @@ export default function SettingsScreen() {
             <TextInput
               value={t.label}
               onChangeText={(v) => updateTabLabel(t.id, v)}
-              style={[styles.input, { flex: 1 }]}
+              style={[styles.input, styles.tabInput, { flex: 1 }]}
             />
             <Pressable style={[styles.smallBtn, appTheme.buttonStyle]} onPress={() => moveTab(t.id, -1)}>
               <Text style={styles.smallBtnText}>↑</Text>
@@ -292,18 +306,6 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      <View style={[styles.card, appTheme.cardStyle]}>
-        <LeafBorder color={appTheme.leafColor} />
-        <Text style={[styles.cardTitle, { fontFamily: font }]}>Partner Avatars / Emojis</Text>
-        <Text style={styles.label}>Daddy emoji</Text>
-        <TextInput value={avatarDaddy} onChangeText={setAvatarDaddy} style={styles.input} />
-        <Text style={styles.label}>Princess emoji</Text>
-        <TextInput value={avatarPrincess} onChangeText={setAvatarPrincess} style={styles.input} />
-        <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={() => saveSettings({ avatar_daddy: avatarDaddy, avatar_princess: avatarPrincess })}>
-          <Text style={styles.btnText}>Save Avatars</Text>
-        </Pressable>
-      </View>
-
       {status ? <Text style={styles.muted}>{status}</Text> : null}
 
       <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={() => Sentry.captureException(new Error('Test crash from settings'))}>
@@ -346,6 +348,10 @@ const styles = StyleSheet.create({
   smallBtn: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 6, backgroundColor: 'rgba(100,150,255,0.4)' },
   smallBtnText: { fontWeight: '600', fontSize: 12 },
   colorSwatch: { width: 24, height: 24, borderRadius: 12, margin: 3 },
+  colorSwatchSm: { width: 18, height: 18, borderRadius: 9, margin: 2 },
+  compactGrid: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
+  compactLabel: { fontSize: 11, fontWeight: '700', width: 52, paddingTop: 3, opacity: 0.8 },
+  tabInput: { minHeight: 32, paddingVertical: 5, marginBottom: 2 },
   colorSwatchSelected: { borderWidth: 3, borderColor: '#fff' },
   secret: { position: 'absolute', bottom: 16, right: 16, opacity: 0.3 },
   smallHint: { fontSize: 12, opacity: 0.65, marginBottom: 8 },

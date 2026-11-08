@@ -5,22 +5,24 @@ import { useRouter, usePathname } from 'expo-router';
 import { getCoupleId } from '@/lib/couple';
 import { getCoupleSettings } from '@/lib/appearance';
 import { LeafBorder } from '@/components/CannabisLeaf';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 const DEFAULT_TABS = [
-  { id: 'home', label: 'Home 🏠', path: '/', icon: '🏠', hint: 'Our shared space' },
-  { id: 'our-log', label: 'Our Log 📜', path: '/our-log', icon: '📜', hint: 'Daily memories' },
-  { id: 'dbt', label: 'DBT Cards 🧠', path: '/dbt', icon: '🧠', hint: 'Daily skill practice' },
-  { id: 'playtime', label: 'Playtime 😓', path: '/playtime', icon: '🥵', hint: 'Adults only' },
-  { id: 'ai-editor', label: 'Dirty Darkroom 🔥', path: '/ai-editor', icon: '📷', hint: 'AI photo editor' },
-  { id: 'health', label: 'Health 🩺', path: '/health', icon: '🩺', hint: 'Body & wellness' },
-  { id: 'cleaning', label: 'Get It Squeaky Clean 🫧', path: '/cleaning', icon: '🫧', hint: 'House chores' },
-  { id: 'settings', label: 'Settings ⚙️', path: '/settings', icon: '⚙️', hint: 'Themes & fonts' },
-  { id: 'days-of-old', label: 'The Days of Old 🧙‍♂️', path: '/days-of-old', icon: '🧙‍♂️', hint: 'Past days' },
+  { id: 'home', label: 'Home 🏠', path: '/' },
+  { id: 'our-log', label: 'Our Log 📜', path: '/our-log' },
+  { id: 'dbt', label: 'DBT Cards 🧠', path: '/dbt' },
+  { id: 'playtime', label: 'Playtime 😓', path: '/playtime' },
+  { id: 'ai-editor', label: 'Dirty Darkroom 🔥', path: '/ai-editor' },
+  { id: 'health', label: 'Health 🩺', path: '/health' },
+  { id: 'cleaning', label: 'Get It Squeaky Clean 🫧', path: '/cleaning' },
+  { id: 'settings', label: 'Settings ⚙️', path: '/settings' },
+  { id: 'days-of-old', label: 'The Days of Old 🧙‍♂️', path: '/days-of-old' },
 ];
 
 export default function TabDropdown() {
   const router = useRouter();
   const pathname = usePathname();
+  const theme = useAppTheme();
   const [open, setOpen] = useState(false);
   const [tabs, setTabs] = useState(DEFAULT_TABS);
 
@@ -33,7 +35,7 @@ export default function TabDropdown() {
           .sort((a: any, b: any) => a.order - b.order)
           .map((t: any) => {
             const def = DEFAULT_TABS.find((d) => d.id === t.id);
-            return { id: t.id, label: t.label || def?.label || t.id, path: def?.path || '/', icon: def?.icon || '📌', hint: def?.hint || '' };
+            return { id: t.id, label: t.label || def?.label || t.id, path: def?.path || '/' };
           });
         setTabs(mapped.length ? mapped : DEFAULT_TABS);
       }
@@ -43,39 +45,36 @@ export default function TabDropdown() {
   const current = tabs.find((o) => o.path === pathname || (o.id === 'home' && (pathname === '/' || pathname === '/index' || pathname === '/(tabs)'))) || tabs[0] || DEFAULT_TABS[0];
 
   return (
-    <View style={styles.container}>
-      <Pressable style={styles.button} onPress={() => setOpen(true)}>
-        <Text style={styles.buttonText}>Menu ☰</Text>
+    <View style={[styles.root, { marginRight: 12 }]}>
+      <Pressable style={[styles.button, { borderColor: theme.borderColor }]} onPress={() => setOpen(true)}>
+        <Text style={[styles.buttonText, { color: theme.textColor }]}>Menu ☰</Text>
       </Pressable>
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
-          <View style={styles.menu}>
-            <LeafBorder color="#2E7D4F" size={20} />
-            <View style={styles.handle} />
-            <Text style={styles.menuTitle}>Where are we going? 🌿</Text>
-            <Text style={styles.menuSubtitle}>I love you — pick a page, gorgeous 💋</Text>
-            <ScrollView style={styles.menuScroll} showsVerticalScrollIndicator={false}>
+        <Pressable style={[styles.backdrop, { backgroundColor: 'rgba(20,10,15,0.45)' }]} onPress={() => setOpen(false)}>
+          <View style={[styles.menu, theme.cardStyle]}>
+            <LeafBorder color={theme.leafColor} size={20} />
+            <View style={[styles.handle, { backgroundColor: theme.borderColor }]} />
+            <Text style={[styles.menuTitle, { color: theme.textColor }]}>Where are we going? 🌿</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
               {tabs.map((o, i) => (
                 <Pressable
                   key={o.id}
-                  style={[styles.item, i < tabs.length - 1 && styles.itemDivider, o.path === pathname && styles.itemActive]}
+                  style={[
+                    styles.item,
+                    i < tabs.length - 1 && { borderBottomColor: theme.borderColor },
+                    o.path === pathname && { backgroundColor: theme.accentSoft },
+                  ]}
                   onPress={() => {
                     setOpen(false);
                     router.push(o.path as any);
                   }}>
-                  <View style={[styles.iconChip, o.path === pathname && styles.iconChipActive]}>
-                    <Text style={styles.itemIcon}>{o.icon}</Text>
-                  </View>
-                  <View style={styles.itemTextWrap}>
-                    <Text style={styles.itemText}>{o.label}</Text>
-                    <Text style={styles.itemHint}>{o.hint}</Text>
-                  </View>
-                  <Text style={styles.itemChevron}>{o.path === pathname ? '●' : '›'}</Text>
+                  <Text style={[styles.itemText, { color: theme.textColor }]}>{o.label}</Text>
+                  <Text style={[styles.itemChevron, { color: theme.accentColor }]}>{o.path === pathname ? '●' : '›'}</Text>
                 </Pressable>
               ))}
             </ScrollView>
-            <Pressable style={styles.closeBtn} onPress={() => setOpen(false)}>
-              <Text style={styles.closeBtnText}>Stay here ✕</Text>
+            <Pressable style={[styles.closeBtn, { backgroundColor: theme.accentSoft }]} onPress={() => setOpen(false)}>
+              <Text style={[styles.closeBtnText, { color: theme.textColor }]}>Stay here ✕</Text>
             </Pressable>
           </View>
         </Pressable>
@@ -85,12 +84,11 @@ export default function TabDropdown() {
 }
 
 const styles = StyleSheet.create({
-  container: { marginRight: 12 },
-  button: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: 'rgba(120,120,120,0.2)' },
+  root: { marginRight: 12 },
+  button: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: 'rgba(120,120,120,0.2)', borderWidth: 1 },
   buttonText: { fontWeight: '600', fontSize: 14 },
-  backdrop: { flex: 1, backgroundColor: 'rgba(20,10,15,0.45)', justifyContent: 'flex-end' },
+  backdrop: { flex: 1, justifyContent: 'flex-end' },
   menu: {
-    backgroundColor: 'rgba(255,255,255,0.96)',
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,
     padding: 20,
@@ -100,20 +98,11 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
   },
-  handle: { alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: 'rgba(58,42,46,0.18)', marginBottom: 12 },
-  menuTitle: { fontSize: 22, fontWeight: '800', marginBottom: 2, textAlign: 'center' },
-  menuSubtitle: { fontSize: 13, opacity: 0.6, marginBottom: 14, textAlign: 'center', fontStyle: 'italic' },
-  menuScroll: { maxHeight: 440 },
-  item: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 14 },
-  itemDivider: { borderBottomWidth: 1, borderBottomColor: 'rgba(46,125,79,0.12)' },
-  itemActive: { backgroundColor: 'rgba(46,125,79,0.1)' },
-  iconChip: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(46,125,79,0.1)' },
-  iconChipActive: { backgroundColor: 'rgba(46,125,79,0.24)' },
-  itemIcon: { fontSize: 22 },
-  itemTextWrap: { flex: 1 },
-  itemText: { fontSize: 16, fontWeight: '700' },
-  itemHint: { fontSize: 11, opacity: 0.55, marginTop: 1 },
-  itemChevron: { fontSize: 16, color: '#2E7D4F', fontWeight: '700' },
-  closeBtn: { marginTop: 12, alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 28, borderRadius: 50, backgroundColor: 'rgba(46,125,79,0.12)' },
+  handle: { alignSelf: 'center', width: 44, height: 5, borderRadius: 3, marginBottom: 12, opacity: 0.35 },
+  menuTitle: { fontSize: 20, fontWeight: '800', marginBottom: 12, textAlign: 'center' },
+  item: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 6, borderRadius: 12, borderBottomWidth: 1 },
+  itemText: { fontSize: 17, fontWeight: '700', flex: 1 },
+  itemChevron: { fontSize: 15, fontWeight: '700' },
+  closeBtn: { marginTop: 12, alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 28, borderRadius: 50 },
   closeBtnText: { fontWeight: '700', fontSize: 13 },
 });
