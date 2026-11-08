@@ -1,9 +1,28 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg from 'react-native-svg';
 
-import { CannabisLeaf, SmokePuff, WeedPlant } from '@/components/CannabisLeaf';
+import { CannabisLeaf, FanLeaf, SmokePuff, WeedPlant } from '@/components/CannabisLeaf';
 import { useTheme } from '@/contexts/ThemeContext';
+
+/** Dense cannabis foliage carpet along the bottom edge. */
+function FoliageBand({ color, bud }: { color: string; bud: string }) {
+  const leaves = [
+    // x, y, scale, rot, opacity
+    [12, 96, 2.4, -30, 0.85], [52, 84, 2.0, 15, 0.75], [96, 100, 2.2, -12, 0.85],
+    [140, 82, 1.9, 28, 0.7], [180, 98, 2.4, -20, 0.85], [224, 84, 2.0, 10, 0.75],
+    [268, 100, 2.2, -26, 0.85], [312, 82, 1.9, 18, 0.7], [352, 96, 2.4, -14, 0.85],
+    [386, 86, 2.0, 22, 0.75],
+  ] as const;
+  return (
+    <Svg width={400} height={115} viewBox="0 0 400 115">
+      {leaves.map(([x, y, s, rot, o], i) => (
+        <FanLeaf key={i} x={x} y={y} s={s} rot={rot} color={i % 4 === 0 ? bud : color} opacity={o} />
+      ))}
+    </Svg>
+  );
+}
 
 const LIGHT_FALLBACK = ['#FFE3EC', '#F7D9FF', '#FFF3D6', '#FFD9E8'];
 
@@ -94,14 +113,14 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
   const smokeClocks = smokeClocksRef.current;
   // Irregular launch points, sizes, sway and durations (deterministic but scattered).
   const SMOKE = [
-    { left: '4%', bottom: '3%', size: 56, sway: 14, dur: 9800, delay: 0, col: '#CBD5E1' },
-    { left: '18%', bottom: '6%', size: 42, sway: -18, dur: 11200, delay: 3400, col: '#E2E8F0' },
-    { left: '12%', bottom: '2%', size: 74, sway: 10, dur: 13400, delay: 6200, col: '#CBD5E1' },
-    { left: '30%', bottom: '5%', size: 48, sway: -12, dur: 8600, delay: 1800, col: '#E7E5E4' },
-    { left: '44%', bottom: '4%', size: 88, sway: 20, dur: 14200, delay: 5100, col: '#CBD5E1' },
-    { left: '56%', bottom: '7%', size: 52, sway: -16, dur: 10400, delay: 7600, col: '#E2E8F0' },
-    { left: '66%', bottom: '3%', size: 64, sway: 12, dur: 11800, delay: 2600, col: '#CBD5E1' },
-    { left: '80%', bottom: '5%', size: 44, sway: -10, dur: 9200, delay: 4800, col: '#E7E5E4' },
+    { left: '4%', bottom: '3%', size: 84, sway: 14, dur: 9800, delay: 0, col: '#CBD5E1' },
+    { left: '18%', bottom: '6%', size: 66, sway: -18, dur: 11200, delay: 3400, col: '#E2E8F0' },
+    { left: '12%', bottom: '2%', size: 108, sway: 10, dur: 13400, delay: 6200, col: '#CBD5E1' },
+    { left: '30%', bottom: '5%', size: 72, sway: -12, dur: 8600, delay: 1800, col: '#E7E5E4' },
+    { left: '44%', bottom: '4%', size: 128, sway: 20, dur: 14200, delay: 5100, col: '#CBD5E1' },
+    { left: '56%', bottom: '7%', size: 78, sway: -16, dur: 10400, delay: 7600, col: '#E2E8F0' },
+    { left: '66%', bottom: '3%', size: 96, sway: 12, dur: 11800, delay: 2600, col: '#CBD5E1' },
+    { left: '80%', bottom: '5%', size: 66, sway: -10, dur: 9200, delay: 4800, col: '#E7E5E4' },
   ] as const;
 
   useEffect(() => {
@@ -287,8 +306,21 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
       </View>
 
       {/* Rooted plants on the edges — bud colour follows the active theme */}
-      <View pointerEvents="none" style={styles.plantLeft}><WeedPlant height={260} color={leafColor} budColor={c3} opacity={1} /></View>
-      <View pointerEvents="none" style={styles.plantRight}><WeedPlant height={210} color={leafColor} budColor={c4} opacity={0.95} /></View>
+      <View pointerEvents="none" style={styles.plantLeft}><WeedPlant height={320} color={leafColor} budColor={c3} opacity={1} /></View>
+      <View pointerEvents="none" style={styles.plantRight}><WeedPlant height={260} color={leafColor} budColor={c4} opacity={1} /></View>
+
+      {/* Dense foliage carpet across the bottom */}
+      <View pointerEvents="none" style={styles.foliageBand}>
+        <FoliageBand color={leafColor} bud={c2} />
+      </View>
+
+      {/* Leaf columns climbing the side edges */}
+      <View style={styles.leafLayer}>
+        <View style={styles.colA}><CannabisLeaf size={64} color={leafColor} opacity={0.5} /></View>
+        <View style={styles.colB}><CannabisLeaf size={56} color={leafColor} opacity={0.45} /></View>
+        <View style={styles.colC}><CannabisLeaf size={58} color={leafColor} opacity={0.48} /></View>
+        <View style={styles.colD}><CannabisLeaf size={62} color={leafColor} opacity={0.5} /></View>
+      </View>
 
       <View style={styles.content}>{children}</View>
     </View>
@@ -314,6 +346,11 @@ const styles = StyleSheet.create({
   leafC1: { position: 'absolute', top: '40%', left: '44%' },
   leafC2: { position: 'absolute', top: '68%', left: '38%' },
   smokeSlot: { position: 'absolute' },
+  foliageBand: { position: 'absolute', bottom: -14, left: -6, right: -6, alignItems: 'center' },
+  colA: { position: 'absolute', top: '18%', left: '-14' },
+  colB: { position: 'absolute', top: '46%', left: '-10' },
+  colC: { position: 'absolute', top: '22%', right: '-14' },
+  colD: { position: 'absolute', top: '58%', right: '-10' },
   plantLeft: { position: 'absolute', bottom: '-6%', left: '-3%', transform: [{ rotate: '-4deg' }] },
   plantRight: { position: 'absolute', bottom: '-6%', right: '-3%', transform: [{ rotate: '4deg' }] },
   bongSlot: { position: 'absolute', bottom: '10%', right: '6%', transform: [{ rotate: '6deg' }] },

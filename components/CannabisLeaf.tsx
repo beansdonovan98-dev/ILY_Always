@@ -151,7 +151,7 @@ const LEAFLET =
 const FAN_ANGLES = [0, 24, -24, 48, -48, 70, -70];
 const FAN_SCALES = [1, 0.85, 0.85, 0.68, 0.68, 0.5, 0.5];
 
-function FanLeaf({ x, y, s = 1, rot = 0, color, opacity = 1 }: {
+export function FanLeaf({ x, y, s = 1, rot = 0, color, opacity = 1 }: {
   x: number; y: number; s?: number; rot?: number; color: string; opacity?: number;
 }) {
   return (
