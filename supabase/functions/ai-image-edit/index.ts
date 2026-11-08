@@ -40,7 +40,9 @@ serve(async (req) => {
     const bytes = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
     const blob = new Blob([bytes], { type: mime });
 
-    const models = ['gpt-image-1', 'gpt-image-1-mini', 'dall-e-2'];
+    // OpenAI only. Newer accounts expose gpt-image-2 / 1.5 / mini —
+    // older ones dall-e-2/gpt-image-1. Trying the chain covers both.
+    const models = ['gpt-image-2', 'gpt-image-1.5', 'gpt-image-1-mini', 'gpt-image-1', 'dall-e-2'];
     let lastMessage = 'OpenAI rejected the request.';
     for (const model of models) {
       const form = new FormData();
