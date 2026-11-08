@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { CannabisLeaf, SmokePuff, WeedPlant } from '@/components/CannabisLeaf';
 import { useTheme } from '@/contexts/ThemeContext';
 
-const STRAIN_FALLBACK = ['#0B2E1A', '#123D22', '#1E5B33', '#C9A227'];
+const STRAIN_FALLBACK = ['#1A0B2E', '#2A0E4E', '#6B21A8', '#A855F7', '#F3E8FF', '#A855F7', '#F59E0B', '#D8B4FE'];
 
 const DARK_COLORS = ['#000', '#000000', '#111', '#111111', '#0f2027', '#203a43', '#2c5364', '#1c1c1e', '#2c2c2e'];
 
@@ -72,8 +72,11 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
 
   const c1 = palette[0] ?? STRAIN_FALLBACK[0];
   const c2 = palette[1] ?? STRAIN_FALLBACK[1];
-  const c3 = palette[2] ?? c2;
-  const c4 = palette[3] ?? c1;
+  const c3 = palette[5] ?? palette[2] ?? c2;
+  const c4 = palette[6] ?? palette[3] ?? c1;
+  // 8-token palettes: ember (buds/glow) = 6, smoke particles = 7
+  const ember = palette[6] ?? palette[2] ?? '#F59E0B';
+  const tokenSmoke = palette[7] ?? '#CBD5E1';
 
   if (SAFEMODE) {
     return (
@@ -94,14 +97,14 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
   const smokeClocks = smokeClocksRef.current;
   // Irregular launch points, sizes, sway and durations (deterministic but scattered).
   const SMOKE = [
-    { left: '4%', bottom: '3%', size: 64, sway: 14, dur: 9800, delay: 0, col: '#CBD5E1' },
-    { left: '18%', bottom: '6%', size: 50, sway: -18, dur: 11200, delay: 3400, col: '#E2E8F0' },
-    { left: '12%', bottom: '2%', size: 88, sway: 10, dur: 13400, delay: 6200, col: '#CBD5E1' },
-    { left: '30%', bottom: '5%', size: 56, sway: -12, dur: 8600, delay: 1800, col: '#E7E5E4' },
-    { left: '44%', bottom: '4%', size: 100, sway: 20, dur: 14200, delay: 5100, col: '#CBD5E1' },
-    { left: '56%', bottom: '7%', size: 60, sway: -16, dur: 10400, delay: 7600, col: '#E2E8F0' },
-    { left: '66%', bottom: '3%', size: 76, sway: 12, dur: 11800, delay: 2600, col: '#CBD5E1' },
-    { left: '80%', bottom: '5%', size: 52, sway: -10, dur: 9200, delay: 4800, col: '#E7E5E4' },
+    { left: '4%', bottom: '3%', size: 64, sway: 14, dur: 9800, delay: 0, col: tokenSmoke },
+    { left: '18%', bottom: '6%', size: 50, sway: -18, dur: 11200, delay: 3400, col: tokenSmoke },
+    { left: '12%', bottom: '2%', size: 88, sway: 10, dur: 13400, delay: 6200, col: tokenSmoke },
+    { left: '30%', bottom: '5%', size: 56, sway: -12, dur: 8600, delay: 1800, col: tokenSmoke },
+    { left: '44%', bottom: '4%', size: 100, sway: 20, dur: 14200, delay: 5100, col: tokenSmoke },
+    { left: '56%', bottom: '7%', size: 60, sway: -16, dur: 10400, delay: 7600, col: tokenSmoke },
+    { left: '66%', bottom: '3%', size: 76, sway: 12, dur: 11800, delay: 2600, col: tokenSmoke },
+    { left: '80%', bottom: '5%', size: 52, sway: -10, dur: 9200, delay: 4800, col: tokenSmoke },
   ] as const;
 
   useEffect(() => {
@@ -287,8 +290,8 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
       </View>
 
       {/* Rooted plants on the edges — bud colour follows the active theme */}
-      <View pointerEvents="none" style={styles.plantLeft}><WeedPlant height={260} color={leafColor} budColor={c3} opacity={1} /></View>
-      <View pointerEvents="none" style={styles.plantRight}><WeedPlant height={210} color={leafColor} budColor={c4} opacity={0.95} /></View>
+      <View pointerEvents="none" style={styles.plantLeft}><WeedPlant height={260} color={leafColor} budColor={ember} opacity={1} /></View>
+      <View pointerEvents="none" style={styles.plantRight}><WeedPlant height={210} color={leafColor} budColor={ember} opacity={0.95} /></View>
 
       <View style={styles.content}>{children}</View>
     </View>

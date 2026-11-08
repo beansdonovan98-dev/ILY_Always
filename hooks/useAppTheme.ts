@@ -33,6 +33,18 @@ function isDarkTheme(gradient: string | null | undefined): boolean {
   return avg < 0.62;
 }
 
+/** Token palette accessor: [bgDeep, cardBg, cardBorder, text, subtitle, accent, ember, smoke]. */
+function themeTokens(gradient: string | null | undefined) {
+  if (!gradient) return null;
+  try {
+    const parsed = JSON.parse(gradient);
+    if (Array.isArray(parsed) && parsed.length >= 7 && parsed.every((c) => typeof c === 'string')) {
+      return { bgDeep: parsed[0], cardBg: parsed[1], cardBorder: parsed[2], text: parsed[3], subtitle: parsed[4], accent: parsed[5], ember: parsed[6], smoke: parsed[7] ?? parsed[6] };
+    }
+  } catch {}
+  return null;
+}
+
 function withAlpha(color: string, alpha: number): string {
   const hex = color.trim();
   const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(hex);
@@ -65,9 +77,14 @@ export function useAppTheme() {
   const accentColor = settings?.accent_color || DEFAULTS.accent;
   const borderColor = settings?.border_color || DEFAULTS.border;
   const dark = isDarkTheme(settings?.background_gradient);
+  const tokens = themeTokens(settings?.background_gradient);
+  const cardBg = tokens ? withAlpha(tokens.cardBg, dark ? 0.72 : 0.95) : null;
 
   return {
     settings,
+    tokens,
+    emberColor: tokens?.ember || '#F59E0B',
+    smokeColor: tokens?.smoke || '#D8B4FE',
     fontFamily: fontFamilyFor(settings?.font_id),
     textColor: settings?.font_color || DEFAULTS.text,
     subtitleColor: settings?.subtitle_color || withAlpha(settings?.font_color || DEFAULTS.text, 0.75),
@@ -79,9 +96,9 @@ export function useAppTheme() {
     // Auto-contrast glass: dark frosted on dark strains, light frosted on light ones.
     cardStyle: dark
       ? {
-          backgroundColor: 'rgba(8, 22, 14, 0.62)',
+          backgroundColor: cardBg || 'rgba(8, 22, 14, 0.62)',
           borderWidth: 1.5,
-          borderColor: withAlpha(accentColor, 0.55),
+          borderColor: withAlpha(tokens?.cardBorder || accentColor, 0.55),
           borderBottomWidth: 3,
           borderBottomColor: 'rgba(0, 0, 0, 0.55)',
           borderRadius: 20,
@@ -92,9 +109,9 @@ export function useAppTheme() {
           elevation: 10,
         }
       : {
-          backgroundColor: 'rgba(255, 255, 255, 0.72)',
+          backgroundColor: cardBg || 'rgba(255, 255, 255, 0.72)',
           borderWidth: 1.5,
-          borderColor: 'rgba(46, 125, 79, 0.45)',
+          borderColor: withAlpha(tokens?.cardBorder || '#2E7D4F', 0.45),
           borderBottomWidth: 3,
           borderBottomColor: 'rgba(27, 58, 36, 0.3)',
           borderRadius: 20,

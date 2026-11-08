@@ -15,7 +15,7 @@ export interface DayActivity {
   princess: number | null;
 }
 
-/** Marks that this partner posted something on this page just now. */
+/** Marks that this partner posted something on this page just now. Preserves seen_at. */
 export async function markActivity(route: ActivityRoute, user: UserKey, coupleId = ''): Promise<void> {
   const r = normalizeRoute(route);
   const key = activityKey(r);
@@ -24,12 +24,21 @@ export async function markActivity(route: ActivityRoute, user: UserKey, coupleId
 
   if (hasSupabaseEnv && coupleId) {
     try {
+      // Read first so we never null out the other timestamp on upsert.
+      const { data: existing } = await supabase
+        .from('activity_flags')
+        .select('posted_at,seen_at')
+        .eq('couple_id', coupleId)
+        .eq('user_key', user)
+        .eq('route', r)
+        .maybeSingle();
       const { error } = await supabase.from('activity_flags').upsert(
         {
           couple_id: coupleId,
           user_key: user,
           route: r,
           posted_at: new Date().toISOString(),
+          seen_at: (existing as any)?.seen_at ?? null,
         },
         { onConflict: 'couple_id,user_key,route' }
       );
@@ -40,19 +49,27 @@ export async function markActivity(route: ActivityRoute, user: UserKey, coupleId
   }
 }
 
-/** Last time this user opened this page and "saw" the posts. */
+/** Last time this user opened this page and "saw" the posts. Preserves posted_at. */
 export async function markSeen(route: ActivityRoute, user: UserKey, coupleId = ''): Promise<void> {
   const r = normalizeRoute(route);
   await setItem(seenKey(r, user), Date.now());
 
   if (hasSupabaseEnv && coupleId) {
     try {
+      const { data: existing } = await supabase
+        .from('activity_flags')
+        .select('posted_at,seen_at')
+        .eq('couple_id', coupleId)
+        .eq('user_key', user)
+        .eq('route', r)
+        .maybeSingle();
       const { error } = await supabase.from('activity_flags').upsert(
         {
           couple_id: coupleId,
           user_key: user,
           route: r,
           seen_at: new Date().toISOString(),
+          posted_at: (existing as any)?.posted_at ?? null,
         },
         { onConflict: 'couple_id,user_key,route' }
       );

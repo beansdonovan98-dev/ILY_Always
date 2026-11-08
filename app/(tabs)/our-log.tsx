@@ -23,10 +23,13 @@ import {
   updateLogEvent,
 } from '@/lib/log';
 import { localDateKey } from '@/lib/days';
+import { useUsage } from '@/contexts/UsageContext';
+import { markActivity } from '@/lib/activity';
 
 export default function OurLogScreen() {
   const appTheme = useAppTheme();
   const logTitle = useTabLabel('our-log', 'Our Log 📜');
+  const { currentUser } = useUsage();
   const scrollRef = useRef<any>(null);
   const [coupleId, setCoupleId] = useState<string>('');
   const [entries, setEntries] = useState<LogEntry[]>([]);
@@ -111,6 +114,7 @@ export default function OurLogScreen() {
     }
 
     // reset form
+    if (cid && currentUser) void markActivity('our-log', currentUser, cid);
     setWhatHappened('');
     setTime('');
     setSelectedEventId(null);

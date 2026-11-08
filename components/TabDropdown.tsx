@@ -74,8 +74,9 @@ export default function TabDropdown() {
             <ScrollView showsVerticalScrollIndicator={false}>
               {tabs.map((o, i) => {
                 const dots = activity[o.id];
-                const mine = dots?.mine ?? false;
-                const hers = dots?.hers ?? false;
+                // One direction only: Daddy sees PINK (her posts), Princess sees PURPLE (his posts).
+                const showPink = currentUser === 'daddy' && (dots?.hers ?? false);
+                const showPurple = currentUser !== 'daddy' && (dots?.mine ?? false);
                 return (
                 <Pressable
                   key={o.id}
@@ -89,8 +90,8 @@ export default function TabDropdown() {
                     router.push(o.path as any);
                   }}>
                   <Text style={[styles.itemText, { color: theme.textColor }]}>{o.label}</Text>
-                  {mine ? <View style={[styles.dot, { backgroundColor: '#7B1FA2' }]} /> : null}
-                  {hers ? <View style={[styles.dot, { backgroundColor: '#FF8FAB' }]} /> : null}
+                  {showPurple ? <View style={[styles.dot, { backgroundColor: '#7B1FA2' }]} /> : null}
+                  {showPink ? <View style={[styles.dot, { backgroundColor: '#FF8FAB' }]} /> : null}
                   <Text style={[styles.itemChevron, { color: theme.accentColor }]}>{o.path === pathname ? '●' : '›'}</Text>
                 </Pressable>
                 );

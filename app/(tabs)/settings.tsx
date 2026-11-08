@@ -31,18 +31,13 @@ const DEFAULT_TABS = [
 ];
 
 const STRAIN_PRESETS = [
-  // Deep, bud-inspired palettes — dark forest base, rich bud tones, frosted highlights.
-  { name: 'Purple Punch (Indica)', colors: ['#2E1065', '#3B0764', '#4C1D95', '#A855F7'], leaf: '#A855F7' },
-  { name: 'Lemon Haze (Sativa)', colors: ['#064E3B', '#065F46', '#0D7A5F', '#FACC15'], leaf: '#FACC15' },
-  { name: 'Gelato (Hybrid)', colors: ['#022C22', '#064E3B', '#0D9488', '#F9A8D4'], leaf: '#99F6E4' },
-  { name: 'OG Kush', colors: ['#0B2E1A', '#123D22', '#1E5B33', '#C9A227'], leaf: '#4ADE80' },
-  { name: 'Granddaddy Purple', colors: ['#2D0A4E', '#4A148C', '#6A1B9A', '#9D4EDD'], leaf: '#58B368' },
-  { name: 'Purple Haze', colors: ['#1A0533', '#3A0CA3', '#7B2CBF', '#B5179E'], leaf: '#FF8FAB' },
-  { name: 'Blue Dream', colors: ['#0A1929', '#16324F', '#2A6F97', '#61C0BF'], leaf: '#7ED957' },
-  { name: 'Sour Diesel', colors: ['#3A2200', '#6B4E00', '#8A6D00', '#C9A227'], leaf: '#A3E635' },
-  { name: 'Northern Lights', colors: ['#101D42', '#2B2D5C', '#4C5FD5', '#7B2CBF'], leaf: '#6EE7B7' },
-  { name: 'Wedding Cake', colors: ['#2E1A47', '#5B3A8E', '#8E44AD', '#E9C46A'], leaf: '#90E0A0' },
-  { name: 'Pineapple Express', colors: ['#3A2E00', '#6B5B00', '#B8912F', '#FFE45E'], leaf: '#FFD43B' },
+  // Full token palettes: [bgDeep, cardBg, cardBorder, text, subtitle, accent, ember, smoke]
+  { name: 'Granddaddy Purple (Indica)', leaf: '#A855F7', colors: ['#1A0B2E', '#2A0E4E', '#6B21A8', '#F3E8FF', '#C084FC', '#A855F7', '#F59E0B', '#D8B4FE'] },
+  { name: 'Sour Diesel (Sativa)', leaf: '#84CC16', colors: ['#121816', '#062E1B', '#15803D', '#ECFDF5', '#6EE7B7', '#84CC16', '#EAB308', '#A3E635'] },
+  { name: 'Pineapple Express (Hybrid)', leaf: '#FACC15', colors: ['#0B2016', '#144229', '#16A34A', '#FEF3C7', '#FDE047', '#FACC15', '#F97316', '#FEF08A'] },
+  { name: 'Strawberry Cough (Sativa)', leaf: '#F43F5E', colors: ['#0F172A', '#1E293B', '#475569', '#FFE4E6', '#FDA4AF', '#F43F5E', '#E11D48', '#FB7185'] },
+  { name: 'Blue Dream (Hybrid)', leaf: '#38BDF8', colors: ['#091E3A', '#102A4C', '#0284C7', '#F0F9FF', '#7DD3FC', '#38BDF8', '#F97316', '#BAE6FD'] },
+  { name: 'Wedding Cake (Indica - Light)', leaf: '#16A34A', colors: ['#F8FAFC', '#FFFFFF', '#CBD5E1', '#064E3B', '#475569', '#16A34A', '#D97706', '#94A3B8'] },
 ];
 
 const GRADIENT_PRESETS = STRAIN_PRESETS;
@@ -98,6 +93,15 @@ export default function SettingsScreen() {
   const syncToast = syncStatus === 'synced' ? 'Synced to Supabase ✓\nThemes now reach your lover\u2019s phone when they open the app.' : syncStatus === 'local' ? '⚠️ This is saving on THIS phone only — Supabase needs the couple_settings table (docs/supabase-recreate.sql.md) to sync themes to your lover.' : null;
 
   const autoThemeColors = (colors: string[], leaf?: string) => {
+    // 8-token palettes: [bgDeep, cardBg, cardBorder, text, subtitle, accent, ember, smoke]
+    if (colors.length >= 8) {
+      return {
+        accent_color: colors[5],
+        border_color: colors[2],
+        subtitle_color: colors[4],
+        font_color: colors[3],
+      };
+    }
     const luminance = (hex: string): number => {
       const h = hex.replace('#', '');
       const r = parseInt(h.slice(0, 2), 16);
