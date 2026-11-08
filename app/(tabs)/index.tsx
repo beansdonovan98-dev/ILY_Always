@@ -236,7 +236,7 @@ export default function HomeScreen() {
                   </Text>
                   <Text style={styles.statusTag}>Today's cover 📸</Text>
                   <Text style={styles.muted}>
-                    Partner: {(photo.captions && photo.captions[currentUser === 'daddy' ? 'princess' : 'daddy']) || ''}
+                    Lover: {(photo.captions && photo.captions[currentUser === 'daddy' ? 'princess' : 'daddy']) || ''}
                   </Text>
                   <View style={styles.row}>
                     <Pressable
