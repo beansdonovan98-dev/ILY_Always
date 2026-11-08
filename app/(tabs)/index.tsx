@@ -3,6 +3,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } fr
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
 import { CannabisDivider, WeedCard } from '@/components/CannabisHardware';
+import { MylarPouch } from '@/components/MylarPouch';
 import { JointBurnTimer, BongRefresh, bongHaptic } from '@/components/CannabisFeatures';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { Image as ExpoImage } from 'expo-image';
@@ -224,10 +225,7 @@ export default function HomeScreen() {
       </Text>
 
       {/* 1. Relationship Tracker */}
-      <WeedCard
-        badge="bong"
-        title={<Text style={styles.cardTitle}>Relationship Tracker</Text>}
-        style={appTheme.cardStyle}>
+      <MylarPouch title={<Text style={styles.cardTitle}>Relationship Tracker</Text>} defaultStrain="GRANDDADDY P." stampRight="THC: 28.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardHint}>Counting every second of us</Text>
         <Text style={styles.body}>Together since 08/09/19</Text>
@@ -239,13 +237,10 @@ export default function HomeScreen() {
         <Text style={[styles.loveNote, { color: appTheme.subtitleColor }]}>
           Every second with you is my favorite — and I still want more.
         </Text>
-      </WeedCard>
+      </MylarPouch>
 
       {/* 2. Cover Photo */}
-      <WeedCard
-        badge="joint"
-        title={<Text style={styles.cardTitle}>Cover Photo</Text>}
-        style={appTheme.cardStyle}>
+      <MylarPouch title={<Text style={styles.cardTitle}>Cover Photo</Text>} defaultStrain="SOUR DIESEL" stampRight="THC: 21.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardHint}>Our favorite snap right now</Text>
 
@@ -318,19 +313,19 @@ export default function HomeScreen() {
             </View>
           </View>
         ))}
-      </WeedCard>
+      </MylarPouch>
       <CannabisDivider color={appTheme.leafColor} />
 
       {/* 3. Love Notes */}
-      <WeedCard badge="joint" title={<Text style={styles.cardTitle}>Love Notes</Text>} style={appTheme.cardStyle}>
+      <MylarPouch title={<Text style={styles.cardTitle}>Love Notes</Text>} defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardHint}>Little whispers for your heart</Text>
 
         {loveNotes.filter((n) => localDateKey(new Date(n.created_at)) === todayKey()).map((n) => (
-          <View key={n.id} style={[styles.noteCard, { borderColor: appTheme.borderColor }]}>
+          <MylarPouch key={n.id} title={<Text style={styles.cardTitle}>{USERS[n.author as keyof typeof USERS]?.label || n.author}</Text>} defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%" style={{ marginBottom: 6 }}>
             <Text style={styles.body}>{n.text}</Text>
-            <Text style={styles.muted}>{USERS[n.author as keyof typeof USERS]?.label || n.author} • {new Date(n.created_at).toLocaleString()}</Text>
-          </View>
+            <Text style={styles.muted}>{new Date(n.created_at).toLocaleString()}</Text>
+          </MylarPouch>
         ))}
 
         <Text style={styles.muted}>Yesterday's notes live in The Days of Old 🧙‍♂️</Text>
@@ -346,26 +341,26 @@ export default function HomeScreen() {
         <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={sendLoveNote}>
           <Text style={styles.btnText}>Send Note</Text>
         </Pressable>
-      </WeedCard>
+      </MylarPouch>
       <CannabisDivider color={appTheme.leafColor} />
 
       {/* 4. Word of the Day */}
-      <WeedCard badge="bong" title={<Text style={styles.cardTitle}>Word of the Day</Text>} style={appTheme.cardStyle}>
+      <MylarPouch title={<Text style={styles.cardTitle}>Word of the Day</Text>} defaultStrain="STRAWBERRY COUGH" stampRight="THC: 27.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardHint}>Learning and loving new words together</Text>
         <Text style={styles.big}>{wordOfDay.word}</Text>
         <Text style={styles.body}>{wordOfDay.pronunciation}</Text>
         <Text style={styles.body}>{wordOfDay.definition}</Text>
         <Text style={[styles.loveNote, { color: appTheme.subtitleColor }]}>{wordOfDay.example}</Text>
-      </WeedCard>
+      </MylarPouch>
       <CannabisDivider color={appTheme.leafColor} />
 
       {/* 5. Fun Fact of the Day */}
-      <WeedCard badge="joint" title={<Text style={styles.cardTitle}>Fun Fact of the Day</Text>} style={appTheme.cardStyle}>
+      <MylarPouch title={<Text style={styles.cardTitle}>Fun Fact of the Day</Text>} defaultStrain="BLUE DREAM" stampRight="THC: 22.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardHint}>A tiny thing to learn together today</Text>
         <Text style={styles.body}>{factOfDay}</Text>
-      </WeedCard>
+      </MylarPouch>
 
       {!ready && <Text style={styles.muted}>Loading...</Text>}
     </ScrollView>

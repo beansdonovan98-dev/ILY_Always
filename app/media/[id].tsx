@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
+import { MylarPouch } from '@/components/MylarPouch';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image as ExpoImage } from 'expo-image';
@@ -64,17 +65,15 @@ export default function MediaDetailScreen() {
         <ExpoImage source={{ uri: url }} style={styles.photo} contentFit="contain" />
 
         {isShared && (
-          <View style={[styles.card, appTheme.cardStyle]}>
+          <MylarPouch title={<Text style={styles.cardTitle}>Captions</Text>} defaultStrain="SOUR DIESEL" stampRight="THC: 21.5%">
         <LeafBorder color={appTheme.leafColor} />
-            <Text style={styles.cardTitle}>Captions</Text>
             <Text style={styles.body}>Daddy 🍆: {(media.captions && media.captions.daddy) || media.caption || '—'}</Text>
             <Text style={styles.body}>Princess 🍑: {(media.captions && media.captions.princess) || '—'}</Text>
-          </View>
+          </MylarPouch>
         )}
 
-        <View style={[styles.card, appTheme.cardStyle]}>
+        <MylarPouch title={<Text style={styles.cardTitle}>Comments</Text>} defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
         <LeafBorder color={appTheme.leafColor} />
-          <Text style={styles.cardTitle}>Comments</Text>
           <View style={styles.row}>
             {(['daddy', 'princess'] as const).map((k) => (
               <Pressable key={k} onPress={() => setActiveUser(k)} style={[[styles.userBtn, appTheme.chipStyle], activeUser === k && [styles.userBtnActive, appTheme.activeChipStyle]]}>
@@ -83,11 +82,11 @@ export default function MediaDetailScreen() {
             ))}
           </View>
           {(comments || []).map((c) => (
-            <View key={c.id} style={[styles.comment, appTheme.cardStyle]}>
+            <MylarPouch key={c.id} title={<Text style={styles.chatAuthor}>{USERS[c.author as UserKey]?.label || c.author}</Text>} defaultStrain="STRAWBERRY COUGH" stampRight="THC: 27.5%">
               <Text style={styles.chatAuthor}>{USERS[c.author as UserKey]?.label || c.author}</Text>
               <Text style={styles.chatText}>{c.text}</Text>
               <Text style={styles.chatTime}>{new Date(c.created_at).toLocaleString()}</Text>
-            </View>
+            </MylarPouch>
           ))}
           <View style={styles.row}>
             <TextInput value={draft} onChangeText={setDraft} placeholder="Add a comment..." style={[styles.input, { flex: 1 }]} />
@@ -95,7 +94,7 @@ export default function MediaDetailScreen() {
               <Text style={styles.btnText}>Post</Text>
             </Pressable>
           </View>
-        </View>
+        </MylarPouch>
       </ScrollView>
     </KeyboardAvoidingView>
   );

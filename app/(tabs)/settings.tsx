@@ -6,6 +6,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
+import { MylarPouch } from '@/components/MylarPouch';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useRouter } from 'expo-router';
 
@@ -202,9 +203,8 @@ export default function SettingsScreen() {
         Our naughtiest little control room — every colour, kink, and font is ours to play with 🔥⚙️💋
       </Text>
 
-      <View style={[styles.card, appTheme.cardStyle]}>
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Animated Gradient Themes</Text>} defaultStrain="GRANDDADDY P." stampRight="THC: 28.5%">
         <LeafBorder color={appTheme.leafColor} />
-        <Text style={[styles.cardTitle, { fontFamily: font }]}>Animated Gradient Themes</Text>
         <View style={styles.row}>
           {GRADIENT_PRESETS.map((g) => (
             <Pressable key={g.name} onPress={() => applyGradient(g)} style={styles.gradientChip}>
@@ -218,11 +218,10 @@ export default function SettingsScreen() {
             </Pressable>
           ))}
         </View>
-      </View>
+      </MylarPouch>
 
-      <View style={[styles.card, appTheme.cardStyle]}>
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Colors</Text>} defaultStrain="SOUR DIESEL" stampRight="THC: 21.5%">
         <LeafBorder color={appTheme.leafColor} />
-        <Text style={[styles.cardTitle, { fontFamily: font }]}>Colors</Text>
         <View style={styles.compactGrid}>
           <Text style={styles.compactLabel}>Font</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.swRow}>
@@ -258,11 +257,10 @@ export default function SettingsScreen() {
         <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={saveColors}>
           <Text style={styles.btnText}>Save Colors</Text>
         </Pressable>
-      </View>
+      </MylarPouch>
 
-      <View style={[styles.card, appTheme.cardStyle]}>
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Rename & Reorder Tabs</Text>} defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
         <LeafBorder color={appTheme.leafColor} />
-        <Text style={[styles.cardTitle, { fontFamily: font }]}>Rename & Reorder Tabs</Text>
         {sortedTabs.map((t, idx) => (
           <View key={t.id} style={styles.tabRow}>
             <TextInput
@@ -281,11 +279,10 @@ export default function SettingsScreen() {
         <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={saveTabConfig}>
           <Text style={styles.btnText}>Save Tab Layout</Text>
         </Pressable>
-      </View>
+      </MylarPouch>
 
-      <View style={[styles.card, appTheme.cardStyle]}>
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Fonts</Text>} defaultStrain="STRAWBERRY COUGH" stampRight="THC: 27.5%">
         <LeafBorder color={appTheme.leafColor} />
-        <Text style={[styles.cardTitle, { fontFamily: font }]}>Fonts</Text>
         <View style={styles.fontGrid}>
           {FONT_OPTIONS.map((f) => (
             <Pressable key={f.id} onPress={() => setFontId(f.id)} style={[[styles.fontChip, appTheme.chipStyle], fontId === f.id && [styles.fontChipActive, appTheme.activeChipStyle]]}>
@@ -296,19 +293,17 @@ export default function SettingsScreen() {
         <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={() => saveSettings({ font_id: fontId })}>
           <Text style={styles.btnText}>Save Font</Text>
         </Pressable>
-      </View>
+      </MylarPouch>
 
-      <View style={[styles.card, appTheme.cardStyle]}>
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Period Tracker Reveal</Text>} defaultStrain="BLUE DREAM" stampRight="THC: 22.5%">
         <LeafBorder color={appTheme.leafColor} />
-        <Text style={[styles.cardTitle, { fontFamily: font }]}>Period Tracker Reveal</Text>
         <View style={styles.row}>
           <Text style={styles.label}>Show Period Tracker in Health</Text>
           <LighterToggle value={periodRevealed} onValueChange={async (v: boolean) => { setPeriodRevealed(v); await setItem('periodRevealed', v); void bongHaptic(); }} />
         </View>
-      </View>
-      <View style={[styles.card, appTheme.cardStyle]}>
+      </MylarPouch>
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Lock Screen</Text>} defaultStrain="WEDDING CAKE" stampRight="THC: 25.5%">
         <LeafBorder color={appTheme.leafColor} />
-        <Text style={[styles.cardTitle, { fontFamily: font }]}>Lock Screen</Text>
         <Text style={styles.smallHint}>Photo or GIF shown behind the login screen on this phone.</Text>
         <View style={styles.row}>
           <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={setLockBackground}>
@@ -318,7 +313,7 @@ export default function SettingsScreen() {
             <Text style={styles.btnText}>Remove</Text>
           </Pressable>
         </View>
-      </View>
+      </MylarPouch>
 
       {status ? <Text style={styles.muted}>{status}</Text> : null}
       {syncToast ? <Text style={[styles.muted, syncStatus === 'local' ? styles.syncWarn : undefined]}>{syncToast}</Text> : null}

@@ -5,6 +5,7 @@ import { useFocusEffect } from 'expo-router';
 
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
+import { MylarPouch } from '@/components/MylarPouch';
 import { JointBurnTimer } from '@/components/CannabisFeatures';
 import { Celebration } from '@/components/Celebration';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -384,9 +385,8 @@ export default function DBTScreen() {
       </Text>
 
       {/* Skill of the day */}
-      <View style={[styles.card, theme.cardStyle]}>
+      <MylarPouch title={<Text style={styles.cardTitle}>Skill for the Next 2 Days 🌤️</Text>} defaultStrain="GLUE #4" stampRight="THC: 26.5%">
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Skill for the Next 2 Days 🌤️</Text>
         <Text style={styles.cardHint}>A new skill drops every 2 days — practice it once, even tiny 🌿</Text>
         <Text style={[styles.countdown, { color: theme.accentColor }]}>
           New skill in {window2.daysLeft} day{window2.daysLeft === 1 ? '' : 's'}
@@ -438,12 +438,11 @@ export default function DBTScreen() {
         )}
 
         {renderTaskBlock()}
-      </View>
+      </MylarPouch>
 
       {/* Streak */}
-      <View style={[styles.card, theme.cardStyle]}>
+      <MylarPouch title={<Text style={styles.cardTitle}>Practice Streak 🔥</Text>} defaultStrain="TANGIE" stampRight="THC: 23.5%">
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Practice Streak 🔥</Text>
         <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
           Show up for yourself, one day at a time — seven in a row earns the grand celebration, gorgeous 🎉
         </Text>
@@ -465,7 +464,7 @@ export default function DBTScreen() {
           })}
         </View>
         <Text style={styles.streakText}>🔥 {streak}-day streak</Text>
-      </View>
+      </MylarPouch>
 
       <Celebration
         mode={celebration?.mode ?? null}

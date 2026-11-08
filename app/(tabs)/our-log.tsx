@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
+import { MylarPouch } from '@/components/MylarPouch';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
 import { getCoupleId } from '@/lib/couple';
@@ -170,10 +171,8 @@ export default function OurLogScreen() {
       </Text>
 
       {/* New entry card */}
-      <View style={[styles.card, appTheme.cardStyle]}>
+      <MylarPouch title={<Text style={styles.cardTitle}>{editingEntryId ? 'Edit Entry ✏️' : 'New Entry'}</Text>} defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
         <LeafBorder color={appTheme.leafColor} />
-
-        <Text style={styles.cardTitle}>{editingEntryId ? 'Edit Entry ✏️' : 'New Entry'}</Text>
         <Text style={styles.cardHint}>
           {editingEntryId
             ? 'You\'re editing — tap Save Changes when done 💋'
@@ -361,12 +360,11 @@ export default function OurLogScreen() {
               </View>
             ))
           )}
-        </View>
+      </MylarPouch>
 
       {/* Today's log card */}
-      <View style={[styles.card, appTheme.cardStyle]}>
+      <MylarPouch title={<Text style={styles.cardTitle}>Today&apos;s Log 📜</Text>} defaultStrain="BLUE DREAM" stampRight="THC: 22.5%">
         <LeafBorder color={appTheme.leafColor} />
-        <Text style={styles.cardTitle}>Today&apos;s Log 📜</Text>
         <Text style={[styles.spicyCaption, { color: appTheme.subtitleColor }]}>
           Read it, remember it, relive it — then do it all again tonight 😏🔥
         </Text>
@@ -374,10 +372,13 @@ export default function OurLogScreen() {
 
         {entries.length === 0 && <Text style={styles.muted}>No entries yet today. Add your first memory ✨</Text>}
 
-        {entries.map((e) => (
-          <View
+          {entries.map((e) => (
+          <MylarPouch
             key={e.id}
-            style={[styles.entryCard, { borderColor: appTheme.borderColor, borderLeftColor: e.eventColor }]}>
+            title={<Text style={styles.cardTitle}>{e.eventEmoji} {e.eventName}</Text>}
+            defaultStrain="SOUR DIESEL"
+            stampRight="THC: 21.5%"
+            style={{ borderLeftColor: e.eventColor, borderLeftWidth: 5 }}>
             <View style={styles.entryHeader}>
               <Text style={styles.entryTime}>{formatTimeForDisplay(e.time)}</Text>
               <Text style={styles.entryEvent}>
@@ -405,9 +406,9 @@ export default function OurLogScreen() {
               style={[styles.smallBtn, appTheme.buttonStyle]}>
               <Text style={styles.smallBtnText}>Edit</Text>
             </Pressable>
-          </View>
+          </MylarPouch>
         ))}
-      </View>
+      </MylarPouch>
     </ScrollView>
   );
 }

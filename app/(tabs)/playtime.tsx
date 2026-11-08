@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
+import { MylarPouch } from '@/components/MylarPouch';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -240,9 +241,9 @@ export default function PlaytimeScreen() {
 
   if (!consent) {
     return (
-      <View style={[styles.gate, appTheme.cardStyle]}>
+      <View style={styles.gate}>
+      <MylarPouch title={<Text style={[styles.title, { fontFamily: font }]}>{playtimeTitle}</Text>} defaultStrain="PURPLE HAZE" stampRight="THC: 25.5%">
         <LeafBorder color={appTheme.leafColor} />
-        <Text style={[styles.title, { fontFamily: font }]}>{playtimeTitle}</Text>
         <Text style={[styles.subtitle, { fontFamily: font, color: appTheme.subtitleColor }]}>
           Where our deepest desires and hottest secrets come alive 💋🔥
         </Text>
@@ -250,6 +251,7 @@ export default function PlaytimeScreen() {
         <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={handleConsent}>
           <Text style={styles.btnText}>I am 18 or older — Enter</Text>
         </Pressable>
+      </MylarPouch>
       </View>
     );
   }
@@ -262,15 +264,13 @@ export default function PlaytimeScreen() {
         Where our deepest desires and hottest secrets come alive 💋🔥
       </Text>
 
-      <View style={[styles.card, appTheme.cardStyle]}>
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Posting as {USERS[activeUser].label}</Text>} defaultStrain="GG4" stampRight="THC: 26.5%">
         <LeafBorder color={appTheme.leafColor} />
-        <Text style={[styles.cardTitle, { fontFamily: font }]}>Posting as {USERS[activeUser].label}</Text>
         <Text style={styles.muted}>You are locked to this account from login — messages and photos are always yours.</Text>
-      </View>
+      </MylarPouch>
 
-        <View style={[styles.card, appTheme.cardStyle]}>
+        <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Chat Log 💬</Text>} defaultStrain="WEDDING CAKE" stampRight="THC: 23.5%">
         <LeafBorder color={appTheme.leafColor} />
-          <Text style={[styles.cardTitle, { fontFamily: font }]}>Chat Log 💬</Text>
           {(() => {
           const today = localDateKey();
           const todayMsgs = messages.filter(
@@ -280,11 +280,11 @@ export default function PlaytimeScreen() {
             <>
               <View style={styles.chatBox}>
                 {todayMsgs.map((m) => (
-                  <View key={m.id} style={[styles.chatMsg, appTheme.cardStyle]}>
+                  <MylarPouch key={m.id} title={<Text style={styles.chatAuthor}>{USERS[m.author].label}</Text>} defaultStrain="SOUR DIESEL" stampRight="THC: 21.5%">
                     <Text style={styles.chatAuthor}>{USERS[m.author].label}</Text>
                     <Text style={styles.chatText}>{m.text}</Text>
                     <Text style={styles.chatTime}>{new Date(m.timestamp).toLocaleString()}</Text>
-                  </View>
+                  </MylarPouch>
                ))}
                 {todayMsgs.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No messages yet today — yesterday's are in The Days of Old 🧙‍♂️</Text>}
               </View>
@@ -297,17 +297,16 @@ export default function PlaytimeScreen() {
             </>
           );
         })()}
-        </View>
+        </MylarPouch>
 
-        <View style={[styles.card, appTheme.cardStyle]}>
+        <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Pictures & GIFs 📸 (max 60 MB)</Text>} defaultStrain="AMNESIA HAZE" stampRight="THC: 20.5%">
         <LeafBorder color={appTheme.leafColor} />
-          <Text style={[styles.cardTitle, { fontFamily: font }]}>Pictures & GIFs 📸 (max 60 MB)</Text>
           <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={pickPhotos}>
             <Text style={styles.btnText}>Upload (multiple)</Text>
           </Pressable>
           {uploadStatus ? <Text style={styles.muted}>{uploadStatus}</Text> : null}
           {media.map((m) => (
-            <View key={m.id} style={[styles.photoCard, appTheme.cardStyle]}>
+            <MylarPouch key={m.id} title={<Text style={styles.chatAuthor}>{m.file_name}</Text>} defaultStrain="BLUE DREAM" stampRight="THC: 22.5%">
               <Pressable onPress={() => router.push(`/media/${m.id}`)}>
                 <Image source={{ uri: signedUrls[m.id] || '' }} style={styles.photo} contentFit="contain" />
               </Pressable>
@@ -315,9 +314,9 @@ export default function PlaytimeScreen() {
               <Pressable onPress={() => router.push(`/media/${m.id}`)} style={styles.commentHeader}>
                 <Text style={styles.commentHeaderText}>Comments ({(m.comments || []).length}) — tap to open</Text>
               </Pressable>
-            </View>
+            </MylarPouch>
           ))}
-        </View>
+        </MylarPouch>
       </ScrollView>
     </KeyboardAvoidingView>
   );

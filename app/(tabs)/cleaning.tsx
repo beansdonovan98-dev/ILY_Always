@@ -4,6 +4,7 @@ import { useFocusEffect } from 'expo-router';
 
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
+import { MylarPouch } from '@/components/MylarPouch';
 import { Celebration } from '@/components/Celebration';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUsage } from '@/contexts/UsageContext';
@@ -129,9 +130,8 @@ export default function CleaningScreen() {
       </Text>
 
       {/* Deep clean focus — hidden until Sunday 12:00 AM */}
-      <View style={[styles.card, theme.cardStyle]}>
+      <MylarPouch title={<Text style={styles.cardTitle}>Sunday Deep Dive</Text>} defaultStrain="GRANDDADDY P." stampRight="THC: 28.5%">
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Sunday Deep Dive</Text>
         <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
           One room gets the full filthy treatment each week
         </Text>
@@ -169,12 +169,11 @@ export default function CleaningScreen() {
             {focusArea.tasks.map((t) => renderCheckRow('focus', t))}
           </>
         )}
-      </View>
+      </MylarPouch>
 
       {/* Daily */}
-      <View style={[styles.card, theme.cardStyle]}>
+      <MylarPouch title={<Text style={styles.cardTitle}>Daily Hustle</Text>} defaultStrain="SOUR DIESEL" stampRight="THC: 21.5%">
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Daily Hustle</Text>
         <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
           A little effort every day keeps the dirty boys away
         </Text>
@@ -182,12 +181,11 @@ export default function CleaningScreen() {
         <View style={styles.twoCol}>
           {DAILY_CHORES.map((c) => renderCheckRow('daily', c, styles.twoColItem))}
         </View>
-      </View>
+      </MylarPouch>
 
       {/* Every 2 days */}
-      <View style={[styles.card, theme.cardStyle]}>
+      <MylarPouch title={<Text style={styles.cardTitle}>Every Other Day</Text>} defaultStrain="BLUE DREAM" stampRight="THC: 22.5%">
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Every Other Day</Text>
         <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
           {twoDayDue
             ? 'Due today — reset the lair, no excuses, gorgeous'
@@ -195,18 +193,17 @@ export default function CleaningScreen() {
         </Text>
         <Text style={styles.streakLine}>{streaks.twoDay}-cycle streak</Text>
         {TWO_DAY_CHORES.map((c) => renderCheckRow('twoDay', c))}
-      </View>
+      </MylarPouch>
 
       {/* Weekly */}
-      <View style={[styles.card, theme.cardStyle]}>
+      <MylarPouch title={<Text style={styles.cardTitle}>The Weekly Ritual</Text>} defaultStrain="OG KUSH" stampRight="THC: 25.5%">
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>The Weekly Ritual</Text>
         <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
           The Sunday ritual that keeps our nest fit for royalty
         </Text>
         <Text style={styles.streakLine}>{streaks.weekly}-week streak</Text>
         {WEEKLY_CHORES.map((c) => renderCheckRow('weekly', c))}
-      </View>
+      </MylarPouch>
 
       <Celebration
         mode={celebration?.mode ?? null}

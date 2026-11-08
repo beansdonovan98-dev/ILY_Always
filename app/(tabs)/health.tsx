@@ -5,6 +5,7 @@ import { useFocusEffect } from 'expo-router';
 
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
+import { MylarPouch } from '@/components/MylarPouch';
 import { Celebration } from '@/components/Celebration';
 import { WeightChart, ChartPoint } from '@/components/WeightChart';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -409,9 +410,8 @@ export default function HealthScreen() {
     const hersList = me === 'princess' ? weights : theirWeights;
 
     return (
-      <View style={[styles.card, theme.cardStyle]}>
+      <MylarPouch title={<Text style={styles.cardTitle}>Weight Chart 📈</Text>} defaultStrain="GRANDDADDY P." stampRight="THC: 28.5%">
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Weight Chart 📈</Text>
         <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
           One chart for both of us — your line, her line, same scale, gorgeous 📊
         </Text>
@@ -423,7 +423,7 @@ export default function HealthScreen() {
           ]}
           textColor={theme.textColor}
         />
-      </View>
+      </MylarPouch>
     );
   };
 
@@ -432,9 +432,8 @@ export default function HealthScreen() {
     const hersList = me === 'princess' ? weights : theirWeights;
 
     return (
-      <View style={[styles.card, theme.cardStyle]}>
+      <MylarPouch title={<Text style={styles.cardTitle}>Weight Tracker ⚖️</Text>} defaultStrain="SOUR DIESEL" stampRight="THC: 21.5%">
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Weight Tracker ⚖️</Text>
         <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
           Every number on this scale matters just as much as every number in the bedroom 😏⚖️ (only you can edit yours — lbs)
         </Text>
@@ -522,7 +521,7 @@ export default function HealthScreen() {
             </View>
           ))}
         </View>
-      </View>
+      </MylarPouch>
     );
   };
 
@@ -692,9 +691,8 @@ export default function HealthScreen() {
       </Text>
 
       {/* Daily Health List */}
-      <View style={[styles.card, theme.cardStyle]}>
+      <MylarPouch title={<Text style={styles.cardTitle}>Daily Health List 🌿</Text>} defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Daily Health List 🌿</Text>
         <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
           Cross off our little rituals together, darling — every tick is a promise we keep to each other 💚
         </Text>
@@ -745,12 +743,11 @@ export default function HealthScreen() {
           />
           <Pill label="+ Add" onPress={createTask} />
         </View>
-      </View>
+      </MylarPouch>
 
       {/* 7-Day Tracker */}
-      <View style={[styles.card, theme.cardStyle]}>
+      <MylarPouch title={<Text style={styles.cardTitle}>7-Day Tracker 🏆</Text>} defaultStrain="STRAWBERRY COUGH" stampRight="THC: 27.5%">
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>7-Day Tracker 🏆</Text>
         <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
           Seven ticks in a row and you earn the grand celebration, gorgeous — keep the streak alive 🔥
         </Text>
@@ -792,12 +789,11 @@ export default function HealthScreen() {
             </View>
           );
         })}
-      </View>
+      </MylarPouch>
 
       {/* Water tracker */}
-      <View style={[styles.card, theme.cardStyle]}>
+      <MylarPouch title={<Text style={styles.cardTitle}>Water Tracker 💧</Text>} defaultStrain="BLUE DREAM" stampRight="THC: 22.5%">
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Water Tracker 💧</Text>
         <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
           Four cups a day keeps the thirst away — and keeps you glowing for me, sweetheart 💦
         </Text>
@@ -840,7 +836,7 @@ export default function HealthScreen() {
           </Text>
         </View>
         {renderStreakDots(waterDoneDay(theirWater))}
-      </View>
+      </MylarPouch>
 
       {/* Weight chart (shared) */}
       {renderWeightChartCard()}
@@ -849,9 +845,8 @@ export default function HealthScreen() {
       {renderWeightTrackerCard()}
 
       {/* Body measurements */}
-      <View style={[styles.card, theme.cardStyle]}>
+      <MylarPouch title={<Text style={styles.cardTitle}>His &amp; Hers Body Measurements 💪</Text>} defaultStrain="OG KUSH" stampRight="THC: 25.5%">
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>His &amp; Hers Body Measurements 💪</Text>
         <Text style={styles.cardHint}>
           Only you can edit your own numbers — measurements refresh every 3 days 🍃
         </Text>
@@ -859,12 +854,11 @@ export default function HealthScreen() {
           <View style={styles.sidePanel}>{renderBodyPanel('daddy')}</View>
           <View style={styles.sidePanel}>{renderBodyPanel('princess')}</View>
         </View>
-      </View>
+      </MylarPouch>
 
       {/* Medicine */}
-      <View style={[styles.card, theme.cardStyle]}>
+      <MylarPouch title={<Text style={styles.cardTitle}>Medicine &amp; Supplements 💊</Text>} defaultStrain="GELATO" stampRight="THC: 26.5%">
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Medicine &amp; Supplements 💊</Text>
         <Text style={styles.cardHint}>
           Twice a day, every day — so we never run out of steam when it matters most 💊🔥 The log clears at midnight 🌅
         </Text>
@@ -953,19 +947,18 @@ export default function HealthScreen() {
             </View>
           ))
         )}
-      </View>
+      </MylarPouch>
 
       {/* Fitness */}
-      <View style={[styles.card, theme.cardStyle]}>
+      <MylarPouch title={<Text style={styles.cardTitle}>Fitness Log 🏋️</Text>} defaultStrain="AK-47" stampRight="THC: 23.5%">
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Fitness Log 🏋️</Text>
         <Text style={styles.cardHint}>
           Working out keeps us looking dangerous and feeling even dirtier 🏋️💦
         </Text>
 
         {renderFitnessPanel('daddy')}
         {renderFitnessPanel('princess')}
-      </View>
+      </MylarPouch>
 
       <Celebration
         mode={celebration?.mode ?? null}
@@ -975,9 +968,8 @@ export default function HealthScreen() {
 
       {/* Period tracker */}
       {revealed && (
-        <View style={[styles.card, theme.cardStyle]}>
+        <MylarPouch title={<Text style={styles.cardTitle}>Period Tracker 🌸</Text>} defaultStrain="LAVENDER" stampRight="THC: 20.5%">
           <LeafBorder color={theme.leafColor} />
-          <Text style={styles.cardTitle}>Period Tracker 🌸</Text>
           <Text style={styles.cardHint}>
             {period.startDate
               ? period.endDate
@@ -1077,7 +1069,7 @@ export default function HealthScreen() {
                 ))}
             </View>
           )}
-        </View>
+      </MylarPouch>
       )}
     </ScrollView>
   );

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/AppText';
+import { MylarPouch } from '@/components/MylarPouch';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { Image as ExpoImage } from 'expo-image';
 
@@ -123,48 +124,48 @@ export default function DaysOfOldScreen() {
           <Text style={styles.sectionSub}>Our Log 📜</Text>
           {entries.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No log entries.</Text>}
           {entries.map((e) => (
-            <View key={e.id} style={[[styles.entryCard, appTheme.cardStyle], { borderLeftColor: e.eventColor, borderLeftWidth: 4 }]}>
+            <MylarPouch key={e.id} title={<Text style={styles.entryEvent}>{e.eventEmoji} {e.eventName}</Text>} defaultStrain="GRANDDADDY P." stampRight="THC: 28.5%" style={{ borderLeftColor: e.eventColor, borderLeftWidth: 4 }}>
               <Text style={styles.entryTime}>{formatTimeForDisplay(e.time)}</Text>
               <Text style={styles.entryEvent}>{e.eventEmoji} {e.eventName}</Text>
               <Text style={styles.entryText}>{e.whatHappened}</Text>
-            </View>
+            </MylarPouch>
           ))}
 
           <Text style={styles.sectionSub}>Love Notes 💌</Text>
           {notes.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No love notes this day.</Text>}
           {notes.map((n) => (
-            <View key={n.id} style={[styles.noteCard, { borderColor: appTheme.borderColor }]}>
+            <MylarPouch key={n.id} title={<Text style={styles.chatAuthor}>{USERS[n.author as keyof typeof USERS]?.label || n.author} • {new Date(n.created_at).toLocaleDateString()}</Text>} defaultStrain="SOUR DIESEL" stampRight="THC: 21.5%">
               <Text style={styles.entryText}>{n.text}</Text>
               <Text style={styles.muted}>{USERS[n.author as keyof typeof USERS]?.label || n.author} • {new Date(n.created_at).toLocaleString()}</Text>
-            </View>
+            </MylarPouch>
           ))}
 
           <Text style={styles.sectionSub}>Daily Health List 🌿</Text>
           {healthRows.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No checks logged.</Text>}
           {healthRows.map((h) => (
-            <View key={h.label} style={[styles.healthRow, { borderColor: appTheme.borderColor }]}>
+            <MylarPouch key={h.label} title={<Text style={styles.entryEvent}>{h.emoji} {h.label}</Text>} defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
               <Text style={styles.entryText}>{h.emoji} {h.label}</Text>
               <View style={styles.healthMarks}>
                 <Text style={styles.healthMark}>{h.hisDone ? '✓ His 🍆' : '○ His'}</Text>
                 <Text style={styles.healthMark}>{h.hersDone ? '✓ Hers 🍑' : '○ Hers'}</Text>
               </View>
-            </View>
+            </MylarPouch>
           ))}
 
           <Text style={styles.sectionSub}>Covers & Playtime 📸</Text>
           {chat.length === 0 && media.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No chats or photos this day.</Text>}
           {chat.map((m) => (
-            <View key={m.id} style={[styles.chatRow, appTheme.cardStyle]}>
+            <MylarPouch key={m.id} title={<Text style={styles.chatAuthor}>{USERS[m.author]?.label || m.author}</Text>} defaultStrain="STRAWBERRY COUGH" stampRight="THC: 27.5%">
               <Text style={styles.chatAuthor}>{USERS[m.author]?.label || m.author}</Text>
               <Text style={styles.entryText}>{m.text}</Text>
               <Text style={styles.muted}>{new Date(m.timestamp).toLocaleTimeString()}</Text>
-            </View>
+            </MylarPouch>
           ))}
           {media.map((m) => (
-            <View key={m.id} style={[styles.photoCard, appTheme.cardStyle]}>
+            <MylarPouch key={m.id} title={<Text style={styles.entryEvent}>{m.file_name}</Text>} defaultStrain="BLUE DREAM" stampRight="THC: 22.5%">
               <ExpoImage source={{ uri: urls[m.id] || '' }} style={styles.photo} contentFit="contain" />
               <Text style={[styles.muted, { fontFamily: font }]}>{m.file_name}</Text>
-            </View>
+            </MylarPouch>
           ))}
         </View>
       ) : null} />

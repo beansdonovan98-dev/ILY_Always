@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
+import { MylarPouch } from '@/components/MylarPouch';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library/legacy';
@@ -154,9 +155,8 @@ export default function AIEditorScreen() {
         Developing our dirtiest fantasies in the dark — snapshots, but make them sinful 🔞📷
       </Text>
 
-      <View style={[styles.card, appTheme.cardStyle]}>
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>New Edit ✨</Text>} defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
         <LeafBorder color={appTheme.leafColor} />
-        <Text style={[styles.cardTitle, { fontFamily: font }]}>New Edit ✨</Text>
         <Text style={styles.cardHint}>Pick a photo, describe the edit, and let the AI do the dirty work 😏</Text>
 
         <Pressable onPress={pickSource} style={styles.pillPress}>
@@ -210,12 +210,11 @@ export default function AIEditorScreen() {
           <Text style={styles.ghostPillText}>Save to My Photos 💾</Text>
         </Pressable>
         <Text style={styles.hint}>Pick a photo first — Save keeps whichever photo is showing (edited or original).</Text>
-      </View>
+      </MylarPouch>
 
       {resultUri ? (
-        <View style={[styles.card, appTheme.cardStyle]}>
+        <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Result 🔥</Text>} defaultStrain="STRAWBERRY COUGH" stampRight="THC: 27.5%">
           <LeafBorder color={appTheme.leafColor} />
-          <Text style={[styles.cardTitle, { fontFamily: font }]}>Result 🔥</Text>
           <View style={[styles.photoWrap, { borderColor: appTheme.borderColor }]}>
             <ExpoImage source={{ uri: resultUri }} style={styles.photo} contentFit="contain" />
           </View>
@@ -233,15 +232,14 @@ export default function AIEditorScreen() {
           <Pressable onPress={saveToDevice} disabled={saving} style={[styles.ghostPill, { borderColor: appTheme.borderColor }]}>
             <Text style={styles.ghostPillText}>Save to My Photos 💾</Text>
           </Pressable>
-        </View>
+        </MylarPouch>
       ) : null}
 
       {status ? <Text style={[styles.muted, { fontFamily: font }]}>{status}</Text> : null}
 
       {/* Saved creations */}
-      <View style={[styles.card, appTheme.cardStyle]}>
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Saved Creations 🎞️</Text>} defaultStrain="WEDDING CAKE" stampRight="THC: 23.5%">
         <LeafBorder color={appTheme.leafColor} />
-        <Text style={[styles.cardTitle, { fontFamily: font }]}>Saved Creations 🎞️</Text>
         <Text style={[styles.cardHint, { color: appTheme.subtitleColor }]}>
           Every edit you saved, kept forever — they never clear, gorgeous 💚
         </Text>
@@ -250,9 +248,14 @@ export default function AIEditorScreen() {
         ) : (
           <View style={styles.grid}>
             {savedPhotos.map((photo) => (
-              <Pressable
+              <MylarPouch
                 key={photo.id}
-                style={[styles.thumbWrap, { borderColor: appTheme.borderColor }]}
+                title={<Text style={styles.cardTitle}>{photo.file_name}</Text>}
+                defaultStrain="AI EDIT"
+                stampRight="THC: 33.3%"
+                style={{ width: '31%' }}>
+              <Pressable
+                style={[styles.thumbWrap, { borderColor: appTheme.borderColor, width: '100%' }]}
                 onPress={async () => {
                   try {
                     const url = savedUrls[photo.id];
@@ -266,11 +269,12 @@ export default function AIEditorScreen() {
                 }}>
                 <ExpoImage source={{ uri: savedUrls[photo.id] || '' }} style={styles.thumb} contentFit="cover" />
               </Pressable>
+              </MylarPouch>
             ))}
           </View>
         )}
         {savedPhotos.length > 0 && <Text style={styles.muted}>Tap any creation to save it to your photos 💾</Text>}
-      </View>
+      </MylarPouch>
     </ScrollView>
   );
 }
