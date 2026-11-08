@@ -50,7 +50,7 @@ export function useAppTheme() {
     accentSoft: withAlpha(accentColor, 0.35),
     accentStrong: withAlpha(accentColor, 0.75),
     borderColor,
-    leafColor: DEFAULTS.leaf,
+    leafColor: accentColor,
     cardStyle: {
       backgroundColor: DEFAULTS.card,
       borderWidth: 3,

@@ -139,7 +139,80 @@ const styles = {
 
 export default CannabisLeaf;
 
-/** A little rooted weed plant — stem, paired fan leaves and a top bud. */
+/**
+ * A realistic cannabis plant: main stem with lateral branches, serrated
+ * 7-leaflet fan leaves at the nodes, and a stacked top cola plus side
+ * buds — bracts with centre veins, orange pistils and frosted trichomes.
+ * Drawn as smooth vector paths (no blocky/stencil shapes).
+ */
+const LEAFLET =
+  'M0,0 L-1.5,-2.4 L-0.9,-3.1 L-1.8,-4.6 L-1.1,-5.3 L-1.8,-6.9 L-1,-7.6 L-1.4,-9.2 L-0.4,-9.8 L0,-11.5 L0.4,-9.8 L1.4,-9.2 L1,-7.6 L1.8,-6.9 L1.1,-5.3 L1.8,-4.6 L0.9,-3.1 L1.5,-2.4 Z';
+
+const FAN_ANGLES = [0, 24, -24, 48, -48, 70, -70];
+const FAN_SCALES = [1, 0.85, 0.85, 0.68, 0.68, 0.5, 0.5];
+
+function FanLeaf({ x, y, s = 1, rot = 0, color, opacity = 1 }: {
+  x: number; y: number; s?: number; rot?: number; color: string; opacity?: number;
+}) {
+  return (
+    <G transform={`translate(${x},${y}) rotate(${rot}) scale(${s})`}>
+      {FAN_ANGLES.map((a, i) => (
+        <G key={i} transform={`rotate(${a}) scale(${FAN_SCALES[i]})`}>
+          <Path d={LEAFLET} fill={color} opacity={opacity} />
+          <Path d="M0,0 L0,-11" stroke={color} strokeOpacity={opacity * 0.5} strokeWidth={0.3} />
+        </G>
+      ))}
+      <Path d="M0,0 L0,2" stroke={color} strokeOpacity={opacity} strokeWidth={0.7} />
+    </G>
+  );
+}
+
+function BudBract({ x, y, s = 1, rot = 0, bud, leaf, pistil }: {
+  x: number; y: number; s?: number; rot?: number; bud: string; leaf: string; pistil: string;
+}) {
+  return (
+    <G transform={`translate(${x},${y}) rotate(${rot}) scale(${s})`}>
+      {/* bract */}
+      <Path d="M0,0 C-6,-6 -8,-16 0,-24 C8,-16 6,-6 0,0 Z" fill={bud} opacity={0.92} />
+      {/* calyx shade */}
+      <Path d="M0,-24 C2,-16 2,-8 0,0 C-2,-8 -2,-16 0,-24 Z" fill={leaf} opacity={0.35} />
+      {/* centre vein */}
+      <Path d="M0,0 L0,-22" stroke="#0B1F12" strokeOpacity={0.35} strokeWidth={0.5} />
+      {/* pistils */}
+      <Path d="M0,-20 C-4,-26 -8,-28 -12,-29" stroke={pistil} strokeWidth={0.9} fill="none" strokeLinecap="round" opacity={0} />
+      <Path d="M0,-22 C4,-27 7,-30 10,-32" stroke={pistil} strokeWidth={0.9} fill="none" strokeLinecap="round" />
+      <Path d="M0,-21 C-3,-27 -5,-30 -7,-33" stroke={pistil} strokeWidth={0.9} fill="none" strokeLinecap="round" />
+      {/* trichome frost */}
+      <Ellipse cx={-2} cy={-14} rx={0.9} ry={1.6} fill="#FFFFFF" opacity={0.55} />
+      <Ellipse cx={2.4} cy={-10} rx={0.8} ry={1.4} fill="#FFFFFF" opacity={0.45} />
+      <Ellipse cx={0} cy={-6} rx={0.7} ry={1.2} fill="#FFFFFF" opacity={0.4} />
+    </G>
+  );
+}
+
+function Cola({ x, y, s = 1, bud, leaf, pistil }: {
+  x: number; y: number; s?: number; bud: string; leaf: string; pistil: string;
+}) {
+  // stacked bracts forming a dense top cola
+  const bracts = [
+    { dy: 0, rot: -28, s: 0.9 },
+    { dy: 0, rot: 28, s: 0.9 },
+    { dy: -9, rot: -18, s: 1 },
+    { dy: -9, rot: 18, s: 1 },
+    { dy: -18, rot: -10, s: 1 },
+    { dy: -18, rot: 10, s: 1 },
+    { dy: -27, rot: 0, s: 1 },
+    { dy: -34, rot: 0, s: 0.92 },
+  ];
+  return (
+    <G transform={`translate(${x},${y}) scale(${s})`}>
+      {bracts.map((b, i) => (
+        <BudBract key={i} x={0} y={b.dy} rot={b.rot} s={b.s} bud={bud} leaf={leaf} pistil={pistil} />
+      ))}
+    </G>
+  );
+}
+
 export function WeedPlant({ height = 80, color = '#2E7D32', budColor = '#7B1FA2', opacity = 0.9 }: {
   height?: number;
   color?: string;
@@ -147,30 +220,43 @@ export function WeedPlant({ height = 80, color = '#2E7D32', budColor = '#7B1FA2'
   opacity?: number;
 }) {
   const w = height * 0.75;
+  const pistil = '#E8842B';
   return (
-    <Svg width={w} height={height} viewBox="0 0 60 80" style={{ opacity }}>
-      {/* stem */}
-      <Path d="M30,78 C30,60 30,44 30,30" stroke={color} strokeWidth={2.6} fill="none" strokeLinecap="round" />
-      {/* lower fan leaves */}
-      <G transform="translate(30,62)">
-        <G transform="rotate(-42)"><Path d="M0,0 C-1.4,-6 -1.2,-12 0,-16 C1.2,-12 1.4,-6 0,0 Z" fill={color} /></G>
-        <G transform="rotate(42)"><Path d="M0,0 C-1.4,-6 -1.2,-12 0,-16 C1.2,-12 1.4,-6 0,0 Z" fill={color} /></G>
-        <G transform="rotate(-78)"><Path d="M0,0 C-1.4,-6 -1.2,-12 0,-16 C1.2,-12 1.4,-6 0,0 Z" fill={color} opacity={0.7} /></G>
-        <G transform="rotate(78)"><Path d="M0,0 C-1.4,-6 -1.2,-12 0,-16 C1.2,-12 1.4,-6 0,0 Z" fill={color} opacity={0.7} /></G>
-      </G>
-      {/* middle fan leaves */}
-      <G transform="translate(30,44)">
-        <G transform="rotate(-30)"><Path d="M0,0 C-1.6,-7 -1.4,-14 0,-18 C1.4,-14 1.6,-7 0,0 Z" fill={color} /></G>
-        <G transform="rotate(30)"><Path d="M0,0 C-1.6,-7 -1.4,-14 0,-18 C1.4,-14 1.6,-7 0,0 Z" fill={color} /></G>
-      </G>
-      {/* top fan leaves — no bud, just leaves like a wild plant */}
-      <G transform="translate(30,28)">
-        <G transform="rotate(-18)"><Path d="M0,0 C-1.9,-6 -1.6,-13 0,-20 C1.6,-13 1.9,-6 0,0 Z" fill={color} /></G>
-        <G transform="rotate(18)"><Path d="M0,0 C-1.9,-6 -1.6,-13 0,-20 C1.6,-13 1.9,-6 0,0 Z" fill={color} /></G>
-        <G><Path d="M0,0 C-2.1,-7 -1.9,-15 0,-24 C1.9,-15 2.1,-7 0,0 Z" fill={color} /></G>
-      </G>
+    <Svg width={w} height={height} viewBox="0 0 120 160" style={{ opacity }}>
+      {/* lateral branches */}
+      <Path d="M60,150 C58,120 58,96 60,66" stroke={color} strokeWidth={2.4} fill="none" strokeLinecap="round" />
+      <Path d="M60,124 C48,114 38,104 32,94" stroke={color} strokeWidth={1.6} fill="none" strokeLinecap="round" />
+      <Path d="M60,124 C72,114 82,104 88,94" stroke={color} strokeWidth={1.6} fill="none" strokeLinecap="round" />
+      <Path d="M60,100 C50,92 42,84 37,76" stroke={color} strokeWidth={1.4} fill="none" strokeLinecap="round" />
+      <Path d="M60,100 C70,92 78,84 83,76" stroke={color} strokeWidth={1.4} fill="none" strokeLinecap="round" />
+      <Path d="M60,80 C52,72 47,64 44,56" stroke={color} strokeWidth={1.3} fill="none" strokeLinecap="round" />
+      <Path d="M60,80 C68,72 73,64 76,56" stroke={color} strokeWidth={1.3} fill="none" strokeLinecap="round" />
+
+      {/* fan leaves at lower nodes */}
+      <FanLeaf x={32} y={94} s={1.1} rot={-40} color={color} />
+      <FanLeaf x={88} y={94} s={1.1} rot={40} color={color} />
+      <FanLeaf x={37} y={76} s={0.9} rot={-30} color={color} opacity={0.9} />
+      <FanLeaf x={83} y={76} s={0.9} rot={30} color={color} opacity={0.9} />
+      <FanLeaf x={44} y={58} s={0.75} rot={-20} color={color} opacity={0.8} />
+      <FanLeaf x={76} y={58} s={0.75} rot={20} color={color} opacity={0.8} />
+
+      {/* side buds on branch tips */}
+      <Cola x={30} y={96} s={0.38} bud={budColor} leaf={color} pistil={pistil} />
+      <Cola x={90} y={96} s={0.38} bud={budColor} leaf={color} pistil={pistil} />
+      <Cola x={35} y={78} s={0.32} bud={budColor} leaf={color} pistil={pistil} />
+      <Cola x={85} y={78} s={0.32} bud={budColor} leaf={color} pistil={pistil} />
+      <Cola x={42} y={58} s={0.28} bud={budColor} leaf={color} pistil={pistil} />
+      <Cola x={78} y={58} s={0.28} bud={budColor} leaf={color} pistil={pistil} />
+
+      {/* sugar leaves around the top cola */}
+      <FanLeaf x={47} y={66} s={0.7} rot={-24} color={color} opacity={0.85} />
+      <FanLeaf x={73} y={66} s={0.7} rot={24} color={color} opacity={0.85} />
+
+      {/* main top cola */}
+      <Cola x={60} y={74} s={0.62} bud={budColor} leaf={color} pistil={pistil} />
+
       {/* soil line */}
-      <Path d="M12,78 L48,78" stroke={color} strokeWidth={1.6} opacity={0.6} strokeLinecap="round" />
+      <Path d="M28,152 L92,152" stroke={color} strokeWidth={1.6} opacity={0.5} strokeLinecap="round" />
     </Svg>
   );
 }

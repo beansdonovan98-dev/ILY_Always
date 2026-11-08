@@ -31,14 +31,15 @@ const DEFAULT_TABS = [
 ];
 
 const STRAIN_PRESETS = [
-  { name: 'Jack Herer', colors: ['#FF9F1C', '#F4A259', '#BC4B51', '#2E7D32'] },
-  { name: 'Granddaddy Purple', colors: ['#4A148C', '#6A1B9A', '#9D4EDD', '#66BB6A'] },
-  { name: 'Purple Haze', colors: ['#3A0CA3', '#5A189A', '#F48C06', '#FF9F1C'] },
-  { name: 'Tropicana Cherry', colors: ['#800000', '#DC143C', '#7B1FA2', '#E0FBFC'] },
-  { name: 'Pink Runts', colors: ['#FF8FAB', '#F15BB5', '#9B5DE5', '#FFF0F5'] },
-  { name: 'Blue Dream', colors: ['#1A237E', '#2962FF', '#82B1FF', '#ECEFF1'] },
-  { name: 'Northern Lights', colors: ['#312E81', '#7C3AED', '#22D3EE', '#F9A8D4'] },
-  { name: 'Sour Diesel', colors: ['#EAB308', '#A3E635', '#4D7C0F', '#7C3AED'] },
+  // Deep, bud-inspired palettes — dark forest base, rich bud tones, frosted highlights.
+  { name: 'OG Kush', colors: ['#0B2E1A', '#123D22', '#1E5B33', '#C9A227'], leaf: '#4ADE80' },
+  { name: 'Granddaddy Purple', colors: ['#2D0A4E', '#4A148C', '#6A1B9A', '#9D4EDD'], leaf: '#58B368' },
+  { name: 'Purple Haze', colors: ['#1A0533', '#3A0CA3', '#7B2CBF', '#B5179E'], leaf: '#FF8FAB' },
+  { name: 'Blue Dream', colors: ['#0A1929', '#16324F', '#2A6F97', '#61C0BF'], leaf: '#7ED957' },
+  { name: 'Sour Diesel', colors: ['#3A2200', '#6B4E00', '#8A6D00', '#C9A227'], leaf: '#A3E635' },
+  { name: 'Northern Lights', colors: ['#101D42', '#2B2D5C', '#4C5FD5', '#7B2CBF'], leaf: '#6EE7B7' },
+  { name: 'Wedding Cake', colors: ['#2E1A47', '#5B3A8E', '#8E44AD', '#E9C46A'], leaf: '#90E0A0' },
+  { name: 'Pineapple Express', colors: ['#3A2E00', '#6B5B00', '#B8912F', '#FFE45E'], leaf: '#FFD43B' },
 ];
 
 const GRADIENT_PRESETS = STRAIN_PRESETS;
@@ -92,7 +93,7 @@ export default function SettingsScreen() {
 
   const syncToast = syncStatus === 'synced' ? 'Synced to Supabase ✓\nThemes now reach your lover\u2019s phone when they open the app.' : syncStatus === 'local' ? '⚠️ This is saving on THIS phone only — Supabase needs the couple_settings table (docs/supabase-recreate.sql.md) to sync themes to your lover.' : null;
 
-  const autoThemeColors = (colors: string[]) => {
+  const autoThemeColors = (colors: string[], leaf?: string) => {
     const luminance = (hex: string): number => {
       const h = hex.replace('#', '');
       const r = parseInt(h.slice(0, 2), 16);
@@ -102,18 +103,17 @@ export default function SettingsScreen() {
     };
     const avg = (arr: string[]) =>
       arr.reduce((sum, c) => sum + luminance(c), 0) / arr.length;
-    // Saturated strain gradients are darker per-channel than pastels,
-    // so a higher threshold keeps text readable on all eight.
     const darkTheme = avg(colors) < 0.62;
-    const accent = colors[1] || colors[0];
+    const accent = leaf || colors[1] || colors[0];
     const border = darkTheme ? 'rgba(255,255,255,0.55)' : 'rgba(46,125,79,0.6)';
     const font = darkTheme ? '#FFFFFF' : '#3A2A2E';
     const subtitle = darkTheme ? 'rgba(255,255,255,0.8)' : 'rgba(58,42,46,0.72)';
     return { accent_color: accent, border_color: border, subtitle_color: subtitle, font_color: font };
   };
 
-  const applyGradient = useCallback(async (colors: string[]) => {
-    await saveSettings({ background_gradient: JSON.stringify(colors), animated_gradient: true, ...autoThemeColors(colors) });
+  const applyGradient = useCallback(async (preset: { colors: string[]; leaf?: string }) => {
+    const colors = preset.colors;
+    await saveSettings({ background_gradient: JSON.stringify(colors), animated_gradient: true, ...autoThemeColors(colors, preset.leaf) });
   }, [saveSettings]);
 
   const saveColors = useCallback(async () => {
@@ -199,7 +199,7 @@ export default function SettingsScreen() {
         <Text style={[styles.cardTitle, { fontFamily: font }]}>Animated Gradient Themes</Text>
         <View style={styles.row}>
           {GRADIENT_PRESETS.map((g) => (
-            <Pressable key={g.name} onPress={() => applyGradient(g.colors)} style={styles.gradientChip}>
+            <Pressable key={g.name} onPress={() => applyGradient(g)} style={styles.gradientChip}>
               <LinearGradient
                 colors={g.colors as [string, string, ...string[]]}
                 start={{ x: 0, y: 0 }}

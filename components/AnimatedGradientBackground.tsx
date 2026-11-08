@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { BongSprite, CannabisLeaf, SmokePuff, WeedPlant } from '@/components/CannabisLeaf';
+import { CannabisLeaf, WeedPlant } from '@/components/CannabisLeaf';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const LIGHT_FALLBACK = ['#FFE3EC', '#F7D9FF', '#FFF3D6', '#FFD9E8'];
@@ -160,7 +160,7 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
     ],
   };
 
-  const leafColor = '#2E7D32';
+  const leafColor = settings?.accent_color && !isDark(settings.accent_color) ? settings.accent_color : '#2E7D32';
   const leafDriftA = {
     transform: [
       { translateY: drift.interpolate({ inputRange: [0, 1], outputRange: [0, -18] }) },
@@ -227,19 +227,9 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
         <View style={styles.leafB4}><CannabisLeaf size={14} color={leafColor} opacity={0.08} style={styles.tiltLeft} /></View>
       </View>
 
-      {/* Smoke wisps rising through the scene */}
-      <View style={styles.leafLayer}>
-        <View style={styles.smokeA}><SmokePuff size={72} opacity={0.6} /></View>
-        <View style={styles.smokeB}><SmokePuff size={52} opacity={0.45} /></View>
-        <View style={styles.smokeC}><SmokePuff size={88} opacity={0.5} /></View>
-        <View style={styles.smokeD}><SmokePuff size={44} opacity={0.35} /></View>
-      </View>
-
-      {/* Rooted plants + bongs on the edges */}
-      <View pointerEvents="none" style={styles.plantLeft}><WeedPlant height={130} color={leafColor} budColor="#7B1FA2" opacity={0.65} /></View>
-      <View pointerEvents="none" style={styles.plantRight}><WeedPlant height={110} color={leafColor} budColor="#4A148C" opacity={0.5} /></View>
-      <View pointerEvents="none" style={styles.bongSlot}><BongSprite size={120} color={leafColor} opacity={0.5} /></View>
-      <View pointerEvents="none" style={styles.bongSlotSmall}><BongSprite size={72} color={leafColor} opacity={0.35} /></View>
+      {/* Rooted plants on the edges — bud colour follows the active theme */}
+      <View pointerEvents="none" style={styles.plantLeft}><WeedPlant height={190} color={leafColor} budColor={c3} opacity={0.85} /></View>
+      <View pointerEvents="none" style={styles.plantRight}><WeedPlant height={150} color={leafColor} budColor={c4} opacity={0.65} /></View>
 
       <View style={styles.content}>{children}</View>
     </View>
