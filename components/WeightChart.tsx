@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient as SvgGradient, Path, Polyline, Stop, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Defs, G, LinearGradient as SvgGradient, Path, Polyline, Stop, Text as SvgText } from 'react-native-svg';
 
 import { AppText as Text } from '@/components/AppText';
 
@@ -10,20 +10,30 @@ export interface ChartPoint {
   label: string;
 }
 
-interface WeightChartProps {
+export interface ChartSeries {
+  id: string;
+  label: string;
+  color: string;
   data: ChartPoint[];
-  accentColor: string;
+}
+
+interface WeightChartProps {
+  /** One or more overlaid series (His + Hers trend lines). */
+  series: ChartSeries[];
   textColor: string;
 }
 
-const HEIGHT = 190;
-const PAD = { top: 18, right: 14, bottom: 26, left: 34 };
+const HEIGHT = 200;
+const PAD = { top: 18, right: 14, bottom: 26, left: 38, legend: 20 };
 
-export function WeightChart({ data, accentColor, textColor }: WeightChartProps) {
+export function WeightChart({ series, textColor }: WeightChartProps) {
   const [width, setWidth] = useState(0);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<{ series: number; index: number } | null>(null);
 
-  if (data.length === 0) {
+  const activeSeries = useMemo(() => series.filter((s) => s.data.length > 0), [series]);
+  const totalPoints = activeSeries.reduce((sum, s) => sum + s.data.length, 0);
+
+  if (totalPoints === 0) {
     return (
       <View style={styles.empty}>
         <Text style={styles.emptyText}>No weight logged yet. Add your first entry to start the trend 💫</Text>
@@ -31,27 +41,28 @@ export function WeightChart({ data, accentColor, textColor }: WeightChartProps) 
     );
   }
 
-  const values = data.map((d) => d.value);
-  const rawMin = Math.min(...values);
-  const rawMax = Math.max(...values);
+  const allValues = activeSeries.flatMap((s) => s.data.map((d) => d.value));
+  const rawMin = Math.min(...allValues);
+  const rawMax = Math.max(...allValues);
   const span = rawMax - rawMin || Math.max(rawMax * 0.04, 1);
-  const lo = rawMin - span * 0.2;
-  const hi = rawMax + span * 0.2;
+  const lo = rawMin - span * 0.25;
+  const hi = rawMax + span * 0.25;
 
   const chartW = Math.max(width - PAD.left - PAD.right, 1);
-  const chartH = HEIGHT - PAD.top - PAD.bottom;
+  const chartH = HEIGHT - PAD.top - PAD.bottom - PAD.legend;
 
-  const x = (i: number) => PAD.left + (data.length === 1 ? chartW / 2 : (i / (data.length - 1)) * chartW);
+  const xFor = (seriesIndex: number, i: number) => {
+    const count = activeSeries[seriesIndex].data.length;
+    return PAD.left + (count === 1 ? chartW / 2 : (i / (count - 1)) * chartW);
+  };
   const y = (v: number) => PAD.top + chartH - ((v - lo) / (hi - lo)) * chartH;
-
-  const points = data.map((d, i) => `${x(i)},${y(d.value)}`).join(' ');
   const baseline = PAD.top + chartH;
-  const areaPath = data.length > 1
-    ? `M ${x(0)},${baseline} L ${data.map((d, i) => `${x(i)},${y(d.value)}`).join(' L ')} L ${x(data.length - 1)},${baseline} Z`
-    : '';
 
   const format = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
-  const active = selected === null ? null : data[selected];
+  const firstLabel = activeSeries[0]?.data[0]?.label;
+  const lastLabel = activeSeries[activeSeries.length - 1]?.data.at(-1)?.label;
+  const activePoint =
+    selected !== null ? activeSeries[selected.series]?.data[selected.index] : undefined;
 
   return (
     <View>
@@ -59,10 +70,12 @@ export function WeightChart({ data, accentColor, textColor }: WeightChartProps) 
         {width > 0 && (
           <Svg width={width} height={HEIGHT}>
             <Defs>
-              <SvgGradient id="weightFill" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor={accentColor} stopOpacity={0.35} />
-                <Stop offset="1" stopColor={accentColor} stopOpacity={0.02} />
-              </SvgGradient>
+              {activeSeries.map((s, si) => (
+                <SvgGradient key={si} id={`fill${si}`} x1="0" y1="0" x2="0" y2="1">
+                  <Stop offset="0" stopColor={s.color} stopOpacity={0.3} />
+                  <Stop offset="1" stopColor={s.color} stopOpacity={0.02} />
+                </SvgGradient>
+              ))}
             </Defs>
 
             {[0, 0.5, 1].map((f) => (
@@ -82,39 +95,75 @@ export function WeightChart({ data, accentColor, textColor }: WeightChartProps) 
               {format(Math.round(lo))}
             </SvgText>
 
-            {areaPath ? <Path d={areaPath} fill="url(#weightFill)" /> : null}
+            {activeSeries.map((s, si) => {
+              const points = s.data.map((d, i) => `${xFor(si, i)},${y(d.value)}`).join(' ');
+              const areaPath =
+                s.data.length > 1
+                  ? `M ${xFor(si, 0)},${baseline} L ${s.data.map((d, i) => `${xFor(si, i)},${y(d.value)}`).join(' L ')} L ${xFor(si, s.data.length - 1)},${baseline} Z`
+                  : '';
+              return (
+                <G key={si}>
+                  {areaPath ? <Path d={areaPath} fill={`url(#fill${si})`} /> : null}
+                  {s.data.length > 1 ? (
+                    <Polyline
+                      points={points}
+                      fill="none"
+                      stroke={s.color}
+                      strokeWidth={3}
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+                  ) : null}
+                  {s.data.map((d, i) => (
+                    <Circle
+                      key={d.id}
+                      cx={xFor(si, i)}
+                      cy={y(d.value)}
+                      r={selected?.series === si && selected.index === i ? 7 : 5}
+                      fill={selected?.series === si && selected.index === i ? s.color : '#FFFFFF'}
+                      stroke={s.color}
+                      strokeWidth={2.5}
+                      onPress={() =>
+                        setSelected(
+                          selected?.series === si && selected.index === i ? null : { series: si, index: i }
+                        )
+                      }
+                    />
+                  ))}
+                </G>
+              );
+            })}
 
-            {data.length > 1 && (
-              <Polyline points={points} fill="none" stroke={accentColor} strokeWidth={3} strokeLinejoin="round" strokeLinecap="round" />
-            )}
-
-            {data.map((d, i) => (
-              <Circle
-                key={d.id}
-                cx={x(i)}
-                cy={y(d.value)}
-                r={selected === i ? 7 : 5}
-                fill={selected === i ? accentColor : '#FFFFFF'}
-                stroke={accentColor}
-                strokeWidth={2.5}
-                onPress={() => setSelected(selected === i ? null : i)}
-              />
+            {activeSeries.map((s, si) => (
+              <SvgText key={si} x={PAD.left + si * 92} y={HEIGHT - 8} fontSize={10} fill={s.color} fontWeight="bold">
+                {s.label}
+              </SvgText>
             ))}
 
-            <SvgText x={PAD.left} y={HEIGHT - 8} fontSize={9} fill={textColor} opacity={0.55}>
-              {data[0].label}
-            </SvgText>
-            {data.length > 1 && (
-              <SvgText x={PAD.left + chartW} y={HEIGHT - 8} fontSize={9} fill={textColor} opacity={0.55} textAnchor="end">
-                {data[data.length - 1].label}
+            {firstLabel ? (
+              <SvgText x={PAD.left} y={PAD.top + chartH + 14} fontSize={9} fill={textColor} opacity={0.55}>
+                {firstLabel}
               </SvgText>
-            )}
+            ) : null}
+            {lastLabel ? (
+              <SvgText
+                x={PAD.left + chartW}
+                y={PAD.top + chartH + 14}
+                fontSize={9}
+                fill={textColor}
+                opacity={0.55}
+                textAnchor="end">
+                {lastLabel}
+              </SvgText>
+            ) : null}
           </Svg>
         )}
       </View>
 
       <Text style={styles.caption}>
-        {active ? `${active.label} • ${format(active.value)} — tap a dot to close` : 'Tap any dot to see that day’s weight'}
+        {activePoint
+          ? `${activePoint.label} • ${format(activePoint.value)} lbs — tap a dot to close`
+          : 'Tap any dot to see that day\u2019s weight'}
       </Text>
     </View>
   );

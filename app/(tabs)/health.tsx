@@ -384,74 +384,108 @@ export default function HealthScreen() {
 
   /* --------------------- weight + fitness panels --------------------- */
 
-  const renderWeightPanel = (person: HealthUser) => {
-    const isMe = person === me;
-    const list = isMe ? weights : theirWeights;
-    const label = personLabel(person);
+  const renderWeightPanel = () => {
+    const hisList = me === 'daddy' ? weights : theirWeights;
+    const hersList = me === 'princess' ? weights : theirWeights;
 
     return (
       <View style={[styles.subCard, { borderColor: theme.borderColor }]}>
         <View style={styles.subHeader}>
-          <Text style={styles.subTitle}>{label}</Text>
-          <Text style={[styles.tag, isMe ? styles.tagYou : styles.tagLock]}>
-            {isMe ? 'You ✏️' : 'View only 🔒'}
-          </Text>
+          <Text style={styles.subTitle}>His 🍆 + Hers 🍑</Text>
+          <Text style={[styles.tag, styles.tagYou]}>Shared chart</Text>
         </View>
 
-        <WeightChart data={toChartData(list)} accentColor={theme.accentColor} textColor={theme.textColor} />
+        <WeightChart
+          series={[
+            { id: 'his', label: 'His', color: theme.accentColor, data: toChartData(hisList) },
+            { id: 'hers', label: 'Hers', color: '#C86DD7', data: toChartData(hersList) },
+          ]}
+          textColor={theme.textColor}
+        />
 
-        {isMe && (
-          <>
-            <View style={styles.row}>
-              <TextInput
-                value={wVal}
-                onChangeText={setWVal}
-                placeholder="Weight (lbs)"
-                placeholderTextColor="rgba(58,42,46,0.4)"
-                keyboardType="decimal-pad"
-                style={[styles.input, styles.flex, { borderColor: theme.borderColor, color: theme.textColor }]}
-              />
-              <Pill label={editingWeightId ? 'Save Weight' : 'Log Weight'} onPress={addWeight} />
-            </View>
+        <Text style={styles.ownLine}>
+          {me === 'daddy' ? 'His' : 'Hers'} — only you can edit yours
+        </Text>
 
-            {editingWeightId ? (
-              <GhostPill
-                label="Cancel edit"
-                onPress={() => {
-                  setEditingWeightId(null);
-                  setWVal('');
-                }}
-              />
-            ) : null}
-          </>
-        )}
-
-        {list.length > 0 && (
-          <View style={styles.list}>
-            {[...list]
-              .reverse()
-              .slice(0, 5)
-              .map((w) => (
-                <View key={w.id} style={styles.listRow}>
-                  <Text style={styles.listText}>
-                    {w.value} lbs — {w.dateKey}
-                  </Text>
-                  {isMe && (
-                    <>
-                      <GhostPill
-                        label="Edit"
-                        onPress={() => {
-                          setEditingWeightId(w.id);
-                          setWVal(String(w.value));
-                        }}
-                      />
-                      <GhostPill label="Delete" onPress={() => deleteWeight(w.id)} />
-                    </>
-                  )}
-                </View>
-              ))}
+        <View style={styles.sideRow}>
+          <View style={styles.sideCol}>
+            <Text style={styles.sideLabel}>🍆 His (lbs)</Text>
+            <TextInput
+              value={me === 'daddy' ? wVal : ''}
+              onChangeText={me === 'daddy' ? setWVal : undefined}
+              placeholder="—"
+              placeholderTextColor="rgba(58,42,46,0.4)"
+              keyboardType="decimal-pad"
+              style={[
+                styles.input,
+                styles.weightInput,
+                { borderColor: theme.borderColor, color: theme.textColor, opacity: me === 'daddy' ? 1 : 0.5 },
+              ]}
+            />
+            {me === 'daddy' && <Pill label={editingWeightId ? 'Save' : 'Log'} onPress={addWeight} />}
           </View>
-        )}
+
+          <View style={styles.sideCol}>
+            <Text style={styles.sideLabel}>🍑 Hers (lbs)</Text>
+            <TextInput
+              value={me === 'princess' ? wVal : ''}
+              onChangeText={me === 'princess' ? setWVal : undefined}
+              placeholder="—"
+              placeholderTextColor="rgba(58,42,46,0.4)"
+              keyboardType="decimal-pad"
+              style={[
+                styles.input,
+                styles.weightInput,
+                { borderColor: theme.borderColor, color: theme.textColor, opacity: me === 'princess' ? 1 : 0.5 },
+              ]}
+            />
+            {me === 'princess' && <Pill label={editingWeightId ? 'Save' : 'Log'} onPress={addWeight} />}
+          </View>
+        </View>
+
+        {editingWeightId ? (
+          <GhostPill
+            label="Cancel edit"
+            onPress={() => {
+              setEditingWeightId(null);
+              setWVal('');
+            }}
+          />
+        ) : null}
+
+        <View style={styles.sideRow}>
+          {[hisList, hersList].map((list, side) => (
+            <View key={side} style={styles.sideCol}>
+              <View style={styles.list}>
+                {[...list]
+                  .reverse()
+                  .slice(0, 5)
+                  .map((w) => {
+                    const editable = (side === 0 && me === 'daddy') || (side === 1 && me === 'princess');
+                    return (
+                      <View key={w.id} style={styles.listRow}>
+                        <Text style={styles.listText}>
+                          {w.value} lbs — {w.dateKey}
+                        </Text>
+                        {editable && (
+                          <>
+                            <GhostPill
+                              label="Edit"
+                              onPress={() => {
+                                setEditingWeightId(w.id);
+                                setWVal(String(w.value));
+                              }}
+                            />
+                            <GhostPill label="Delete" onPress={() => deleteWeight(w.id)} />
+                          </>
+                        )}
+                      </View>
+                    );
+                  })}
+              </View>
+            </View>
+          ))}
+        </View>
       </View>
     );
   };
@@ -778,8 +812,7 @@ export default function HealthScreen() {
         <Text style={styles.cardTitle}>Weight Tracker ⚖️</Text>
         <Text style={styles.cardHint}>Every number on this scale matters just as much as every number in the bedroom 😏⚖️ (only you can edit yours — lbs)</Text>
 
-        {renderWeightPanel('daddy')}
-        {renderWeightPanel('princess')}
+        {renderWeightPanel()}
       </View>
 
       {/* Body measurements */}
@@ -1146,9 +1179,13 @@ const styles = StyleSheet.create({
   empty: { fontSize: 14, opacity: 0.6, marginTop: 10 },
   sideRow: { flexDirection: 'row', gap: 10, marginTop: 2 },
   sidePanel: { flex: 1 },
+  sideCol: { flex: 1, minWidth: 0 },
+  sideLabel: { fontSize: 11, fontWeight: '700', opacity: 0.7, marginBottom: 4 },
+  ownLine: { fontSize: 11, fontStyle: 'italic', opacity: 0.65, marginTop: 2 },
+  weightInput: { minHeight: 38, paddingVertical: 6, marginTop: 0 },
   sideCard: { flex: 1, marginTop: 0 },
-  metricColumn: { flexDirection: 'column', alignItems: 'stretch', gap: 4, marginBottom: 10 },
-  metricInputFull: { width: '100%', textAlign: 'left' },
+  metricColumn: { flexDirection: 'column', alignItems: 'stretch', gap: 3, marginBottom: 7 },
+  metricInputFull: { width: '100%', textAlign: 'left', minHeight: 38, paddingVertical: 6 },
   fitnessRow: {
     flexDirection: 'row',
     alignItems: 'center',

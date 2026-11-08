@@ -88,19 +88,21 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
   const drift2 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Sheets animate on the native driver (smooth, off the JS thread) so
+    // scrolling stays buttery. Leaf/smoke drifts render as calm statics.
     const loopA = Animated.loop(
       Animated.sequence([
         Animated.timing(drift, {
           toValue: 1,
           duration: 6500,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: false,
+          useNativeDriver: true,
         }),
         Animated.timing(drift, {
           toValue: 0,
           duration: 6500,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: false,
+          useNativeDriver: true,
         }),
       ])
     );
@@ -111,13 +113,13 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
           toValue: 1,
           duration: 11000,
           easing: Easing.inOut(Easing.quad),
-          useNativeDriver: false,
+          useNativeDriver: true,
         }),
         Animated.timing(drift2, {
           toValue: 0,
           duration: 11000,
           easing: Easing.inOut(Easing.quad),
-          useNativeDriver: false,
+          useNativeDriver: true,
         }),
       ])
     );
@@ -213,27 +215,25 @@ export default function AnimatedGradientBackground({ children }: { children: Rea
         />
       </Animated.View>
 
-      {/* Drifting leaf layer — low opacity so it reads as a gentle vine, not clutter */}
-      <Animated.View style={[styles.leafLayer, leafDriftA]}>
+      {/* Weed scene sprites (static so scrolling stays smooth) */}
+      <View style={styles.leafLayer}>
         <View style={styles.leafA1}><CannabisLeaf size={30} color={leafColor} opacity={0.14} /></View>
         <View style={styles.leafA2}><CannabisLeaf size={20} color={leafColor} opacity={0.1} /></View>
         <View style={styles.leafA3}><CannabisLeaf size={24} color={leafColor} opacity={0.12} style={styles.tiltLeft} /></View>
         <View style={styles.leafA4}><CannabisLeaf size={16} color={leafColor} opacity={0.09} /></View>
-      </Animated.View>
-      <Animated.View style={[styles.leafLayer, leafDriftB]}>
         <View style={styles.leafB1}><CannabisLeaf size={26} color={leafColor} opacity={0.12} style={styles.tiltRight} /></View>
         <View style={styles.leafB2}><CannabisLeaf size={18} color={leafColor} opacity={0.1} /></View>
         <View style={styles.leafB3}><CannabisLeaf size={22} color={leafColor} opacity={0.11} /></View>
         <View style={styles.leafB4}><CannabisLeaf size={14} color={leafColor} opacity={0.08} style={styles.tiltLeft} /></View>
-      </Animated.View>
+      </View>
 
       {/* Smoke wisps rising through the scene */}
-      <Animated.View style={[styles.leafLayer, smokeDrift]}>
+      <View style={styles.leafLayer}>
         <View style={styles.smokeA}><SmokePuff size={72} opacity={0.6} /></View>
         <View style={styles.smokeB}><SmokePuff size={52} opacity={0.45} /></View>
         <View style={styles.smokeC}><SmokePuff size={88} opacity={0.5} /></View>
         <View style={styles.smokeD}><SmokePuff size={44} opacity={0.35} /></View>
-      </Animated.View>
+      </View>
 
       {/* Rooted plants + bongs on the edges */}
       <View pointerEvents="none" style={styles.plantLeft}><WeedPlant height={130} color={leafColor} budColor="#7B1FA2" opacity={0.65} /></View>

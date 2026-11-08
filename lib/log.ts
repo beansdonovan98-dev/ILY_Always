@@ -22,11 +22,14 @@ export interface LogEntry {
 }
 
 export const EVENT_COLORS: string[] = [
-  '#FF3B30', '#FF6B6B', '#FF9500', '#FFCC00', '#FFD60A', '#34C759', '#30D158', '#00C7BE',
-  '#5AC8FA', '#007AFF', '#5856D6', '#AF52DE', '#FF2D55', '#A2845E', '#8E8E93', '#636366',
-  '#1C1C1E', '#2C2C2E', '#3A3A3C', '#48484A', '#AEAEB2', '#C7C7CC',
-  '#D1D1D6', '#E5E5EA', '#F2F2F7', '#FF6F61', '#6B5B95', '#88B04B', '#F7CAC9', '#92A8D1',
-  '#955251', '#B565A7', '#009B77', '#DD4124', '#D65076', '#45B8AC', '#EFC050', '#5B5EA6',
+  '#FFFFFF', '#F2F2F7', '#E5E5EA', '#AEAEB2', '#8E8E93',
+  '#C7C7CC', '#D1D1D6', '#636366',
+  '#FF3B30', '#FF2D55', '#FF9500', '#FFCC00', '#FFD60A',
+  '#FF6B6B', '#FF6F61', '#FF6F91', '#D65076', '#955251',
+  '#A2845E', '#A5D6A7', '#34C759', '#30D158', '#00C7BE', '#88B04B', '#009B77',
+  '#5AC8FA', '#92A8D1', '#007AFF', '#5856D6', '#5B5EA6',
+  '#AF52DE', '#6B5B95', '#B565A7', '#DD4124', '#45B8AC',
+  '#EFC050', '#F7CAC9', '#1C1C1E', '#2C2C2E', '#3A3A3C', '#48484A',
 ];
 
 /** Accepts "7:30 PM", "07:30pm", "19:30", "7:30" → normalized "HH:MM" (24h, zero-padded). */
