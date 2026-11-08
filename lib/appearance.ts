@@ -33,11 +33,17 @@ export async function getCoupleSettings(coupleId: string): Promise<CoupleSetting
     if (error) throw error;
     if (data) {
       const row = data as CoupleSettings;
-      // Never let an older remote row stomp a newer local change.
+      // Never let an older remote row stomp a newer local change —
+      // but if the local cache is newer, push it up so both phones converge.
       if (!cached || new Date(row.updated_at) >= new Date(cached.updated_at)) {
         await setItem(CACHE_KEY(coupleId), row);
         return row;
       }
+      upsertCoupleSettings(cached as CoupleSettings).catch(() => {});
+      return cached;
+    }
+    if (cached) {
+      upsertCoupleSettings(cached).catch(() => {});
       return cached;
     }
   } catch (e) {
@@ -97,8 +103,12 @@ export function subscribeCoupleSettings(
         const next = payload.new as CoupleSettings | undefined;
         if (!next) return;
         const cached = await getItem<CoupleSettings | null>(CACHE_KEY(coupleId), null);
-        // older response never overwrites newer setting
-        if (cached && new Date(next.updated_at) < new Date(cached.updated_at)) return;
+        // older response never overwrites newer setting; if ours is newer,
+        // push it up so both phones converge on the same row.
+        if (cached && new Date(next.updated_at) < new Date(cached.updated_at)) {
+          upsertCoupleSettings(cached).catch(() => {});
+          return;
+        }
         await setItem(CACHE_KEY(coupleId), next);
         onChange(next);
       }

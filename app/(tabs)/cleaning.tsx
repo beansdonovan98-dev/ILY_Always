@@ -9,6 +9,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUsage } from '@/contexts/UsageContext';
 
 import { getCoupleId } from '@/lib/couple';
+import { useTabLabel } from '@/hooks/useTabLabel';
 import { localDateKey } from '@/lib/days';
 import { markActivity } from '@/lib/activity';
 import {
@@ -33,6 +34,7 @@ import {
 
 export default function CleaningScreen() {
   const theme = useAppTheme();
+  const cleaningTitle = useTabLabel('cleaning', 'Get It Squeaky Clean 🫧');
   const { currentUser } = useUsage();
 
   const [coupleId, setCoupleId] = useState('');
@@ -113,7 +115,7 @@ export default function CleaningScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Get It Squeaky Clean 🫧</Text>
+      <Text style={styles.title}>{cleaningTitle}</Text>
       <Text style={[styles.subtitle, { color: theme.subtitleColor }]}>
         Keeping our lair irresistibly filthy-clean for mischief 🫧🌿
       </Text>

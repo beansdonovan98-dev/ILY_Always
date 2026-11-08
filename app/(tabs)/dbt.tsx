@@ -10,6 +10,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUsage } from '@/contexts/UsageContext';
 
 import { getItem, setItem } from '@/lib/storage';
+import { useTabLabel } from '@/hooks/useTabLabel';
 import { todayKey } from '@/constants/content';
 import { markActivity } from '@/lib/activity';
 
@@ -80,6 +81,7 @@ function twoDayWindow(date = new Date()): { index: number; windowKey: string; da
 
 export default function DBTScreen() {
   const theme = useAppTheme();
+  const dbtTitle = useTabLabel('dbt', 'DBT Cards 🧠');
   const { currentUser } = useUsage();
   const [done, setDone] = useState(false);
   const [streak, setStreak] = useState(0);
@@ -375,7 +377,7 @@ export default function DBTScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>DBT Cards 🧠</Text>
+      <Text style={styles.title}>{dbtTitle}</Text>
       <Text style={[styles.subtitle, { color: theme.subtitleColor }]}>
         One little skill every two days for our stormy moments — we practice together, darling 🌿
       </Text>

@@ -9,6 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { Image as ExpoImage } from 'expo-image';
 
+import { useTabLabel } from '@/hooks/useTabLabel';
 import { getCoupleId } from '@/lib/couple';
 import { editImageWithAI } from '@/lib/aiImage';
 import { uploadMedia, getSignedUrl, MediaRow } from '@/lib/media';
@@ -23,6 +24,7 @@ export default function AIEditorScreen() {
   const font = useAppFont();
   const appTheme = useAppTheme();
   const { currentUser } = useUsage();
+  const aiTitle = useTabLabel('ai-editor', 'Dirty Darkroom 🔥');
   const [prompt, setPrompt] = useState('');
   const [sourceUri, setSourceUri] = useState('');
   const [resultUri, setResultUri] = useState('');
@@ -135,7 +137,7 @@ export default function AIEditorScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={[styles.title, { fontFamily: font }]}>Dirty Darkroom 🔥</Text>
+      <Text style={[styles.title, { fontFamily: font }]}>{aiTitle}</Text>
       <Text style={[styles.subtitle, { fontFamily: font, color: appTheme.subtitleColor }]}>
         Developing our dirtiest fantasies in the dark — snapshots, but make them sinful 🔞📷
       </Text>

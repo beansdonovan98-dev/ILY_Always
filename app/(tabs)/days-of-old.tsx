@@ -6,6 +6,7 @@ import { Image as ExpoImage } from 'expo-image';
 
 import { getCoupleId } from '@/lib/couple';
 import { getDay, localDateKey } from '@/lib/days';
+import { useTabLabel } from '@/hooks/useTabLabel';
 import { getItem } from '@/lib/storage';
 import { daySeed, USERS } from '@/constants/content';
 import { getDayLogEntries, LogEntry, formatTimeForDisplay } from '@/lib/log';
@@ -37,6 +38,7 @@ export const TOLKIEN_QUOTES: Array<{ quote: string; source: string }> = [
 export default function DaysOfOldScreen() {
   const font = useAppFont();
   const appTheme = useAppTheme();
+  const daysTitle = useTabLabel('days-of-old', 'The Days of Old 🧙‍♂️');
   const todaySeed = daySeed(new Date());
   const quoteOfDay = TOLKIEN_QUOTES[todaySeed % TOLKIEN_QUOTES.length];
   const [coupleId, setCoupleId] = useState('');
@@ -108,7 +110,7 @@ export default function DaysOfOldScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={[styles.title, { fontFamily: font }]}>The Days of Old 🧙‍♂️</Text>
+      <Text style={[styles.title, { fontFamily: font }]}>{daysTitle}</Text>
       <Text style={[styles.subtitle, { fontFamily: font, color: appTheme.subtitleColor }]}>
         “{quoteOfDay.quote}” — {quoteOfDay.source} 🧙‍♂️
       </Text>

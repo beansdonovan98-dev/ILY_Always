@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { daySeed, FACTS_OF_THE_DAY, RELATIONSHIP_START, todayKey, USERS, WORDS_OF_THE_DAY } from '@/constants/content';
 import { getItem, setItem } from '@/lib/storage';
+import { useTabLabel } from '@/hooks/useTabLabel';
 import { localDateKey } from '@/lib/days';
 import { useUsage } from '@/contexts/UsageContext';
 import { getCoupleId } from '@/lib/couple';
@@ -22,6 +23,7 @@ const CAPTIONS_KEY = 'coverCaptions';
 export default function HomeScreen() {
   const appTheme = useAppTheme();
   const { currentUser, ready } = useUsage();
+  const homeTitle = useTabLabel('home', 'Home 🏠');
 
   const [coupleId, setCoupleId] = useState('');
   const [loveNotes, setLoveNotes] = useState<Array<{ id: string; author: string; text: string; created_at: string }>>([]);
@@ -171,7 +173,7 @@ export default function HomeScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.header}>Home 🏠</Text>
+      <Text style={styles.header}>{homeTitle}</Text>
       <Text style={[styles.subtitle, { color: appTheme.subtitleColor }]}>
         Our little corner of the world — snuggles, giggles, and little secrets, just us two 💞
       </Text>

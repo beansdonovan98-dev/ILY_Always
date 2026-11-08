@@ -6,6 +6,7 @@ import { LeafBorder } from '@/components/CannabisLeaf';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
 import { getCoupleId } from '@/lib/couple';
+import { useTabLabel } from '@/hooks/useTabLabel';
 import {
   addLogEntry,
   deleteLogEvent,
@@ -24,6 +25,7 @@ import { localDateKey } from '@/lib/days';
 
 export default function OurLogScreen() {
   const appTheme = useAppTheme();
+  const logTitle = useTabLabel('our-log', 'Our Log 📜');
   const scrollRef = useRef<any>(null);
   const [coupleId, setCoupleId] = useState<string>('');
   const [entries, setEntries] = useState<LogEntry[]>([]);
@@ -148,7 +150,7 @@ export default function OurLogScreen() {
 
   return (
     <ScrollView ref={scrollRef} style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={[styles.title]}>Our Log 📜</Text>
+      <Text style={[styles.title]}>{logTitle}</Text>
       <Text style={[styles.subtitle, { color: appTheme.subtitleColor }]}>
         Our filthy little diary — every wild, sweet, sinful secret we&apos;ve ever dared to live 💋📜🔥
       </Text>

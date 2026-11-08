@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 
 import { getCoupleId } from '@/lib/couple';
+import { useTabLabel } from '@/hooks/useTabLabel';
 import { localDateKey } from '@/lib/days';
 import { markActivity } from '@/lib/activity';
 import { getItem, setItem } from '@/lib/storage';
@@ -41,6 +42,7 @@ import { useAppFont } from '@/hooks/useAppFont';
 export default function PlaytimeScreen() {
   const font = useAppFont();
   const appTheme = useAppTheme();
+  const playtimeTitle = useTabLabel('playtime', 'Playtime 🥵');
   const router = useRouter();
   const { currentUser } = useUsage();
   // Identity is locked to the account you logged in as.
@@ -174,7 +176,7 @@ export default function PlaytimeScreen() {
     return (
       <View style={[styles.gate, appTheme.cardStyle]}>
         <LeafBorder color={appTheme.leafColor} />
-        <Text style={[styles.title, { fontFamily: font }]}>Playtime 🥵</Text>
+        <Text style={[styles.title, { fontFamily: font }]}>{playtimeTitle}</Text>
         <Text style={[styles.subtitle, { fontFamily: font, color: appTheme.subtitleColor }]}>
           Where our deepest desires and hottest secrets come alive 💋🔥
         </Text>
@@ -189,7 +191,7 @@ export default function PlaytimeScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        <Text style={[styles.title, { fontFamily: font }]}>Playtime 🥵</Text>
+        <Text style={[styles.title, { fontFamily: font }]}>{playtimeTitle}</Text>
       <Text style={[styles.subtitle, { fontFamily: font, color: appTheme.subtitleColor }]}>
         Where our deepest desires and hottest secrets come alive 💋🔥
       </Text>

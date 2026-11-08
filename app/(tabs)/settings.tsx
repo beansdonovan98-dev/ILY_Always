@@ -43,6 +43,7 @@ const STRAIN_PRESETS = [
 
 const GRADIENT_PRESETS = STRAIN_PRESETS;
 
+import { useTabLabel } from '@/hooks/useTabLabel';
 import { useAppFont } from '@/hooks/useAppFont';
 
 export default function SettingsScreen() {
@@ -51,6 +52,7 @@ export default function SettingsScreen() {
   const appTheme = useAppTheme();
   const { updateSettings, syncStatus } = useTheme();
   const { logout } = useUsage();
+  const settingsTitle = useTabLabel('settings', 'Settings ⚙️');
   const [, setCoupleId] = useState('');
   const [settings, setSettings] = useState<CoupleSettings | null>(null);
   const [fontColor, setFontColor] = useState('');
@@ -187,7 +189,7 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={[styles.title, { fontFamily: font }]}>Settings ⚙️</Text>
+      <Text style={[styles.title, { fontFamily: font }]}>{settingsTitle}</Text>
       <Text style={[styles.subtitle, { fontFamily: font, color: appTheme.subtitleColor }]}>
         Our naughtiest little control room — every colour, kink, and font is ours to play with 🔥⚙️💋
       </Text>

@@ -11,6 +11,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUsage } from '@/contexts/UsageContext';
 
 import { getCoupleId } from '@/lib/couple';
+import { useTabLabel } from '@/hooks/useTabLabel';
 import { notifyPartner } from '@/lib/push';
 import { markActivity } from '@/lib/activity';
 import { getItem } from '@/lib/storage';
@@ -120,6 +121,7 @@ function DosePill({ label, onPress }: { label: string; onPress: () => void }) {
 export default function HealthScreen() {
   const theme = useAppTheme();
   const { currentUser } = useUsage();
+  const healthTitle = useTabLabel('health', 'Health 🩺');
   const me = currentUser as HealthUser;
   const partner: HealthUser = me === 'daddy' ? 'princess' : 'daddy';
 
@@ -672,7 +674,7 @@ export default function HealthScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Health 🩺</Text>
+      <Text style={styles.title}>{healthTitle}</Text>
       <Text style={[styles.subtitle, { color: theme.subtitleColor }]}>
         Keeping our dirty little temples fed, fit, and fully charged for mischief 🔥💪💦
       </Text>
