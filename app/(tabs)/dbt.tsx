@@ -120,7 +120,14 @@ export default function DBTScreen() {
     }, [load])
   );
 
+  const assignmentComplete = () => {
+    if (skill.taskType === 'journal') return noteSaved && response.trim().length > 0;
+    if (skill.taskType === 'check') return done;
+    return answer !== '';
+  };
+
   const markDone = async () => {
+    if (!assignmentComplete()) return;
     const next = !done;
     setDone(next);
     await setItem(DONE_KEY(today), next);
@@ -287,15 +294,26 @@ export default function DBTScreen() {
         <Text style={styles.practice}>{skill.practice}</Text>
 
         {skill.taskType !== 'check' && (
-          <Pressable onPress={markDone} style={styles.pillPress}>
-            <LinearGradient
-              colors={done ? [theme.accentColor, theme.accentColor] : [theme.accentColor, '#C86DD7']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.pill}>
-              <Text style={styles.pillText}>{done ? 'Practiced ✓' : 'I practiced it today ✓'}</Text>
-            </LinearGradient>
-          </Pressable>
+          <>
+            <Pressable onPress={markDone} disabled={!assignmentComplete()} style={styles.pillPress}>
+              <LinearGradient
+                colors={
+                  done
+                    ? [theme.accentColor, theme.accentColor]
+                    : assignmentComplete()
+                    ? [theme.accentColor, '#C86DD7']
+                    : ['#C7C3D4', '#C7C3D4']
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.pill}>
+                <Text style={styles.pillText}>{done ? 'Practiced ✓' : 'I practiced it today ✓'}</Text>
+              </LinearGradient>
+            </Pressable>
+            {!done && !assignmentComplete() ? (
+              <Text style={styles.doneNote}>Answer the assignment above first — no shortcuts, gorgeous 💋</Text>
+            ) : null}
+          </>
         )}
 
         {renderTaskBlock()}
