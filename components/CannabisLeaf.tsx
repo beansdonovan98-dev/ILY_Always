@@ -15,13 +15,13 @@ interface CannabisLeafProps {
  */
 export function CannabisLeaf({ size = 14, color = '#2E7D4F', opacity = 0.9, style }: CannabisLeafProps) {
   const leaflets = [
-    { angle: 0, scale: 1 },
-    { angle: 22, scale: 0.9 },
-    { angle: -22, scale: 0.9 },
-    { angle: 45, scale: 0.72 },
-    { angle: -45, scale: 0.72 },
-    { angle: 68, scale: 0.52 },
-    { angle: -68, scale: 0.52 },
+    { angle: 0, scale: 0.7 },
+    { angle: 22, scale: 0.62 },
+    { angle: -22, scale: 0.62 },
+    { angle: 45, scale: 0.5 },
+    { angle: -45, scale: 0.5 },
+    { angle: 68, scale: 0.36 },
+    { angle: -68, scale: 0.36 },
   ];
 
   return (
@@ -29,18 +29,17 @@ export function CannabisLeaf({ size = 14, color = '#2E7D4F', opacity = 0.9, styl
       <G transform="translate(12, 23)">
         {leaflets.map((leaf, i) => (
           <G key={i} transform={`rotate(${leaf.angle}) scale(${leaf.scale})`}>
-            {/* Serrated leaflet: saw-tooth outline with a central vein. */}
+            {/* Broad lanceolate leaflet: wide middle, pointed tip, serrated edges. */}
             <Path
-              d="M0,0 L-1.5,-2.4 L-0.9,-3.1 L-1.8,-4.6 L-1.1,-5.3 L-1.8,-6.9 L-1,-7.6 L-1.4,-9.2 L-0.4,-9.8 L0,-11.5 L0.4,-9.8 L1.4,-9.2 L1,-7.6 L1.8,-6.9 L1.1,-5.3 L1.8,-4.6 L0.9,-3.1 L1.5,-2.4 Z"
+              d={LEAFLET}
               fill={color}
               opacity={opacity}
-            />
-            <Path
-              d="M0,0 L0,-11"
               stroke={color}
-              strokeOpacity={opacity}
-              strokeWidth={0.35}
+              strokeWidth={0.2}
             />
+            {/* Centre vein + side veins */}
+            <Path d="M0,0 L0,-16" stroke="#000000" strokeOpacity={0.22} strokeWidth={0.4} />
+            <Path d="M0,-4 L-1.6,-6.2 M0,-4 L1.6,-6.2 M0,-8 L-1.4,-10.4 M0,-8 L1.4,-10.4 M0,-12 L-1,-14 M0,-12 L1,-14" stroke="#000000" strokeOpacity={0.15} strokeWidth={0.3} />
           </G>
         ))}
         {/* stem to the leaflets */}
@@ -146,10 +145,10 @@ export default CannabisLeaf;
  * Drawn as smooth vector paths (no blocky/stencil shapes).
  */
 const LEAFLET =
-  'M0,0 L-1.5,-2.4 L-0.9,-3.1 L-1.8,-4.6 L-1.1,-5.3 L-1.8,-6.9 L-1,-7.6 L-1.4,-9.2 L-0.4,-9.8 L0,-11.5 L0.4,-9.8 L1.4,-9.2 L1,-7.6 L1.8,-6.9 L1.1,-5.3 L1.8,-4.6 L0.9,-3.1 L1.5,-2.4 Z';
+  'M0,0 L-2.2,-3.2 L-1.4,-4.2 L-2.8,-6.4 L-1.5,-7.6 L-2.9,-10 L-1.3,-11.2 L-1.2,-13.8 L0,-17 L1.2,-13.8 L1.3,-11.2 L2.9,-10 L1.5,-7.6 L2.8,-6.4 L1.4,-4.2 L2.2,-3.2 Z';
 
 const FAN_ANGLES = [0, 24, -24, 48, -48, 70, -70];
-const FAN_SCALES = [1, 0.85, 0.85, 0.68, 0.68, 0.5, 0.5];
+const FAN_SCALES = [0.68, 0.58, 0.58, 0.46, 0.46, 0.34, 0.34];
 
 export function FanLeaf({ x, y, s = 1, rot = 0, color, opacity = 1 }: {
   x: number; y: number; s?: number; rot?: number; color: string; opacity?: number;
@@ -158,8 +157,9 @@ export function FanLeaf({ x, y, s = 1, rot = 0, color, opacity = 1 }: {
     <G transform={`translate(${x},${y}) rotate(${rot}) scale(${s})`}>
       {FAN_ANGLES.map((a, i) => (
         <G key={i} transform={`rotate(${a}) scale(${FAN_SCALES[i]})`}>
-          <Path d={LEAFLET} fill={color} opacity={opacity} />
-          <Path d="M0,0 L0,-11" stroke={color} strokeOpacity={opacity * 0.5} strokeWidth={0.3} />
+          <Path d={LEAFLET} fill={color} opacity={opacity} stroke={color} strokeWidth={0.2} />
+          <Path d="M0,0 L0,-16" stroke="#000000" strokeOpacity={0.22} strokeWidth={0.4} />
+          <Path d="M0,-4 L-1.6,-6.2 M0,-4 L1.6,-6.2 M0,-8 L-1.4,-10.4 M0,-8 L1.4,-10.4 M0,-12 L-1,-14 M0,-12 L1,-14" stroke="#000000" strokeOpacity={0.15} strokeWidth={0.3} />
         </G>
       ))}
       <Path d="M0,0 L0,2" stroke={color} strokeOpacity={opacity} strokeWidth={0.7} />
