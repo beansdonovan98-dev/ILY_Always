@@ -8,7 +8,7 @@
 // It needs the project's SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
 // (Supabase provides these as secrets automatically).
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from 'npm:@supabase/supabase-js';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
