@@ -49,7 +49,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const font = useAppFont();
   const appTheme = useAppTheme();
-  const { updateSettings } = useTheme();
+  const { updateSettings, syncStatus } = useTheme();
   const { logout } = useUsage();
   const [, setCoupleId] = useState('');
   const [settings, setSettings] = useState<CoupleSettings | null>(null);
@@ -87,6 +87,8 @@ export default function SettingsScreen() {
     setSettings((prev) => (prev ? { ...prev, ...patch } : ({ ...patch } as CoupleSettings)));
     setStatus('Saved ✓');
   }, [updateSettings]);
+
+  const syncToast = syncStatus === 'synced' ? 'Synced to Supabase ✓\nThemes now reach your lover\u2019s phone when they open the app.' : syncStatus === 'local' ? '⚠️ This is saving on THIS phone only — Supabase needs the couple_settings table (docs/supabase-recreate.sql.md) to sync themes to your lover.' : null;
 
   const autoThemeColors = (colors: string[]) => {
     const luminance = (hex: string): number => {
@@ -309,6 +311,7 @@ export default function SettingsScreen() {
       </View>
 
       {status ? <Text style={styles.muted}>{status}</Text> : null}
+      {syncToast ? <Text style={[styles.muted, syncStatus === 'local' ? styles.syncWarn : undefined]}>{syncToast}</Text> : null}
 
       <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={() => Sentry.captureException(new Error('Test crash from settings'))}>
         <Text style={styles.btnText}>Test Crash (Sentry)</Text>
@@ -359,6 +362,7 @@ const styles = StyleSheet.create({
   secret: { position: 'absolute', bottom: 16, right: 16, opacity: 0.3 },
   smallHint: { fontSize: 12, opacity: 0.65, marginBottom: 8 },
   muted: { fontSize: 12, opacity: 0.6, marginBottom: 8 },
+  syncWarn: { color: '#B3261E', fontWeight: '700' },
   loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, marginBottom: 12, textAlign: 'center' },
   secretText: { fontSize: 10 },
 });

@@ -46,6 +46,14 @@ export async function getCoupleSettings(coupleId: string): Promise<CoupleSetting
   return cached;
 }
 
+export type SyncStatus = 'idle' | 'synced' | 'local';
+
+let syncStatus: SyncStatus = 'idle';
+export const getSyncStatus = () => syncStatus;
+const setSyncStatus = (status: SyncStatus) => {
+  syncStatus = status;
+};
+
 export async function upsertCoupleSettings(
   settings: Partial<CoupleSettings> & { couple_id: string }
 ): Promise<CoupleSettings> {
@@ -65,9 +73,12 @@ export async function upsertCoupleSettings(
     if (error) throw error;
     const row = data as CoupleSettings;
     await setItem(CACHE_KEY(settings.couple_id), row);
+    setSyncStatus('synced');
     return row;
   } catch (e) {
     // Local-first: keep the change even if Supabase is unreachable.
+    setSyncStatus('local');
+    console.warn('[theme] Supabase sync failed — kept local settings.', e);
     await setItem(CACHE_KEY(settings.couple_id), payload);
     return payload;
   }

@@ -1,9 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 
 import { getCoupleId } from '@/lib/couple';
 import {
   CoupleSettings,
   getCoupleSettings,
+  getSyncStatus,
   subscribeCoupleSettings,
   upsertCoupleSettings,
 } from '@/lib/appearance';
@@ -33,6 +35,7 @@ const BASE_SETTINGS: CoupleSettings = {
 interface ThemeContextValue {
   settings: CoupleSettings | null;
   coupleId: string;
+  syncStatus: 'idle' | 'synced' | 'local';
   /** Applies immediately to the whole app, then syncs to Supabase in the background. */
   updateSettings: (patch: Partial<CoupleSettings>) => Promise<void>;
 }
@@ -40,11 +43,13 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue>({
   settings: null,
   coupleId: '',
+  syncStatus: 'idle',
   updateSettings: async () => {},
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<CoupleSettings | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'synced' | 'local'>('idle');
   const [coupleId, setCoupleId] = useState('');
   const coupleIdRef = useRef('');
   const settingsRef = useRef<CoupleSettings | null>(null);
@@ -106,16 +111,38 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // 2. Sync in the background; local state is already correct either way.
     try {
       const saved = await upsertCoupleSettings(merged);
+      setSyncStatus(getSyncStatus());
       settingsRef.current = saved;
       setSettings(saved);
       await setItem(CACHE_KEY(cid), saved);
     } catch (e) {
       console.warn('[theme] Supabase sync failed — kept local settings.', e);
+      setSyncStatus(getSyncStatus());
     }
   }, []);
 
+  // Refetch whenever the app comes to the foreground, so a phone that
+  // wasn't listening to Realtime still picks up the shared theme.
+  useEffect(() => {
+    let alive = true;
+    const sub = AppState.addEventListener('change', async (state) => {
+      if (state !== 'active') return;
+      const cid = coupleIdRef.current || (await getCoupleId());
+      const remote = await getCoupleSettings(cid);
+      if (alive && remote) {
+        settingsRef.current = remote;
+        setSettings(remote);
+        await setItem(CACHE_KEY(cid), remote);
+      }
+    });
+    return () => {
+      alive = false;
+      sub.remove();
+    };
+  }, []);
+
   return (
-    <ThemeContext.Provider value={{ settings, coupleId, updateSettings }}>
+    <ThemeContext.Provider value={{ settings, coupleId, syncStatus, updateSettings }}>
       {children}
     </ThemeContext.Provider>
   );
