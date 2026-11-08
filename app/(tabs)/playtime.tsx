@@ -325,7 +325,7 @@ export default function PlaytimeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   gate: { flex: 1, padding: 24, gap: 12, justifyContent: 'center' },
-  content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 16, maxWidth: '100%' },
+  content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 36, maxWidth: '100%' },
   title: { fontSize: 34, fontWeight: '800', marginBottom: 4 },
   subtitle: { fontSize: 17, fontStyle: 'italic', lineHeight: 24, marginBottom: 4 },
   body: { fontSize: 16, marginBottom: 12 },

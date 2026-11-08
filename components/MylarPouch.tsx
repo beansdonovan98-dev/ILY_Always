@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View, ViewStyle } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View, ViewStyle } from 'react-native';
 import { AppText as Text } from '@/components/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
 
@@ -30,18 +30,20 @@ export function MylarPouch({ title, hint, defaultStrain, stampRight, children, s
       style={[
         {
           backgroundColor: pouchBg,
-          borderWidth: 1.5,
+          borderWidth: 2,
           borderColor: pouchBorder,
-          borderRadius: 20,
-          borderBottomLeftRadius: 40,
-          borderBottomRightRadius: 40,
+          borderRadius: 22,
+          borderBottomLeftRadius: 44,
+          borderBottomRightRadius: 44,
           shadowColor: '#000',
-          shadowOpacity: 0.5,
-          shadowRadius: 22,
-          shadowOffset: { width: 0, height: 12 },
-          elevation: 12,
+          shadowOpacity: 0.68,
+          shadowRadius: 45,
+          shadowOffset: { width: 0, height: 20 },
+          elevation: 16,
           overflow: 'hidden',
-          marginBottom: 4,
+          marginBottom: 36,
+          maxHeight: 760,
+          flexDirection: 'column',
         },
         style,
       ]}>
@@ -70,18 +72,18 @@ export function MylarPouch({ title, hint, defaultStrain, stampRight, children, s
         <View style={[styles.notchRight, { backgroundColor: tokens?.bgDeep ?? '#1A0B2E' }]} />
       </View>
 
-      {/* boutique sticker with foil trim */}
+      {/* boutique sticker with foil trim — height-locked & scrollable (max-height 760) */}
       <View style={[styles.foilWrap, { backgroundColor: foilColors[0] }]}>
         <View style={[styles.foilMid, { backgroundColor: foilColors[1] }]}>
-          <View style={styles.labelWindow}>
+          <ScrollView style={styles.labelWindow} showsVerticalScrollIndicator contentContainerStyle={{ gap: 6 }}>
             <View style={styles.badgeRow}>
               <Text style={styles.badgeSmall}>⭐ Premium Reserve</Text>
               <Text style={styles.badgeSmall}>100% Indoor</Text>
             </View>
             <View style={{ marginBottom: 6 }}>{title}</View>
-            {hint ? <Text style={{ fontFamily: font, color: '#52525b', fontSize: 13, marginBottom: 10 }}>{hint}</Text> : null}
+            {hint ? <Text style={{ fontFamily: font, color: '#52525b', fontSize: 13, marginBottom: 10, fontStyle: 'italic' as const }}>{hint}</Text> : null}
             {children}
-          </View>
+          </ScrollView>
         </View>
         <View style={[styles.foilSmoke, { backgroundColor: foilColors[2] }]} />
       </View>
@@ -121,7 +123,7 @@ const styles = StyleSheet.create({
   },
   foilWrap: { padding: 2.5, borderRadius: 16, margin: 14, backgroundColor: '#F59E0B' },
   foilMid: { borderRadius: 14, padding: 2, backgroundColor: '#A855F7' },
-  labelWindow: { backgroundColor: '#fdfbf7', borderRadius: 12, padding: 14 },
+  labelWindow: { backgroundColor: '#FDFBF7', borderRadius: 12, padding: 14, maxHeight: 620 },
   badgeRow: {
     flexDirection: 'row', justifyContent: 'space-between',
     borderBottomWidth: 1, borderBottomColor: '#e4e4e7', paddingBottom: 6, marginBottom: 6,

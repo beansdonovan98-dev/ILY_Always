@@ -176,12 +176,7 @@ export default function TabLayout() {
             <Text style={{ fontWeight: '600', fontSize: 14, color: settings?.font_color || '#3A2A2E', fontFamily: appTheme.fontFamily }}>Log out 🔒</Text>
           </Pressable>
         ),
-        headerRight: () => (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginRight: 12 }}>
-            <PassTheJoint />
-            <TabDropdown />
-          </View>
-        ),
+        headerRight: () => <TabDropdown />,
       }}>
       <Tabs.Screen name="index" />
       <Tabs.Screen name="our-log" />
@@ -193,6 +188,13 @@ export default function TabLayout() {
       <Tabs.Screen name="settings" />
       <Tabs.Screen name="days-of-old" />
     </Tabs>
+      {/* dedicated glassmorphic Pass-the-Joint bar directly below the nav row */}
+      <View style={{ marginHorizontal: 12, marginTop: 6, marginBottom: 4 }}>
+        <View style={{ backgroundColor: 'rgba(0,0,0,0.48)', borderWidth: 2, borderColor: settings?.border_color || '#6B21A8', borderRadius: 22, paddingVertical: 8, paddingHorizontal: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={{ color: settings?.font_color || '#fff', fontWeight: '700', fontSize: 12 }}>Active Session Bar</Text>
+          <PassTheJoint />
+        </View>
+      </View>
       <SmokeTransition pathname={pathname} />
     </>
   );
