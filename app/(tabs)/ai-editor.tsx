@@ -10,6 +10,7 @@ import * as MediaLibrary from 'expo-media-library/legacy';
 import { Image as ExpoImage } from 'expo-image';
 
 import { useTabLabel } from '@/hooks/useTabLabel';
+import { JointBurnTimer, bongHaptic } from '@/components/CannabisFeatures';
 import { getCoupleId } from '@/lib/couple';
 import { editImageWithAI } from '@/lib/aiImage';
 import { uploadMedia, getSignedUrl, MediaRow } from '@/lib/media';
@@ -33,6 +34,14 @@ export default function AIEditorScreen() {
   const [status, setStatus] = useState('');
   const [savedPhotos, setSavedPhotos] = useState<MediaRow[]>([]);
   const [savedUrls, setSavedUrls] = useState<Record<string, string>>({});
+  // Joint-burning edit timer (1 = fresh, 0 = done)
+  const [editBurn, setEditBurn] = useState(1);
+
+  useEffect(() => {
+    if (!loading) return;
+    const t = setInterval(() => setEditBurn((r) => Math.max(0, r - 0.015)), 500);
+    return () => clearInterval(t);
+  }, [loading]);
 
   const loadSaved = useCallback(async () => {
     try {
@@ -71,6 +80,7 @@ export default function AIEditorScreen() {
   const runEdit = useCallback(async () => {
     if (!sourceUri || !prompt.trim()) return;
     setLoading(true);
+    setEditBurn(1);
     setStatus('Editing with AI...');
     try {
       const edited = await editImageWithAI(sourceUri, prompt.trim());
@@ -81,6 +91,8 @@ export default function AIEditorScreen() {
       setStatus(`Error: ${msg}`);
     } finally {
       setLoading(false);
+      setEditBurn(0);
+      void bongHaptic();
     }
   }, [sourceUri, prompt]);
 
@@ -173,6 +185,7 @@ export default function AIEditorScreen() {
           multiline
         />
 
+        {loading && <JointBurnTimer ratio={editBurn} />}
         <Pressable onPress={runEdit} disabled={loading} style={styles.pillPress}>
           <LinearGradient
             colors={[appTheme.accentColor, '#C86DD7']}

@@ -5,6 +5,7 @@ import { useFocusEffect } from 'expo-router';
 
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
+import { JointBurnTimer } from '@/components/CannabisFeatures';
 import { Celebration } from '@/components/Celebration';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUsage } from '@/contexts/UsageContext';
@@ -388,8 +389,9 @@ export default function DBTScreen() {
         <Text style={styles.cardTitle}>Skill for the Next 2 Days 🌤️</Text>
         <Text style={styles.cardHint}>A new skill drops every 2 days — practice it once, even tiny 🌿</Text>
         <Text style={[styles.countdown, { color: theme.accentColor }]}>
-          ⏳ New skill in {window2.daysLeft} day{window2.daysLeft === 1 ? '' : 's'}
+          New skill in {window2.daysLeft} day{window2.daysLeft === 1 ? '' : 's'}
         </Text>
+        <JointBurnTimer ratio={window2.daysLeft / 2} />
 
         <View style={[styles.skillHead, { borderColor: theme.borderColor }]}>
           <Text style={styles.skillEmoji}>{skill.emoji}</Text>

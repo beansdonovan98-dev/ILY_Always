@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 
 import { getCoupleId } from '@/lib/couple';
+import { useFocusEffect } from 'expo-router';
 import { useTabLabel } from '@/hooks/useTabLabel';
 import { localDateKey, getDay, saveDay } from '@/lib/days';
 import { subscribeCoupleData } from '@/lib/subscribe';
@@ -56,6 +57,13 @@ export default function PlaytimeScreen() {
   const [uploadStatus, setUploadStatus] = useState('');
   const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
   const [coupleId, setCoupleId] = useState<string>('');
+
+  // Every time you leave and come back, the area locks again — re-reveal required.
+  useFocusEffect(
+    useCallback(() => {
+      setConsent(false);
+    }, [])
+  );
 
   /** Merges her phone's chat (from shared days row) with mine by id. */
   const pullRemoteChat = useCallback(async (cid: string) => {

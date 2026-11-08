@@ -3,8 +3,9 @@ import { DeviceEventEmitter, Pressable, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 
 import TabDropdown from '@/components/TabDropdown';
-import { JointVector } from '@/components/CannabisHardware';
+import { SmokeTransition, bongHaptic } from '@/components/CannabisFeatures';
 import { SMOKE_BURST_EVENT } from '@/components/CannabisOverlay';
+import { JointVector } from '@/components/CannabisHardware';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUsage } from '@/contexts/UsageContext';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -35,6 +36,7 @@ function PresencePill() {
 
   const handleTap = () => {
     DeviceEventEmitter.emit(SMOKE_BURST_EVENT);
+    void bongHaptic();
   };
 
   const refresh = useCallback(async () => {
@@ -157,7 +159,8 @@ export default function TabLayout() {
   const appTheme = useAppTheme();
 
   return (
-    <Tabs
+    <>
+      <Tabs
       screenOptions={{
         headerShown: true,
         // Each screen renders its own H1, so the nav bar only holds the menu.
@@ -184,5 +187,7 @@ export default function TabLayout() {
       <Tabs.Screen name="settings" />
       <Tabs.Screen name="days-of-old" />
     </Tabs>
+      <SmokeTransition pathname={pathname} />
+    </>
   );
 }

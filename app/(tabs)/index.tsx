@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
 import { CannabisDivider, WeedCard } from '@/components/CannabisHardware';
+import { JointBurnTimer, BongRefresh, bongHaptic } from '@/components/CannabisFeatures';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -28,6 +29,7 @@ export default function HomeScreen() {
   const homeTitle = useTabLabel('home', 'Home 🏠');
 
   const [coupleId, setCoupleId] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
   const [loveNotes, setLoveNotes] = useState<Array<{ id: string; author: string; text: string; created_at: string }>>([]);
   const [noteDraft, setNoteDraft] = useState('');
 
@@ -62,6 +64,15 @@ export default function HomeScreen() {
     const mins = Math.floor((diff / (1000 * 60)) % 60);
     const secs = Math.floor((diff / 1000) % 60);
     return { days, hours, mins, secs };
+  }, [now]);
+
+  // Joint-burning midnight reset (1 = just started today, 0 = midnight)
+  const midnightBurnRatio = useMemo(() => {
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    const remaining = tomorrow.getTime() - now.getTime();
+    return Math.max(0, Math.min(1, remaining / (1000 * 60 * 60 * 24)));
   }, [now]);
 
   // word of the day
@@ -189,7 +200,24 @@ export default function HomeScreen() {
   }, [coupleId, currentUser, loveNotes, noteDraft]);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={async () => {
+            setRefreshing(true);
+            try {
+              await Promise.all([loadCovers(), loadCoverMedia()]);
+              void bongHaptic();
+            } finally {
+              setRefreshing(false);
+            }
+          }}
+        />
+      }>
+      <BongRefresh refreshing={refreshing} color={appTheme.leafColor} />
       <Text style={styles.header}>{homeTitle}</Text>
       <Text style={[styles.subtitle, { color: appTheme.subtitleColor }]}>
         Our little corner of the world — snuggles, giggles, and little secrets, just us two 💞
@@ -206,6 +234,8 @@ export default function HomeScreen() {
         <Text style={styles.big}>
           {relationshipElapsed.days}d {relationshipElapsed.hours}h {relationshipElapsed.mins}m {relationshipElapsed.secs}s
         </Text>
+        <JointBurnTimer ratio={midnightBurnRatio} />
+        <Text style={styles.muted}>Today resets at midnight</Text>
         <Text style={[styles.loveNote, { color: appTheme.subtitleColor }]}>
           Every second with you is my favorite — and I still want more.
         </Text>

@@ -32,6 +32,9 @@ const DEFAULT_TABS = [
 
 const STRAIN_PRESETS = [
   // Deep, bud-inspired palettes — dark forest base, rich bud tones, frosted highlights.
+  { name: 'Purple Punch (Indica)', colors: ['#2E1065', '#3B0764', '#4C1D95', '#A855F7'], leaf: '#A855F7' },
+  { name: 'Lemon Haze (Sativa)', colors: ['#064E3B', '#065F46', '#0D7A5F', '#FACC15'], leaf: '#FACC15' },
+  { name: 'Gelato (Hybrid)', colors: ['#022C22', '#064E3B', '#0D9488', '#F9A8D4'], leaf: '#99F6E4' },
   { name: 'OG Kush', colors: ['#0B2E1A', '#123D22', '#1E5B33', '#C9A227'], leaf: '#4ADE80' },
   { name: 'Granddaddy Purple', colors: ['#2D0A4E', '#4A148C', '#6A1B9A', '#9D4EDD'], leaf: '#58B368' },
   { name: 'Purple Haze', colors: ['#1A0533', '#3A0CA3', '#7B2CBF', '#B5179E'], leaf: '#FF8FAB' },
@@ -45,6 +48,7 @@ const STRAIN_PRESETS = [
 const GRADIENT_PRESETS = STRAIN_PRESETS;
 
 import { useTabLabel } from '@/hooks/useTabLabel';
+import { LighterToggle, bongHaptic } from '@/components/CannabisFeatures';
 import { useAppFont } from '@/hooks/useAppFont';
 
 export default function SettingsScreen() {
@@ -295,7 +299,7 @@ export default function SettingsScreen() {
         <Text style={[styles.cardTitle, { fontFamily: font }]}>Period Tracker Reveal</Text>
         <View style={styles.row}>
           <Text style={styles.label}>Show Period Tracker in Health</Text>
-          <Switch value={periodRevealed} onValueChange={async (v) => { setPeriodRevealed(v); await setItem('periodRevealed', v); }} />
+          <LighterToggle value={periodRevealed} onValueChange={async (v: boolean) => { setPeriodRevealed(v); await setItem('periodRevealed', v); void bongHaptic(); }} />
         </View>
       </View>
       <View style={[styles.card, appTheme.cardStyle]}>
