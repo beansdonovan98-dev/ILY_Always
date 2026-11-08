@@ -225,7 +225,7 @@ export default function HomeScreen() {
       </Text>
 
       {/* 1. Relationship Tracker */}
-      <MylarPouch title={<Text style={styles.cardTitle}>Relationship Tracker</Text>} defaultStrain="GRANDDADDY P." stampRight="THC: 28.5%">
+      <MylarPouch title={<Text style={styles.cardTitle}>Relationship Tracker</Text>} hint="Every second with you, and I still want more" defaultStrain="GRANDDADDY P." stampRight="THC: 28.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardHint}>Counting every second of us</Text>
         <Text style={styles.body}>Together since 08/09/19</Text>
@@ -240,7 +240,7 @@ export default function HomeScreen() {
       </MylarPouch>
 
       {/* 2. Cover Photo */}
-      <MylarPouch title={<Text style={styles.cardTitle}>Cover Photo</Text>} defaultStrain="SOUR DIESEL" stampRight="THC: 21.5%">
+      <MylarPouch title={<Text style={styles.cardTitle}>Cover Photo</Text>} hint="Our hottest selfie, sealed just for us two" defaultStrain="SOUR DIESEL" stampRight="THC: 21.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardHint}>Our favorite snap right now</Text>
 
@@ -317,12 +317,12 @@ export default function HomeScreen() {
       <CannabisDivider color={appTheme.leafColor} />
 
       {/* 3. Love Notes */}
-      <MylarPouch title={<Text style={styles.cardTitle}>Love Notes</Text>} defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
+      <MylarPouch title={<Text style={styles.cardTitle}>Love Notes</Text>} hint="Little filthy whispers straight from my heart" defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardHint}>Little whispers for your heart</Text>
 
         {loveNotes.filter((n) => localDateKey(new Date(n.created_at)) === todayKey()).map((n) => (
-          <MylarPouch key={n.id} title={<Text style={styles.cardTitle}>{USERS[n.author as keyof typeof USERS]?.label || n.author}</Text>} defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%" style={{ marginBottom: 6 }}>
+          <MylarPouch key={n.id} title={<Text style={styles.cardTitle}>{USERS[n.author as keyof typeof USERS]?.label || n.author}</Text>} hint="A steamy secret, whispered now, just for you" defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%" style={{ marginBottom: 6 }}>
             <Text style={styles.body}>{n.text}</Text>
             <Text style={styles.muted}>{new Date(n.created_at).toLocaleString()}</Text>
           </MylarPouch>
@@ -345,7 +345,7 @@ export default function HomeScreen() {
       <CannabisDivider color={appTheme.leafColor} />
 
       {/* 4. Word of the Day */}
-      <MylarPouch title={<Text style={styles.cardTitle}>Word of the Day</Text>} defaultStrain="STRAWBERRY COUGH" stampRight="THC: 27.5%">
+      <MylarPouch title={<Text style={styles.cardTitle}>Word of the Day</Text>} hint="Savor every filthy little word together, darling" defaultStrain="STRAWBERRY COUGH" stampRight="THC: 27.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardHint}>Learning and loving new words together</Text>
         <Text style={styles.big}>{wordOfDay.word}</Text>
@@ -356,7 +356,7 @@ export default function HomeScreen() {
       <CannabisDivider color={appTheme.leafColor} />
 
       {/* 5. Fun Fact of the Day */}
-      <MylarPouch title={<Text style={styles.cardTitle}>Fun Fact of the Day</Text>} defaultStrain="BLUE DREAM" stampRight="THC: 22.5%">
+      <MylarPouch title={<Text style={styles.cardTitle}>Fun Fact of the Day</Text>} hint="A naughty little fact to make us blush" defaultStrain="BLUE DREAM" stampRight="THC: 22.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardHint}>A tiny thing to learn together today</Text>
         <Text style={styles.body}>{factOfDay}</Text>

@@ -203,7 +203,7 @@ export default function SettingsScreen() {
         Our naughtiest little control room — every colour, kink, and font is ours to play with 🔥⚙️💋
       </Text>
 
-      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Animated Gradient Themes</Text>} defaultStrain="GRANDDADDY P." stampRight="THC: 28.5%">
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Animated Gradient Themes</Text>} hint="Pick the high you want to bathe in, baby 😏💜" defaultStrain="GRANDDADDY P." stampRight="THC: 28.5%">
         <LeafBorder color={appTheme.leafColor} />
         <View style={styles.row}>
           {GRADIENT_PRESETS.map((g) => (
@@ -220,7 +220,7 @@ export default function SettingsScreen() {
         </View>
       </MylarPouch>
 
-      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Colors</Text>} defaultStrain="SOUR DIESEL" stampRight="THC: 21.5%">
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Colors</Text>} hint="Dress us in your favourite colours — we look best when you choose 💋" defaultStrain="SOUR DIESEL" stampRight="THC: 21.5%">
         <LeafBorder color={appTheme.leafColor} />
         <View style={styles.compactGrid}>
           <Text style={styles.compactLabel}>Font</Text>
@@ -259,7 +259,7 @@ export default function SettingsScreen() {
         </Pressable>
       </MylarPouch>
 
-      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Rename & Reorder Tabs</Text>} defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Rename & Reorder Tabs</Text>} hint="Name our toys exactly how you like them, daddy... 😈" defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
         <LeafBorder color={appTheme.leafColor} />
         {sortedTabs.map((t, idx) => (
           <View key={t.id} style={styles.tabRow}>
@@ -281,7 +281,7 @@ export default function SettingsScreen() {
         </Pressable>
       </MylarPouch>
 
-      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Fonts</Text>} defaultStrain="STRAWBERRY COUGH" stampRight="THC: 27.5%">
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Fonts</Text>} hint="Make every dirty little word look as sexy as it feels 🔥" defaultStrain="STRAWBERRY COUGH" stampRight="THC: 27.5%">
         <LeafBorder color={appTheme.leafColor} />
         <View style={styles.fontGrid}>
           {FONT_OPTIONS.map((f) => (
@@ -295,14 +295,14 @@ export default function SettingsScreen() {
         </Pressable>
       </MylarPouch>
 
-      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Period Tracker Reveal</Text>} defaultStrain="BLUE DREAM" stampRight="THC: 22.5%">
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Period Tracker Reveal</Text>} hint="Reveal her secrets — only if you're ready to worship them 🩸💋" defaultStrain="BLUE DREAM" stampRight="THC: 22.5%">
         <LeafBorder color={appTheme.leafColor} />
         <View style={styles.row}>
           <Text style={styles.label}>Show Period Tracker in Health</Text>
           <LighterToggle value={periodRevealed} onValueChange={async (v: boolean) => { setPeriodRevealed(v); await setItem('periodRevealed', v); void bongHaptic(); }} />
         </View>
       </MylarPouch>
-      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Lock Screen</Text>} defaultStrain="WEDDING CAKE" stampRight="THC: 25.5%">
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Lock Screen</Text>} hint="Hide our naughtiest photo behind the lock — only we get in 🔒😏" defaultStrain="WEDDING CAKE" stampRight="THC: 25.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.smallHint}>Photo or GIF shown behind the login screen on this phone.</Text>
         <View style={styles.row}>

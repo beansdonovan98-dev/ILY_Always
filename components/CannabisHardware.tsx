@@ -81,18 +81,19 @@ export function HardwareBadge({ size = 30, color = '#2E7D4F' }: { size?: number;
   return kind === 'joint' ? <JointVector size={size} color={color} /> : <BongVector size={size} color={color} />;
 }
 
-/** Horizontal divider: line — joint — leaf — bong — line. */
+/** Horizontal divider: line — joint — bong — joint — bong — line. */
 export function CannabisDivider({ color = '#2E7D4F', style }: { color?: string; style?: ViewStyle }) {
   return (
     <View
       pointerEvents="none"
       style={[
-        { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 10, opacity: 0.85 },
+        { flexDirection: 'row', alignItems: 'center', gap: 6, marginVertical: 10, opacity: 0.85 },
         style,
       ]}>
       <View style={{ flex: 1, height: 1, backgroundColor: color, opacity: 0.45 }} />
       <JointVector size={44} color="#F5E6C8" />
-      <CannabisLeaf size={20} color={color} opacity={0.85} />
+      <BongVector size={44} color={color} opacity={0.85} />
+      <JointVector size={44} color="#F5E6C8" />
       <BongVector size={44} color={color} opacity={0.85} />
       <View style={{ flex: 1, height: 1, backgroundColor: color, opacity: 0.45 }} />
     </View>

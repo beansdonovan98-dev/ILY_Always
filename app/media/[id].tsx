@@ -65,14 +65,14 @@ export default function MediaDetailScreen() {
         <ExpoImage source={{ uri: url }} style={styles.photo} contentFit="contain" />
 
         {isShared && (
-          <MylarPouch title={<Text style={styles.cardTitle}>Captions</Text>} defaultStrain="SOUR DIESEL" stampRight="THC: 21.5%">
+          <MylarPouch title={<Text style={styles.cardTitle}>Captions</Text>} hint="Our twisted little captions — say it exactly how you mean it 😏" defaultStrain="SOUR DIESEL" stampRight="THC: 21.5%">
         <LeafBorder color={appTheme.leafColor} />
             <Text style={styles.body}>Daddy 🍆: {(media.captions && media.captions.daddy) || media.caption || '—'}</Text>
             <Text style={styles.body}>Princess 🍑: {(media.captions && media.captions.princess) || '—'}</Text>
           </MylarPouch>
         )}
 
-        <MylarPouch title={<Text style={styles.cardTitle}>Comments</Text>} defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
+        <MylarPouch title={<Text style={styles.cardTitle}>Comments</Text>} hint="Whisper, moan, confess — our hottest secrets live here 💦" defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
         <LeafBorder color={appTheme.leafColor} />
           <View style={styles.row}>
             {(['daddy', 'princess'] as const).map((k) => (
@@ -82,7 +82,7 @@ export default function MediaDetailScreen() {
             ))}
           </View>
           {(comments || []).map((c) => (
-            <MylarPouch key={c.id} title={<Text style={styles.chatAuthor}>{USERS[c.author as UserKey]?.label || c.author}</Text>} defaultStrain="STRAWBERRY COUGH" stampRight="THC: 27.5%">
+            <MylarPouch key={c.id} title={<Text style={styles.chatAuthor}>{USERS[c.author as UserKey]?.label || c.author}</Text>} hint="For you, baby — keep it filthy and fresh 😈" defaultStrain="STRAWBERRY COUGH" stampRight="THC: 27.5%">
               <Text style={styles.chatAuthor}>{USERS[c.author as UserKey]?.label || c.author}</Text>
               <Text style={styles.chatText}>{c.text}</Text>
               <Text style={styles.chatTime}>{new Date(c.created_at).toLocaleString()}</Text>

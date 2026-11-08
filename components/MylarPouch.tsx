@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View, ViewStyle } from 'react-native';
+import { DeviceEventEmitter, Pressable, ScrollView, StyleSheet, TextInput, View, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppText as Text } from '@/components/AppText';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { SMOKE_BURST_EVENT } from '@/components/CannabisOverlay';
 
 /**
  * Pastel & Matte Boutique Mylar Stash Bag.
@@ -69,7 +70,9 @@ export function MylarPouch({ title, hint, defaultStrain, stampRight, children, s
             <Text style={[styles.strainText, { fontFamily: font, color: theme.textColor }]}>{strain || 'EDIT STRAIN'}</Text>
           </Pressable>
         )}
-        <Text style={[styles.zipHint, { fontFamily: font, color: theme.subtitleColor }]}>PRESS SEAL</Text>
+        <Pressable onPress={() => DeviceEventEmitter.emit(SMOKE_BURST_EVENT)}>
+          <Text style={[styles.zipHint, { fontFamily: font, color: theme.subtitleColor }]}>🔒 PRESS-TO-SEAL ZIPPER</Text>
+        </Pressable>
         <View style={[styles.notchRight, { backgroundColor: tokens?.bgDeep ?? '#1A0B2E' }]} />
       </View>
 
@@ -78,8 +81,8 @@ export function MylarPouch({ title, hint, defaultStrain, stampRight, children, s
         <LinearGradient colors={[foilColors[0], foilColors[1], '#E2E8F0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.foilMid}>
           <ScrollView style={styles.labelWindow} showsVerticalScrollIndicator contentContainerStyle={{ gap: 6 }}>
             <View style={styles.badgeRow}>
-              <Text style={styles.badgeSmall}>⭐ 100% INDOOR TOP-SHELF</Text>
-              <Text style={styles.badgeSmall}>LAB TESTED 🌿</Text>
+              <Text style={styles.badgeSmall}>PREMIUM RESERVE</Text>
+              <Text style={styles.badgeSmall}>LAB TESTED</Text>
             </View>
             <View style={{ marginBottom: 6 }}>{title}</View>
             {hint ? <Text style={{ fontFamily: font, color: '#52525b', fontSize: 13, marginBottom: 10, fontStyle: 'italic' as const }}>{hint}</Text> : null}

@@ -155,7 +155,7 @@ export default function AIEditorScreen() {
         Developing our dirtiest fantasies in the dark — snapshots, but make them sinful 🔞📷
       </Text>
 
-      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>New Edit ✨</Text>} defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>New Edit ✨</Text>} hint="Describe your dirtiest fantasy and watch it come alive 😏🔥" defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardHint}>Pick a photo, describe the edit, and let the AI do the dirty work 😏</Text>
 
@@ -213,7 +213,7 @@ export default function AIEditorScreen() {
       </MylarPouch>
 
       {resultUri ? (
-        <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Result 🔥</Text>} defaultStrain="STRAWBERRY COUGH" stampRight="THC: 27.5%">
+        <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Result 🔥</Text>} hint="Mmm, look what the darkroom made us... take it home 🔥" defaultStrain="STRAWBERRY COUGH" stampRight="THC: 27.5%">
           <LeafBorder color={appTheme.leafColor} />
           <View style={[styles.photoWrap, { borderColor: appTheme.borderColor }]}>
             <ExpoImage source={{ uri: resultUri }} style={styles.photo} contentFit="contain" />
@@ -238,7 +238,7 @@ export default function AIEditorScreen() {
       {status ? <Text style={[styles.muted, { fontFamily: font }]}>{status}</Text> : null}
 
       {/* Saved creations */}
-      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Saved Creations 🎞️</Text>} defaultStrain="WEDDING CAKE" stampRight="THC: 23.5%">
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Saved Creations 🎞️</Text>} hint="Our filthiest masterpieces, saved forever for repeat mischief 💚" defaultStrain="WEDDING CAKE" stampRight="THC: 23.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={[styles.cardHint, { color: appTheme.subtitleColor }]}>
           Every edit you saved, kept forever — they never clear, gorgeous 💚
@@ -251,6 +251,7 @@ export default function AIEditorScreen() {
               <MylarPouch
                 key={photo.id}
                 title={<Text style={styles.cardTitle}>{photo.file_name}</Text>}
+                hint="So pretty it makes us wet — tap to keep it 💋"
                 defaultStrain="AI EDIT"
                 stampRight="THC: 33.3%"
                 style={{ width: '31%' }}>

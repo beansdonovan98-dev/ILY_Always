@@ -171,7 +171,7 @@ export default function OurLogScreen() {
       </Text>
 
       {/* New entry card */}
-      <MylarPouch title={<Text style={styles.cardTitle}>{editingEntryId ? 'Edit Entry ✏️' : 'New Entry'}</Text>} defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
+      <MylarPouch title={<Text style={styles.cardTitle}>{editingEntryId ? 'Edit Entry ✏️' : 'New Entry'}</Text>} hint="Write down every filthy little thing we did last night, baby 😏💋" defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardHint}>
           {editingEntryId
@@ -363,7 +363,7 @@ export default function OurLogScreen() {
       </MylarPouch>
 
       {/* Today's log card */}
-      <MylarPouch title={<Text style={styles.cardTitle}>Today&apos;s Log 📜</Text>} defaultStrain="BLUE DREAM" stampRight="THC: 22.5%">
+      <MylarPouch title={<Text style={styles.cardTitle}>Today&apos;s Log 📜</Text>} hint="Relive every wild, sweet second — then top it tonight 🔥" defaultStrain="BLUE DREAM" stampRight="THC: 22.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={[styles.spicyCaption, { color: appTheme.subtitleColor }]}>
           Read it, remember it, relive it — then do it all again tonight 😏🔥
@@ -372,42 +372,40 @@ export default function OurLogScreen() {
 
         {entries.length === 0 && <Text style={styles.muted}>No entries yet today. Add your first memory ✨</Text>}
 
+        <ScrollView style={styles.todayScroll} showsVerticalScrollIndicator>
           {entries.map((e) => (
-          <MylarPouch
-            key={e.id}
-            title={<Text style={styles.cardTitle}>{e.eventEmoji} {e.eventName}</Text>}
-            defaultStrain="SOUR DIESEL"
-            stampRight="THC: 21.5%"
-            style={{ borderLeftColor: e.eventColor, borderLeftWidth: 5 }}>
-            <View style={styles.entryHeader}>
-              <Text style={styles.entryTime}>{formatTimeForDisplay(e.time)}</Text>
-              <Text style={styles.entryEvent}>
-                {e.eventEmoji} {e.eventName}
-              </Text>
+            <View key={e.id} style={[styles.todayEntry, { borderColor: e.eventColor, backgroundColor: 'rgba(255,255,255,0.5)' }]}>
+              <View style={[styles.entryBar, { backgroundColor: e.eventColor }]} />
+              <View style={{ flex: 1 }}>
+                <View style={styles.entryHeader}>
+                  <Text style={styles.entryTime}>{formatTimeForDisplay(e.time)}</Text>
+                  <Text style={[styles.entryGroup, { backgroundColor: e.eventColor }]}>{e.eventEmoji} {e.eventName}</Text>
+                </View>
+                <Text style={styles.entryText}>{e.whatHappened}</Text>
+                <Pressable
+                  onPress={() => {
+                    setEditingEntryId(e.id);
+                    setWhatHappened(e.whatHappened);
+                    setTime(e.time);
+                    const ev = events.find((x) => x.id === e.eventId);
+                    if (ev) {
+                      setCreatingEvent(false);
+                      setSelectedEventId(ev.id);
+                    } else {
+                      setCreatingEvent(true);
+                      setNewEmoji(e.eventEmoji);
+                      setNewName(e.eventName);
+                      setNewColor(e.eventColor);
+                    }
+                    scrollRef.current?.scrollTo({ y: 0, animated: true });
+                  }}
+                  style={[styles.smallBtn, appTheme.buttonStyle]}>
+                  <Text style={styles.smallBtnText}>Edit</Text>
+                </Pressable>
+              </View>
             </View>
-            <Text style={styles.entryText}>{e.whatHappened}</Text>
-            <Pressable
-              onPress={() => {
-                setEditingEntryId(e.id);
-                setWhatHappened(e.whatHappened);
-                setTime(e.time);
-                const ev = events.find((x) => x.id === e.eventId);
-                if (ev) {
-                  setCreatingEvent(false);
-                  setSelectedEventId(ev.id);
-                } else {
-                  setCreatingEvent(true);
-                  setNewEmoji(e.eventEmoji);
-                  setNewName(e.eventName);
-                  setNewColor(e.eventColor);
-                }
-                scrollRef.current?.scrollTo({ y: 0, animated: true });
-              }}
-              style={[styles.smallBtn, appTheme.buttonStyle]}>
-              <Text style={styles.smallBtnText}>Edit</Text>
-            </Pressable>
-          </MylarPouch>
-        ))}
+          ))}
+        </ScrollView>
       </MylarPouch>
     </ScrollView>
   );
@@ -466,7 +464,17 @@ const styles = StyleSheet.create({
   entryHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 },
   entryTime: { fontSize: 11, opacity: 0.6, fontWeight: '700' },
   entryEvent: { fontSize: 15, fontWeight: '800' },
-  entryText: { fontSize: 15, lineHeight: 22, marginBottom: 8 },
+  entryText: { fontSize: 15, lineHeight: 22, marginBottom: 8, fontWeight: '800' },
+  todayScroll: { maxHeight: 420 },
+  todayEntry: {
+    flexDirection: 'row', padding: 12, marginTop: 10, borderRadius: 16,
+    borderWidth: 1.5, overflow: 'hidden',
+  },
+  entryBar: { width: 6, borderRadius: 3, marginRight: 10, alignSelf: 'stretch' },
+  entryGroup: {
+    fontSize: 11, fontWeight: '800', color: '#FFFFFF', paddingVertical: 3, paddingHorizontal: 8,
+    borderRadius: 999, overflow: 'hidden',
+  },
   eventRow: { marginTop: 10, padding: 10, borderRadius: 14, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.4)' },
   eventRowInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   eventActions: { flexDirection: 'row', gap: 8, marginTop: 8 },

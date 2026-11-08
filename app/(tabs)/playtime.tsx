@@ -242,7 +242,7 @@ export default function PlaytimeScreen() {
   if (!consent) {
     return (
       <View style={styles.gate}>
-      <MylarPouch title={<Text style={[styles.title, { fontFamily: font }]}>{playtimeTitle}</Text>} defaultStrain="GRANDDADDY P." stampRight="THC: 25.5%">
+      <MylarPouch title={<Text style={[styles.title, { fontFamily: font }]}>{playtimeTitle}</Text>} hint="Dark, dirty, and just for us two — enter if you dare 😏💋" defaultStrain="GRANDDADDY P." stampRight="THC: 25.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={[styles.subtitle, { fontFamily: font, color: appTheme.subtitleColor }]}>
           Where our deepest desires and hottest secrets come alive 💋🔥
@@ -264,12 +264,12 @@ export default function PlaytimeScreen() {
         Where our deepest desires and hottest secrets come alive 💋🔥
       </Text>
 
-      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Posting as {USERS[activeUser].label}</Text>} defaultStrain="SOUR DIESEL" stampRight="THC: 26.5%">
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Posting as {USERS[activeUser].label}</Text>} hint="Locked to you, sweetheart — all yours, all naughty 🔥" defaultStrain="SOUR DIESEL" stampRight="THC: 26.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.muted}>You are locked to this account from login — messages and photos are always yours.</Text>
       </MylarPouch>
 
-        <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Chat Log 💬</Text>} defaultStrain="WEDDING CAKE" stampRight="THC: 23.5%">
+        <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Chat Log 💬</Text>} hint="Whisper something filthy to me, darling 😏💋" defaultStrain="WEDDING CAKE" stampRight="THC: 23.5%">
         <LeafBorder color={appTheme.leafColor} />
           {(() => {
           const today = localDateKey();
@@ -301,7 +301,7 @@ export default function PlaytimeScreen() {
         })()}
         </MylarPouch>
 
-        <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Pictures & GIFs 📸 (max 60 MB)</Text>} defaultStrain="BLUE DREAM" stampRight="THC: 20.5%">
+        <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Pictures & GIFs 📸 (max 60 MB)</Text>} hint="My naughtiest little treats, saved just for you 📸🔥" defaultStrain="BLUE DREAM" stampRight="THC: 20.5%">
         <LeafBorder color={appTheme.leafColor} />
           <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={pickPhotos}>
             <Text style={styles.btnText}>Upload (multiple)</Text>

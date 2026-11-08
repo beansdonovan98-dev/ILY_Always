@@ -6,7 +6,8 @@ import { useFocusEffect } from 'expo-router';
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
 import { MylarPouch } from '@/components/MylarPouch';
-import { JointBurnTimer } from '@/components/CannabisFeatures';
+import { CannabisDivider } from '@/components/CannabisHardware';
+import { JointBurnTimer, bongHaptic } from '@/components/CannabisFeatures';
 import { Celebration } from '@/components/Celebration';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUsage } from '@/contexts/UsageContext';
@@ -111,6 +112,10 @@ export default function DBTScreen() {
   const [savedNote, setSavedNote] = useState('');
   const [noteSaved, setNoteSaved] = useState(false);
   const [answer, setAnswer] = useState<string | number>('');
+  const [expanded, setExpanded] = useState(false);
+  const [partnerResponse, setPartnerResponse] = useState('');
+  const [partnerAuthor, setPartnerAuthor] = useState('');
+  const [coupleId, setCoupleId] = useState('');
   const [emotionAnswer, setEmotionAnswer] = useState('');
   const [diagramVersion, setDiagramVersion] = useState(0);
   const diagramCache = useRef<Record<string, string>>({});
@@ -125,6 +130,30 @@ export default function DBTScreen() {
   const window2 = twoDayWindow(new Date());
   const skill = SKILLS[window2.index % SKILLS.length];
   const taskAnswerKey = ANSWER_KEY(window2.windowKey, skill.id);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { getCoupleId } = await import('@/lib/couple');
+        const cid = await getCoupleId();
+        setCoupleId(cid);
+        const { supabase } = await import('@/lib/supabase');
+        const partner = currentUser === 'daddy' ? 'princess' : 'daddy';
+        const { data } = await supabase
+          .from('dbt_responses')
+          .select('user_key,response')
+          .eq('couple_id', cid)
+          .eq('window_key', window2.windowKey)
+          .eq('skill_id', skill.id)
+          .eq('user_key', partner)
+          .maybeSingle();
+        if (data) {
+          setPartnerResponse((data as any).response || '');
+          setPartnerAuthor((data as any).user_key || partner);
+        }
+      } catch {}
+    })();
+  }, [currentUser, skill.id, window2.windowKey]);
 
   const load = useCallback(async () => {
     setDone(await getItem<boolean>(DONE_KEY(today), false));
@@ -188,7 +217,16 @@ export default function DBTScreen() {
   };
 
   const saveResponse = async () => {
+    const cid = coupleId || '';
+    // save locally, then also save to Supabase so partner sees it.
     await setItem(RESPONSE_KEY(window2.windowKey, skill.id), response);
+    try {
+      const { supabase } = await import('@/lib/supabase');
+      await supabase.from('dbt_responses').upsert(
+        { couple_id: cid, window_key: window2.windowKey, skill_id: skill.id, user_key: currentUser, response, updated_at: new Date().toISOString() },
+        { onConflict: 'couple_id,window_key,skill_id,user_key' }
+      );
+    } catch {}
     setSavedNote(response);
     setNoteSaved(true);
   };
@@ -424,7 +462,7 @@ export default function DBTScreen() {
       </Text>
 
       {/* Bag 1 — DBT Skill */}
-      <MylarPouch title={<Text style={styles.cardTitle}>DBT Skill 🌤️</Text>} defaultStrain="GRANDDADDY P." stampRight="THC: 26.5%">
+      <MylarPouch title={<Text style={styles.cardTitle}>DBT Skill 🌤️</Text>} hint="Calm your storm, then make me blush doing it, darling 💚" defaultStrain="GRANDDADDY P." stampRight="THC: 26.5%">
         <LeafBorder color={theme.leafColor} />
         <Text style={styles.cardHint}>A new skill drops every 2 days — practice it once, even tiny 🌿</Text>
         <Text style={[styles.countdown, { color: theme.accentColor }]}>
@@ -442,9 +480,25 @@ export default function DBTScreen() {
             <Text style={styles.skillModule}>{skill.module}</Text>
           </View>
           <View style={[styles.tag, theme.buttonStyle]}>
-            <Text style={styles.tagText}>NEW</Text>
+            <Text style={styles.tagText}>{expanded ? 'CLOSE' : 'INFO'}</Text>
           </View>
         </View>
+
+        <Pressable onPress={() => setExpanded((e) => !e)} style={{ marginTop: 8, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: theme.borderColor }}>
+          <Text style={{ fontWeight: '700', fontSize: 12, color: theme.textColor }}>
+            {expanded ? 'Hide details ▲' : 'Tap for more info on this skill ▼'}
+          </Text>
+        </Pressable>
+        {expanded && (
+          <View style={{ marginTop: 8, padding: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.18)', borderWidth: 1, borderColor: theme.borderColor }}>
+            <Text style={[styles.label, { marginTop: 0 }]}>About {skill.name}</Text>
+            <Text style={styles.practice}>Module: {skill.module} • Type: {skill.taskType}</Text>
+            <Text style={styles.label}>How to practice</Text>
+            {skill.steps.map((step, i) => (
+              <Text key={i} style={styles.step}>{i + 1}. {step}</Text>
+            ))}
+          </View>
+        )}
 
         <Text style={styles.label}>How to</Text>
         {skill.steps.map((step, i) => (
@@ -454,8 +508,10 @@ export default function DBTScreen() {
         ))}
       </MylarPouch>
 
+      <CannabisDivider color={theme.leafColor} />
+
       {/* Bag 2 — DBT Assignment */}
-      <MylarPouch title={<Text style={styles.cardTitle}>DBT Assignment ✍️</Text>} defaultStrain="SKYWALKER" stampRight="THC: 24%">
+      <MylarPouch title={<Text style={styles.cardTitle}>DBT Assignment ✍️</Text>} hint="Do it properly, gorgeous — no shortcuts for you 😏💚" defaultStrain="SKYWALKER" stampRight="THC: 24%">
         <LeafBorder color={theme.leafColor} />
         <Text style={styles.label}>Today's assignment ✍️</Text>
         <Text style={styles.practice}>{skill.practice}</Text>
@@ -486,14 +542,36 @@ export default function DBTScreen() {
         {renderAssignmentInputs()}
       </MylarPouch>
 
+      <CannabisDivider color={theme.leafColor} />
+
       {/* Bag 3 — Response Journal */}
-      <MylarPouch title={<Text style={styles.cardTitle}>Response Journal 📓</Text>} defaultStrain="SOUR DIESEL" stampRight="THC: 23.5%">
+      <MylarPouch title={<Text style={styles.cardTitle}>Response Journal 📓</Text>} hint="Spill every sweet, secret little feeling here ✍️💚" defaultStrain="SOUR DIESEL" stampRight="THC: 23.5%">
         <LeafBorder color={theme.leafColor} />
         {renderResponseJournal()}
+        {partnerResponse ? (
+          <View style={{ marginTop: 12, padding: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: theme.borderColor }}>
+            <Text style={[styles.label, { marginTop: 0 }]}>{partnerAuthor === 'princess' ? 'Her response 🍑' : 'His response 🍆'}</Text>
+            <Text style={styles.practice}>{partnerResponse}</Text>
+          </View>
+        ) : null}
+        <Pressable onPress={markDone} disabled={!assignmentComplete()} style={styles.pillPress}>
+          <LinearGradient
+            colors={done ? [theme.accentColor, theme.accentColor] : assignmentComplete() ? [theme.accentColor, '#C86DD7'] : ['#C7C3D4', '#C7C3D4']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.pill}>
+            <Text style={styles.pillText}>{done ? 'Done Today ✓' : 'Done Today ✓'}</Text>
+          </LinearGradient>
+        </Pressable>
+        {!done && !assignmentComplete() ? (
+          <Text style={styles.doneNote}>Answer the assignment first — no shortcuts, gorgeous 💋</Text>
+        ) : null}
       </MylarPouch>
 
+      <CannabisDivider color={theme.leafColor} />
+
       {/* Streak */}
-      <MylarPouch title={<Text style={styles.cardTitle}>Practice Streak 🔥</Text>} defaultStrain="SOUR DIESEL" stampRight="THC: 23.5%">
+      <MylarPouch title={<Text style={styles.cardTitle}>Practice Streak 🔥</Text>} hint="Seven hot little days and I’ll make you celebrate 🎉💚" defaultStrain="SOUR DIESEL" stampRight="THC: 23.5%">
         <LeafBorder color={theme.leafColor} />
         <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
           Show up for yourself, one day at a time — seven in a row earns the grand celebration, gorgeous 🎉
