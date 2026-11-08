@@ -9,7 +9,8 @@ import { useRouter } from 'expo-router';
 
 import { getCoupleId } from '@/lib/couple';
 import { useTabLabel } from '@/hooks/useTabLabel';
-import { localDateKey } from '@/lib/days';
+import { localDateKey, getDay, saveDay } from '@/lib/days';
+import { subscribeCoupleData } from '@/lib/subscribe';
 import { markActivity } from '@/lib/activity';
 import { getItem, setItem } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
@@ -56,6 +57,23 @@ export default function PlaytimeScreen() {
   const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
   const [coupleId, setCoupleId] = useState<string>('');
 
+  /** Merges her phone's chat (from shared days row) with mine by id. */
+  const pullRemoteChat = useCallback(async (cid: string) => {
+    if (!cid) return;
+    try {
+      const row = await getDay(cid, localDateKey());
+      const remote = (row?.payload?.playtimeChat as ChatMessage[] | undefined) || [];
+      if (!remote.length) return;
+      const local = await getItem<ChatMessage[]>(MESSAGES_KEY, []);
+      const seen = new Set(local.map((m) => m.id));
+      const merged = [...local, ...remote.filter((m) => !seen.has(m.id))].sort((a, b) => a.timestamp - b.timestamp);
+      if (merged.length !== local.length) {
+        setMessages(merged);
+        await setItem(MESSAGES_KEY, merged);
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     (async () => {
       const c = await getItem<boolean>(CONSENT_KEY, false);
@@ -64,9 +82,30 @@ export default function PlaytimeScreen() {
       setMessages(m);
       const cid = await getCoupleId();
       setCoupleId(cid);
-      await loadMedia(cid);
+      await pullRemoteChat(cid);
+      const today = localDateKey();
+      const { data, error } = await supabase
+        .from('media')
+        .select('*')
+        .eq('couple_id', cid)
+        .eq('kind', 'private')
+        .eq('daily_date', today)
+        .order('created_at', { ascending: false });
+      if (!error) {
+        const rows = (data || []) as MediaRow[];
+        setMedia(rows);
+        const urls: Record<string, string> = {};
+        await Promise.all(
+          rows.map(async (r) => {
+            try {
+              urls[r.id] = await getSignedUrl(r);
+            } catch {}
+          })
+        );
+        setSignedUrls(urls);
+      }
     })();
-  }, []);
+  }, [pullRemoteChat]);
 
   const loadMedia = useCallback(async (cid: string) => {
     const today = localDateKey();
@@ -91,10 +130,29 @@ export default function PlaytimeScreen() {
     setSignedUrls(urls);
   }, []);
 
+  /** Live: her photos appear instantly; her chat merges in the second she sends it. */
+  useEffect(() => {
+    if (!coupleId) return;
+    const unsubMedia = subscribeCoupleData('media', coupleId, () => void loadMedia(coupleId));
+    const unsubChat = subscribeCoupleData('days', coupleId, () => void pullRemoteChat(coupleId));
+    return () => {
+      unsubMedia();
+      unsubChat();
+    };
+  }, [coupleId, loadMedia, pullRemoteChat]);
+
   const persistMessages = useCallback(async (next: ChatMessage[]) => {
     setMessages(next);
     await setItem(MESSAGES_KEY, next);
-  }, []);
+    // Share via the days row so her phone sees it live (merged by id).
+    if (coupleId) {
+      try {
+        const todayMsgs = next.filter((m) => (m.dateKey || localDateKey()) === localDateKey());
+        const existing = await getDay(coupleId, localDateKey());
+        await saveDay(coupleId, localDateKey(), { ...(existing?.payload || {}), playtimeChat: todayMsgs });
+      } catch {}
+    }
+  }, [coupleId]);
 
   const handleConsent = useCallback(async () => {
     setConsent(true);
@@ -114,7 +172,7 @@ export default function PlaytimeScreen() {
     const next = [...messages, msg];
     await persistMessages(next);
     setDraftMessage('');
-    void markActivity('playtime', activeUser);
+    void markActivity('playtime', activeUser, coupleId);
     if (coupleId) void notifyPartner(coupleId, activeUser, 'playtime');
   }, [draftMessage, activeUser, messages, persistMessages, coupleId]);
 

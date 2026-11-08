@@ -142,7 +142,7 @@ export default function DBTScreen() {
 
   const markDone = async () => {
     if (!assignmentComplete()) return;
-    void markActivity('dbt', currentUser);
+    void markActivity('dbt', currentUser, '');
     const next = !done;
     setDone(next);
     await setItem(DONE_KEY(today), next);

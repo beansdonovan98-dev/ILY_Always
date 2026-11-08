@@ -7,7 +7,8 @@ import { getCoupleSettings } from '@/lib/appearance';
 import { LeafBorder } from '@/components/CannabisLeaf';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUsage } from '@/contexts/UsageContext';
-import { loadActivityDots } from '@/lib/activity';
+import { useTheme } from '@/contexts/ThemeContext';
+import { loadActivityDots, ActivityRoute } from '@/lib/activity';
 
 const DEFAULT_TABS = [
   { id: 'home', label: 'Home 🏠', path: '/' },
@@ -16,7 +17,7 @@ const DEFAULT_TABS = [
   { id: 'playtime', label: 'Playtime 😓', path: '/playtime' },
   { id: 'ai-editor', label: 'Dirty Darkroom 🔥', path: '/ai-editor' },
   { id: 'health', label: 'Health 🩺', path: '/health' },
-  { id: 'cleaning', label: 'Get It Squeaky Clean 🫧', path: '/cleaning' },
+  { id: 'cleaning', label: 'Get It Squeaky Clean', path: '/cleaning' },
   { id: 'settings', label: 'Settings ⚙️', path: '/settings' },
   { id: 'days-of-old', label: 'The Days of Old 🧙‍♂️', path: '/days-of-old' },
 ];
@@ -28,34 +29,34 @@ export default function TabDropdown() {
   const { currentUser } = useUsage();
   const [open, setOpen] = useState(false);
   const [tabs, setTabs] = useState(DEFAULT_TABS);
-  const [activity, setActivity] = useState<Record<string, { daddy: boolean; princess: boolean }>>({});
+  const [activity, setActivity] = useState<Record<string, { mine: boolean; hers: boolean }>>({});
 
+  const { settings } = useTheme();
+
+  // Reactive: her rename flows through the shared settings straight into this menu.
   useEffect(() => {
-    (async () => {
-      const cid = await getCoupleId();
-      const s = await getCoupleSettings(cid);
-      if (s?.tab_config && Array.isArray(s.tab_config)) {
-        const mapped = s.tab_config
-          .sort((a: any, b: any) => a.order - b.order)
-          .map((t: any) => {
-            const def = DEFAULT_TABS.find((d) => d.id === t.id);
-            return { id: t.id, label: t.label || def?.label || t.id, path: def?.path || '/' };
-          });
-        setTabs(mapped.length ? mapped : DEFAULT_TABS);
-      }
-    })();
-  }, []);
+    const config = settings?.tab_config as Array<{ id: string; label: string }> | null | undefined;
+    if (config && Array.isArray(config)) {
+      const mapped = [...config]
+        .sort((a: any, b: any) => ((a as any).order ?? 0) - ((b as any).order ?? 0))
+        .map((t: any) => {
+          const def = DEFAULT_TABS.find((d) => d.id === t.id);
+          return { id: t.id, label: t.label || def?.label || t.id, path: def?.path || '/' };
+        });
+      setTabs(mapped.length ? mapped : DEFAULT_TABS);
+    }
+  }, [settings]);
 
   useEffect(() => {
     if (!open) return;
     let alive = true;
-    loadActivityDots().then((dots) => {
+    getCoupleId().then((cid) => loadActivityDots(currentUser, cid)).then((dots) => {
       if (alive) setActivity(dots);
     });
     return () => {
       alive = false;
     };
-  }, [open]);
+  }, [open, currentUser]);
 
   const current = tabs.find((o) => o.path === pathname || (o.id === 'home' && (pathname === '/' || pathname === '/index' || pathname === '/(tabs)'))) || tabs[0] || DEFAULT_TABS[0];
 
@@ -73,8 +74,8 @@ export default function TabDropdown() {
             <ScrollView showsVerticalScrollIndicator={false}>
               {tabs.map((o, i) => {
                 const dots = activity[o.id];
-                const mine = dots?.[currentUser as 'daddy' | 'princess'] ?? false;
-                const hers = dots?.[currentUser === 'daddy' ? 'princess' : 'daddy'] ?? false;
+                const mine = dots?.mine ?? false;
+                const hers = dots?.hers ?? false;
                 return (
                 <Pressable
                   key={o.id}

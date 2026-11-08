@@ -103,7 +103,7 @@ export default function AIEditorScreen() {
         dailyDate: localDateKey(),
       });
       await getSignedUrl(row);
-      void markActivity('ai-editor', currentUser);
+      void markActivity('ai-editor', currentUser, cid);
       setStatus('Saved to shared covers! It will show up on Home 📸');
     } catch (e) {
       const msg = e instanceof Error ? e.message : JSON.stringify(e);

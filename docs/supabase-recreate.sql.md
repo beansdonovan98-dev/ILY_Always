@@ -168,6 +168,16 @@ create table if not exists presence (
   primary key (couple_id, user_key)
 );
 
+-- Activity flags — powers the purple/pink unread dots in the menu.
+create table if not exists activity_flags (
+  couple_id   text not null,
+  user_key    text not null check (user_key in ('daddy','princess')),
+  route       text not null,
+  posted_at   timestamptz default now(),
+  seen_at     timestamptz,
+  primary key (couple_id, user_key, route)
+);
+
 -- Cleaning checks — shared household-chore ticks, keyed by cadence + cycle.
 create table if not exists cleaning_checks (
   couple_id   text not null,
@@ -206,6 +216,7 @@ alter table health_daily_list   enable row level security;
 alter table health_water        enable row level security;
 alter table push_tokens         enable row level security;
 alter table presence            enable row level security;
+alter table activity_flags      enable row level security;
 alter table cleaning_checks    enable row level security;
 
 drop policy if exists "couple_settings_all" on couple_settings;
@@ -258,6 +269,10 @@ create policy "push_tokens_all" on push_tokens
 
 drop policy if exists "presence_all" on presence;
 create policy "presence_all" on presence
+  for all using (true) with check (true);
+
+drop policy if exists "activity_flags_all" on activity_flags;
+create policy "activity_flags_all" on activity_flags
   for all using (true) with check (true);
 
 drop policy if exists "cleaning_checks_all" on cleaning_checks;

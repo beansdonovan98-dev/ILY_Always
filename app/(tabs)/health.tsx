@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
@@ -16,6 +16,7 @@ import { notifyPartner } from '@/lib/push';
 import { markActivity } from '@/lib/activity';
 import { getItem } from '@/lib/storage';
 import { localDateKey } from '@/lib/days';
+import { subscribeMany } from '@/lib/subscribe';
 import { USERS } from '@/constants/content';
 import { formatReminderTime, syncMedReminders } from '@/lib/med-reminders';
 import {
@@ -190,6 +191,17 @@ export default function HealthScreen() {
     void syncMedReminders(loadedMeds);
   }, [me, partner]);
 
+  // Live: the moment either phone logs weight/meds/fitness/etc. it shows here.
+  useEffect(() => {
+    if (!coupleId) return;
+    const unsub = subscribeMany(
+      ['health_body', 'health_weights', 'health_meds', 'health_med_logs', 'health_fitness', 'health_period_state', 'health_period_days', 'health_daily_checks', 'health_daily_list', 'health_water'],
+      coupleId,
+      () => void load()
+    );
+    return unsub;
+  }, [coupleId, load]);
+
   useFocusEffect(
     useCallback(() => {
       void load();
@@ -212,7 +224,7 @@ export default function HealthScreen() {
   const addWeight = async () => {
     const value = parseFloat(wVal.replace(',', '.'));
     if (!isFinite(value) || value <= 0) return;
-    void markActivity('health', me);
+    void markActivity('health', me, coupleId);
     if (editingWeightId) {
       setWeights(await updateWeightEntry(coupleId, me, editingWeightId, value));
       setEditingWeightId(null);
@@ -241,7 +253,7 @@ export default function HealthScreen() {
 
   const addMed = async () => {
     if (!mName.trim()) return;
-    void markActivity('health', me);
+    void markActivity('health', me, coupleId);
     const next = await addMedRow(coupleId, {
       name: mName.trim(),
       dosage: mDose.trim(),
@@ -257,7 +269,7 @@ export default function HealthScreen() {
   };
 
   const takeMed = async (med: Med) => {
-    void markActivity('health', me);
+    void markActivity('health', me, coupleId);
     setMedLogs(await logMedDose(coupleId, med));
     if (coupleId) void notifyPartner(coupleId, me, 'dose');
   };
@@ -283,7 +295,7 @@ export default function HealthScreen() {
 
   const addFitness = async () => {
     if (!fEx.trim()) return;
-    void markActivity('health', me);
+    void markActivity('health', me, coupleId);
     const entry: FitnessEntry = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       exercise: fEx.trim(),
@@ -310,7 +322,7 @@ export default function HealthScreen() {
     Boolean(checks[`${taskId}|${dateKey}`]);
 
   const toggleTask = async (task: DailyTask) => {
-    void markActivity('health', me);
+    void markActivity('health', me, coupleId);
     const today = localDateKey();
     const next = await toggleDailyCheck(coupleId, me, myDaily, task.id, today);
     setMyDaily(next);

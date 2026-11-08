@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 
@@ -11,6 +11,7 @@ import { useUsage } from '@/contexts/UsageContext';
 import { getCoupleId } from '@/lib/couple';
 import { useTabLabel } from '@/hooks/useTabLabel';
 import { localDateKey } from '@/lib/days';
+import { subscribeMany } from '@/lib/subscribe';
 import { markActivity } from '@/lib/activity';
 import {
   Cadence,
@@ -34,7 +35,7 @@ import {
 
 export default function CleaningScreen() {
   const theme = useAppTheme();
-  const cleaningTitle = useTabLabel('cleaning', 'Get It Squeaky Clean 🫧');
+  const cleaningTitle = useTabLabel('cleaning', 'Get It Squeaky Clean');
   const { currentUser } = useUsage();
 
   const [coupleId, setCoupleId] = useState('');
@@ -55,6 +56,13 @@ export default function CleaningScreen() {
     setStreaks(computeStreaks(loaded));
   }, []);
 
+  // Live: her check-offs land here the second she taps them.
+  useEffect(() => {
+    if (!coupleId) return;
+    const unsub = subscribeMany(['cleaning_checks'], coupleId, () => void load());
+    return unsub;
+  }, [coupleId, load]);
+
   useFocusEffect(
     useCallback(() => {
       void load();
@@ -65,7 +73,7 @@ export default function CleaningScreen() {
     allDone(next, cadence, chores, currentCycleKey(cadence, today));
 
   const toggle = async (cadence: Cadence, chore: Chore) => {
-    void markActivity('cleaning', currentUser);
+    void markActivity('cleaning', currentUser, coupleId);
     const cycleKey = currentCycleKey(cadence, today);
     const next = await toggleCheck(coupleId, checks, cadence, chore.id, cycleKey);
     setChecks(next);
@@ -81,15 +89,15 @@ export default function CleaningScreen() {
         !focusHidden && focusArea.tasks.length > 0 && allDone(next, 'focus', focusArea.tasks, cycleKey);
 
       if (dailyDoneNow && twoDayDoneNow && weeklyDoneNow) {
-        setCelebration({ mode: 'mega', message: 'EVERYTHING DONE. This house is a temple today. 🫧👑🌿' });
+        setCelebration({ mode: 'mega', message: 'EVERYTHING DONE. This house is a temple today.' });
       } else if (weeklyDoneNow) {
-        setCelebration({ mode: 'big', message: `Weekly reset complete — the nest is royal 👑` });
+        setCelebration({ mode: 'big', message: `Weekly reset complete — the nest is royal` });
       } else if (twoDayDoneNow) {
-        setCelebration({ mode: 'big', message: `Every-other-day list slammed 🌿` });
+        setCelebration({ mode: 'big', message: `Every-other-day list slammed` });
       } else if (dailyDoneNow) {
-        setCelebration({ mode: 'small', message: `All daily chores done — love that for us 🧹✨` });
+        setCelebration({ mode: 'small', message: `All daily chores done — love that for us` });
       } else if (focusDoneNow) {
-        setCelebration({ mode: 'small', message: `${focusArea.emoji} ${focusArea.name} deep-cleaned — filthy clean 😏` });
+        setCelebration({ mode: 'small', message: `${focusArea.name} deep-cleaned — filthy clean` });
       }
     }
   };
@@ -117,29 +125,28 @@ export default function CleaningScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>{cleaningTitle}</Text>
       <Text style={[styles.subtitle, { color: theme.subtitleColor }]}>
-        Keeping our lair irresistibly filthy-clean for mischief 🫧🌿
+        Keeping our lair irresistibly filthy-clean for mischief
       </Text>
 
       {/* Deep clean focus — hidden until Sunday 12:00 AM */}
       <View style={[styles.card, theme.cardStyle]}>
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Sunday Deep Dive 🌊</Text>
+        <Text style={styles.cardTitle}>Sunday Deep Dive</Text>
         <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
-          One room gets the full filthy treatment each week 😏
+          One room gets the full filthy treatment each week
         </Text>
 
         {focusHidden ? (
           <View style={styles.placeholder}>
-            <Text style={styles.placeholderEmoji}>❓🌿🧽</Text>
             <Text style={styles.placeholderText}>
-              The deep clean drops Sunday at 12:00 AM — smokescreen until then 🚬
+              The deep clean drops Sunday at 12:00 AM — smokescreen until then
             </Text>
           </View>
         ) : (
           <>
             <View style={styles.focusHead}>
               <Text style={styles.focusTitle}>
-                {focusArea.emoji} {focusArea.name} — this week
+                {focusArea.name} — this week
               </Text>
               <View style={styles.focusBar}>
                 <View
@@ -167,11 +174,11 @@ export default function CleaningScreen() {
       {/* Daily */}
       <View style={[styles.card, theme.cardStyle]}>
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Daily Hustle 🧹</Text>
+        <Text style={styles.cardTitle}>Daily Hustle</Text>
         <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
-          A little effort every day keeps the dirty boys away 🌿
+          A little effort every day keeps the dirty boys away
         </Text>
-        <Text style={styles.streakLine}>🔥 {streaks.daily}-day streak</Text>
+        <Text style={styles.streakLine}>{streaks.daily}-day streak</Text>
         <View style={styles.twoCol}>
           {DAILY_CHORES.map((c) => renderCheckRow('daily', c, styles.twoColItem))}
         </View>
@@ -180,24 +187,24 @@ export default function CleaningScreen() {
       {/* Every 2 days */}
       <View style={[styles.card, theme.cardStyle]}>
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>Every Other Day 🌙</Text>
+        <Text style={styles.cardTitle}>Every Other Day</Text>
         <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
           {twoDayDue
-            ? 'Due today — reset the lair, no excuses, gorgeous 🔥'
-            : 'Not due today. Breathe, hold it in 🌿'}
+            ? 'Due today — reset the lair, no excuses, gorgeous'
+            : 'Not due today. Breathe, hold it in'}
         </Text>
-        <Text style={styles.streakLine}>🔥 {streaks.twoDay}-cycle streak</Text>
+        <Text style={styles.streakLine}>{streaks.twoDay}-cycle streak</Text>
         {TWO_DAY_CHORES.map((c) => renderCheckRow('twoDay', c))}
       </View>
 
       {/* Weekly */}
       <View style={[styles.card, theme.cardStyle]}>
         <LeafBorder color={theme.leafColor} />
-        <Text style={styles.cardTitle}>The Weekly Ritual 🌸</Text>
+        <Text style={styles.cardTitle}>The Weekly Ritual</Text>
         <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
-          The Sunday ritual that keeps our nest fit for royalty 👑
+          The Sunday ritual that keeps our nest fit for royalty
         </Text>
-        <Text style={styles.streakLine}>🔥 {streaks.weekly}-week streak</Text>
+        <Text style={styles.streakLine}>{streaks.weekly}-week streak</Text>
         {WEEKLY_CHORES.map((c) => renderCheckRow('weekly', c))}
       </View>
 

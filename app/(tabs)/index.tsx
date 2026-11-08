@@ -16,6 +16,7 @@ import { notifyPartner } from '@/lib/push';
 import { getCoupleSettings, upsertCoupleSettings } from '@/lib/appearance';
 import { getSignedUrl, MediaRow, deleteMedia, resolveMime, updateCaption, uploadMedia, validateSize } from '@/lib/media';
 import { markActivity } from '@/lib/activity';
+import { subscribeCoupleData } from '@/lib/subscribe';
 import { supabase } from '@/lib/supabase';
 
 const CAPTIONS_KEY = 'coverCaptions';
@@ -29,14 +30,17 @@ export default function HomeScreen() {
   const [loveNotes, setLoveNotes] = useState<Array<{ id: string; author: string; text: string; created_at: string }>>([]);
   const [noteDraft, setNoteDraft] = useState('');
 
-  useEffect(() => {
-    (async () => {
-      const cid = await getCoupleId();
-      setCoupleId(cid);
-      const s = await getCoupleSettings(cid);
-      setLoveNotes(s?.love_notes || []);
-    })();
+  const loadCovers = useCallback(async () => {
+    const cid = await getCoupleId();
+    setCoupleId(cid);
+    const s = await getCoupleSettings(cid);
+    setLoveNotes(s?.love_notes || []);
   }, []);
+
+  useEffect(() => {
+    void loadCovers();
+  }, [loadCovers]);
+
 
   const [coverMedia, setCoverMedia] = useState<MediaRow[]>([]);
   const [coverUrls, setCoverUrls] = useState<Record<string, string>>({});
@@ -103,6 +107,18 @@ export default function HomeScreen() {
     loadCoverMedia();
   }, [loadCoverMedia]);
 
+  // Live updates: covers appear the moment either phone uploads; notes
+  // land the second your lover writes one (they live in couple_settings).
+  useEffect(() => {
+    if (!coupleId) return;
+    const unsubCovers = subscribeCoupleData('media', coupleId, () => void loadCoverMedia());
+    const unsubNotes = subscribeCoupleData('couple_settings', coupleId, () => void loadCovers());
+    return () => {
+      unsubCovers();
+      unsubNotes();
+    };
+  }, [coupleId, loadCoverMedia, loadCovers]);
+
   const uploadCover = useCallback(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) return;
@@ -131,7 +147,7 @@ export default function HomeScreen() {
           dailyDate: today,
         });
         setCoverMedia((prev) => [row, ...prev]);
-        void markActivity('home', currentUser);
+        void markActivity('home', currentUser, coupleId);
         void notifyPartner(cid, currentUser, 'cover');
         try {
           const url = await getSignedUrl(row);
@@ -167,7 +183,7 @@ export default function HomeScreen() {
     const next = [...loveNotes, note];
     setLoveNotes(next);
     setNoteDraft('');
-    void markActivity('home', currentUser);
+    void markActivity('home', currentUser, coupleId);
     await upsertCoupleSettings({ couple_id: coupleId, love_notes: next, updated_at: new Date().toISOString() });
   }, [coupleId, currentUser, loveNotes, noteDraft]);
 

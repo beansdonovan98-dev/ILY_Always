@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+import { Tabs, usePathname } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 
 import TabDropdown from '@/components/TabDropdown';
@@ -6,6 +6,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useUsage } from '@/contexts/UsageContext';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { getCoupleId } from '@/lib/couple';
+import { markSeen, ActivityRoute } from '@/lib/activity';
 import { pingPresence, readPresence, isOnline } from '@/lib/presence';
 import { supabase } from '@/lib/supabase';
 import { USERS, UserKey } from '@/constants/content';
@@ -120,7 +121,18 @@ function PresencePill() {
 
 export default function TabLayout() {
   const { settings } = useTheme();
-  const { logout } = useUsage();
+  const { logout, currentUser, authenticated } = useUsage();
+  const pathname = usePathname();
+
+  // Opening a page clears its unread dot for you.
+  useEffect(() => {
+    if (!authenticated) return;
+    const routeId = pathname.replace(/^\//, '').split('/')[0];
+    if (!routeId) return;
+    getCoupleId().then((cid) => {
+      markSeen(routeId as ActivityRoute, currentUser, cid);
+    });
+  }, [pathname, authenticated, currentUser]);
   const appTheme = useAppTheme();
 
   return (

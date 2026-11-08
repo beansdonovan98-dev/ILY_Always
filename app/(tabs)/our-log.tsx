@@ -7,6 +7,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 
 import { getCoupleId } from '@/lib/couple';
 import { useTabLabel } from '@/hooks/useTabLabel';
+import { subscribeMany } from '@/lib/subscribe';
 import {
   addLogEntry,
   deleteLogEvent,
@@ -55,6 +56,15 @@ export default function OurLogScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Live updates: whatever either phone writes lands here instantly.
+  useEffect(() => {
+    if (!coupleId) return;
+    const unsub = subscribeMany(['days', 'log_events'], coupleId, () =>
+      void load()
+    );
+    return unsub;
+  }, [coupleId, load]);
 
   // midnight rollover check
   useEffect(() => {
