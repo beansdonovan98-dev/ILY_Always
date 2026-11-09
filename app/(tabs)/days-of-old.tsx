@@ -6,7 +6,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { Image as ExpoImage } from 'expo-image';
 
 import { getCoupleId } from '@/lib/couple';
-import { getDay, localDateKey } from '@/lib/days';
+import { getDay, localDateKey, saveDay } from '@/lib/days';
 import { useTabLabel } from '@/hooks/useTabLabel';
 import { getItem } from '@/lib/storage';
 import { daySeed, USERS } from '@/constants/content';
@@ -66,15 +66,37 @@ export default function DaysOfOldScreen() {
       const today = localDateKey();
       const rows: Array<{ local_date: string; payload?: Record<string, unknown> | null }> = (data || []) as any;
       const payloadByDate: Record<string, Record<string, unknown> | null> = {};
-      const candidate: string[] = [];
+      const dayDates = new Set<string>();
       for (const r of rows) {
         const d = r.local_date as string;
-        if (!d || d === today || (payloadByDate[d] !== undefined && candidate.includes(d))) continue;
-        if (!candidate.includes(d)) {
-          candidate.push(d);
-          payloadByDate[d] = (r.payload as Record<string, unknown> | null) ?? null;
-        }
+        if (!d || d === today) continue;
+        dayDates.add(d);
+        payloadByDate[d] = (r.payload as Record<string, unknown> | null) ?? null;
       }
+
+      // Midnight archiving: ensure yesterday's local chat is persisted into
+      // Days of Old storage (days table payload) if missing — runs on mount
+      // (i.e. first app open after local midnight). Love notes already live
+      // in couple_settings with timestamps; media already carries daily_date.
+      try {
+        const yesterday = localDateKey(new Date(Date.now() - 86400000));
+        if (yesterday !== today) {
+          const localMsgsAll = await getItem<Array<{ id: string; text: string; author: UserKey; timestamp: number; dateKey?: string }>>('playtimeMessages', []);
+          const yMsgs = localMsgsAll
+            .filter((m) => (m.dateKey ?? localDateKey(new Date(m.timestamp))) === yesterday)
+            .sort((a, b) => a.timestamp - b.timestamp);
+          if (yMsgs.length > 0) {
+            const existing = await getDay(cid, yesterday);
+            const remote = (existing?.payload?.playtimeChat as Array<{ id: string }> | undefined) || [];
+            const remoteIds = new Set(remote.map((m) => m.id));
+            if (yMsgs.some((m) => !remoteIds.has(m.id))) {
+              await saveDay(cid, yesterday, { ...(existing?.payload || {}), playtimeChat: yMsgs });
+              if (!payloadByDate[yesterday]) payloadByDate[yesterday] = { playtimeChat: yMsgs } as any;
+              dayDates.add(yesterday);
+            }
+          }
+        }
+      } catch {}
 
       // Bulk sources checked once per mount (existing loaders + storage).
       const settings: any = await getCoupleSettings(cid);
@@ -85,6 +107,18 @@ export default function DaysOfOldScreen() {
       const chatDates = new Set(
         allMsgs.map((m: any) => m.dateKey ?? localDateKey(new Date(m.timestamp))).filter(Boolean)
       );
+      // Also consider remote playtimeChat archived in days payloads.
+      for (const r of rows) {
+        const d = r.local_date as string;
+        const p: any = r.payload;
+        const chats = p?.playtimeChat;
+        if (Array.isArray(chats) && chats.length > 0) {
+          chatDates.add(d);
+          for (const m of chats) {
+            chatDates.add(m.dateKey ?? (m.timestamp ? localDateKey(new Date(m.timestamp)) : d));
+          }
+        }
+      }
 
       const tasks = await loadDailyTasks(cid);
       const hisChecks = await loadDailyChecks(cid, 'daddy');
@@ -102,18 +136,26 @@ export default function DaysOfOldScreen() {
         if (taskIds.has(taskId) && date) healthDates.add(date);
       }
 
-      // Media daily dates in one query.
+      // Media daily dates: ALL media (both kinds), plus created_at-derived dates
+      // so rows show even if daily_date differs (UTC vs local).
       const mediaDates = new Set<string>();
-      if (candidate.length > 0) {
-        const { data: mediaData } = await supabase
-          .from('media')
-          .select('daily_date')
-          .eq('couple_id', cid)
-          .in('daily_date', candidate);
-        for (const m of (mediaData || []) as Array<{ daily_date?: string | null }>) {
-          if (m.daily_date) mediaDates.add(m.daily_date);
+      const { data: mediaData } = await supabase
+        .from('media')
+        .select('daily_date, created_at')
+        .eq('couple_id', cid);
+      for (const m of (mediaData || []) as Array<{ daily_date?: string | null; created_at?: string }>) {
+        if (m.daily_date) mediaDates.add(m.daily_date);
+        if (m.created_at) {
+          try { mediaDates.add(localDateKey(new Date(m.created_at))); } catch {}
         }
       }
+
+      // Candidate = union of every archive source (past dates only).
+      const candidateSet = new Set<string>();
+      for (const s of [dayDates, noteDates, chatDates, mediaDates, healthDates]) {
+        for (const d of s) if (d && d !== today) candidateSet.add(d);
+      }
+      const candidate = [...candidateSet].sort().reverse();
 
       // Per-date log entries (existing loader).
       const logDates = new Set<string>();
@@ -127,6 +169,7 @@ export default function DaysOfOldScreen() {
           }
         })
       );
+      for (const d of logDates) if (d !== today) candidateSet.add(d);
 
       const hasPayload = (date: string) => {
         const p: any = payloadByDate[date];
@@ -136,10 +179,14 @@ export default function DaysOfOldScreen() {
         return Boolean(p);
       };
 
-      const filtered = candidate.filter(
-        (date) =>
-          hasPayload(date) || logDates.has(date) || noteDates.has(date) || chatDates.has(date) || mediaDates.has(date) || healthDates.has(date)
-      );
+      const filtered = [...candidateSet]
+        .filter((d) => d !== today)
+        .filter(
+          (date) =>
+            hasPayload(date) || logDates.has(date) || noteDates.has(date) || chatDates.has(date) || mediaDates.has(date) || healthDates.has(date)
+        )
+        .sort()
+        .reverse();
       setDates(filtered);
     })();
   }, []);
@@ -150,16 +197,34 @@ export default function DaysOfOldScreen() {
     const logs = await getDayLogEntries(cid, date);
     setEntries(logs);
 
+    // Love notes: any note whose timestamp falls on `date` (not today-only).
     const settings = await getCoupleSettings(cid);
     const allNotes = settings?.love_notes || [];
     setNotes(allNotes.filter((n: any) => (n.created_at || '').slice(0, 10) === date));
 
+    // Playtime chat: merge local storage with remote days-payload archive.
     const allMsgs = await getItem<Array<{ id: string; text: string; author: UserKey; timestamp: number; dateKey?: string }>>('playtimeMessages', []);
-    setChat(
-      allMsgs
-        .filter((m) => (m.dateKey ?? localDateKey(new Date(m.timestamp))) === date)
-        .sort((a, b) => a.timestamp - b.timestamp)
-    );
+    const localForDate = allMsgs.filter((m) => (m.dateKey ?? localDateKey(new Date(m.timestamp))) === date);
+    let remoteForDate: typeof localForDate = [];
+    try {
+      const dayRow = await getDay(cid, date);
+      const remote = (dayRow?.payload?.playtimeChat as typeof localForDate | undefined) || [];
+      remoteForDate = remote.filter((m) => (m.dateKey ?? localDateKey(new Date(m.timestamp))) === date);
+    } catch {}
+    const mergedById = new Map(localForDate.map((m) => [m.id, m]));
+    for (const m of remoteForDate) if (!mergedById.has(m.id)) mergedById.set(m.id, m);
+    const mergedChat = [...mergedById.values()].sort((a, b) => a.timestamp - b.timestamp);
+    setChat(mergedChat);
+    // Persist backfill: local chat not yet in Days of Old storage gets archived.
+    try {
+      if (mergedChat.length > 0) {
+        const dayRow = await getDay(cid, date);
+        const remoteIds = new Set(((dayRow?.payload?.playtimeChat as Array<{ id: string }> | undefined) || []).map((m) => m.id));
+        if (mergedChat.some((m) => !remoteIds.has(m.id))) {
+          await saveDay(cid, date, { ...(dayRow?.payload || {}), playtimeChat: mergedChat });
+        }
+      }
+    } catch {}
 
     const tasks = await loadDailyTasks(cid);
     const hisChecks = await loadDailyChecks(cid, 'daddy');
@@ -173,12 +238,28 @@ export default function DaysOfOldScreen() {
       }))
     );
 
+    // Media: cover photos (shared) + playtime photos (private) for `date`.
+    // Primary: daily_date == date. Fallback: created_at within that local day
+    // so rows display even if daily_date differs (UTC vs local mismatch).
+    const seen = new Map<string, MediaRow>();
     const { data } = await supabase
       .from('media')
       .select('*')
       .eq('couple_id', cid)
       .eq('daily_date', date);
-    const rows = (data || []) as MediaRow[];
+    for (const r of ((data || []) as MediaRow[])) seen.set(r.id, r);
+    try {
+      const start = new Date(`${date}T00:00:00`);
+      const end = new Date(start.getTime() + 86400000);
+      const { data: byCreated } = await supabase
+        .from('media')
+        .select('*')
+        .eq('couple_id', cid)
+        .gte('created_at', start.toISOString())
+        .lt('created_at', end.toISOString());
+      for (const r of ((byCreated || []) as MediaRow[])) seen.set(r.id, r);
+    } catch {}
+    const rows = [...seen.values()].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     setMedia(rows);
     const u: Record<string, string> = {};
     await Promise.all(rows.map(async (r) => { try { u[r.id] = await getSignedUrl(r); } catch {} }));

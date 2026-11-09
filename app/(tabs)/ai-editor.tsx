@@ -14,7 +14,7 @@ import { useTabLabel } from '@/hooks/useTabLabel';
 import { JointBurnTimer, bongHaptic } from '@/components/CannabisFeatures';
 import { getCoupleId } from '@/lib/couple';
 import { editImageWithAI } from '@/lib/aiImage';
-import { uploadMedia, getSignedUrl, MediaRow } from '@/lib/media';
+import { uploadMedia, getSignedUrl, deleteMedia, MediaRow } from '@/lib/media';
 import { supabase } from '@/lib/supabase';
 import { localDateKey } from '@/lib/days';
 import { useUsage } from '@/contexts/UsageContext';
@@ -196,6 +196,43 @@ export default function AIEditorScreen() {
     );
   }, [saveGalleryPhoto]);
 
+  /** Confirm then delete a gallery photo. */
+  const confirmDeleteSavedPhoto = useCallback((photo: MediaRow) => {
+    Alert.alert(
+      'Delete this creation?',
+      'This will permanently remove it from your saved gallery.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              try {
+                await deleteMedia(photo);
+                setSavedPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+                setSavedUrls((prev) => {
+                  const next = { ...prev };
+                  delete next[photo.id];
+                  return next;
+                });
+                if (previewId === photo.id) {
+                  setPreviewUri(null);
+                  setPreviewId(null);
+                }
+                setStatus('Deleted from gallery 🗑️');
+                await loadSaved();
+              } catch (e) {
+                const msg = e instanceof Error ? e.message : JSON.stringify(e);
+                setStatus(`Delete failed: ${msg}`);
+              }
+            })();
+          },
+        },
+      ],
+    );
+  }, [loadSaved, previewId]);
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={[styles.title, { fontFamily: font }]}>{aiTitle}</Text>
@@ -303,6 +340,18 @@ export default function AIEditorScreen() {
               <Pressable onPress={() => { setPreviewUri(null); setPreviewId(null); }} style={styles.closeBtn}>
                 <Text style={styles.closeBtnText}>Close ✕</Text>
               </Pressable>
+              {previewId && (
+                <Pressable
+                  onPress={() => {
+                    const photo = savedPhotos.find((p) => p.id === previewId);
+                    if (photo) confirmDeleteSavedPhoto(photo);
+                  }}
+                  style={[styles.tileDeleteBtn, styles.previewDeleteBtn, { borderColor: appTheme.borderColor }]}
+                  accessibilityLabel="Delete previewed photo"
+                >
+                  <Text style={styles.tileDeleteText}>Delete 🗑️</Text>
+                </Pressable>
+              )}
             </View>
           </View>
         )}
@@ -316,15 +365,16 @@ export default function AIEditorScreen() {
             nestedScrollEnabled>
             {savedPhotos.map((photo) => {
               const url = savedUrls[photo.id];
+              const ar = photo.width && photo.height ? Math.min(Math.max(photo.width / photo.height, 0.75), 1.5) : 1;
               return (
-                <View key={photo.id} style={[styles.tile, { borderColor: appTheme.borderColor, backgroundColor: appTheme.accentSoft }]}>
+                <View key={photo.id} style={[styles.tile, { borderColor: appTheme.borderColor, backgroundColor: appTheme.accentSoft, aspectRatio: ar }]}>
                   <Pressable
                     style={styles.thumbPress}
                     onPress={() => { setPreviewUri(url || null); setPreviewId(photo.id); }}
                     onLongPress={() => confirmSaveGalleryPhoto(photo)}
                     accessibilityLabel={`Preview ${photo.file_name}. Long-press to save.`}
                   >
-                    <ExpoImage source={{ uri: url || '' }} style={styles.thumb} contentFit="cover" />
+                    <ExpoImage source={{ uri: url || '' }} style={StyleSheet.absoluteFill} contentFit="cover" />
                   </Pressable>
                   <Pressable
                     onPress={() => confirmSaveGalleryPhoto(photo)}
@@ -332,6 +382,13 @@ export default function AIEditorScreen() {
                     accessibilityLabel={`Save ${photo.file_name} to photos`}
                   >
                     <Text style={styles.tileSaveText}>Save 💾</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => confirmDeleteSavedPhoto(photo)}
+                    style={[styles.tileDeleteBtn, { borderColor: appTheme.borderColor }]}
+                    accessibilityLabel={`Delete ${photo.file_name}`}
+                  >
+                    <Text style={styles.tileDeleteText}>Delete 🗑️</Text>
                   </Pressable>
                 </View>
               );
@@ -389,12 +446,15 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   galleryScroll: { maxHeight: 380, borderWidth: 1, borderRadius: 16, padding: 8, backgroundColor: 'rgba(255,255,255,0.25)' },
   galleryContent: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tile: { width: '31%', aspectRatio: 1, borderRadius: 14, overflow: 'hidden', borderWidth: 1.5, backgroundColor: 'rgba(255,255,255,0.35)' },
+  tile: { width: '31%', borderRadius: 14, overflow: 'hidden', borderWidth: 1.5, backgroundColor: 'rgba(255,255,255,0.35)' },
   thumbPress: { flex: 1, borderRadius: 14, overflow: 'hidden' },
   thumbWrap: { width: '31%', aspectRatio: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.35)' },
   thumb: { width: '100%', height: '100%' },
   tileSaveBtn: { position: 'absolute', bottom: 6, left: 6, right: 6, alignItems: 'center', paddingVertical: 5, borderRadius: 999, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.85)' },
   tileSaveText: { fontWeight: '800', fontSize: 11 },
+  tileDeleteBtn: { position: 'absolute', top: 6, right: 6, alignItems: 'center', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 999, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.85)' },
+  tileDeleteText: { fontWeight: '800', fontSize: 11, color: '#DC2626' },
+  previewDeleteBtn: { position: 'relative', top: 0, right: 0, paddingVertical: 10, paddingHorizontal: 14 },
   previewWrap: { marginTop: 10, borderRadius: 16, overflow: 'hidden', borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.35)' },
   previewPhoto: { width: '100%', height: 240 },
   previewActions: { flexDirection: 'row', gap: 10, padding: 10, alignItems: 'center' },

@@ -212,7 +212,7 @@ export default function PlaytimeScreen() {
           width: asset.width ?? null,
           height: asset.height ?? null,
           uploadedBy: activeUser,
-          dailyDate: new Date().toISOString().slice(0, 10),
+          dailyDate: localDateKey(),
         });
         setMedia((prev) => [row, ...prev]);
         setUploadStatus('Uploaded ' + row.file_name);
@@ -316,7 +316,7 @@ export default function PlaytimeScreen() {
             return (
             <View key={m.id} style={[styles.photoCard, { borderColor: appTheme.borderColor }]}>
               <Pressable onPress={() => router.push(`/media/${m.id}`)}>
-                <Image source={{ uri: signedUrls[m.id] || '' }} style={styles.photo} contentFit="cover" />
+                <Image source={{ uri: signedUrls[m.id] || '' }} style={styles.photoThumb} contentFit="cover" />
               </Pressable>
               <Text style={[styles.muted, { fontFamily: font }]} numberOfLines={1}>{m.file_name}</Text>
               <Text style={styles.captionText} numberOfLines={2}>You: {myCaption || 'No caption yet'}</Text>
@@ -355,7 +355,8 @@ const styles = StyleSheet.create({
   chatScroll: { maxHeight: 380, marginBottom: 8 },
   photoScroll: { maxHeight: 380, marginTop: 6 },
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-start' },
-  photoCard: { width: 135, borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', marginBottom: 8, padding: 6, flexGrow: 0, flexShrink: 0 },
+  photoCard: { width: '100%', borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', marginBottom: 8, padding: 6 },
+  photoThumb: { width: '100%', height: 160, borderRadius: 8 },
   chatMsg: { marginBottom: 8, padding: 8, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
   chatAuthor: { fontWeight: '700', fontSize: 13 },
   chatText: { fontSize: 15 },

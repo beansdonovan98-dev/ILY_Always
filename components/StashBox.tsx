@@ -14,6 +14,7 @@ export function StashBox({ dates, selectedDate, onPick, detail }: {
   const theme = useAppTheme();
   const font = theme.fontFamily;
   const [expanded, setExpanded] = useState(false);
+  const toggle = () => setExpanded((e) => !e);
 
   return (
     <View style={styles.chest}>
@@ -29,15 +30,15 @@ export function StashBox({ dates, selectedDate, onPick, detail }: {
       </Text>
 
       {/* lid seam + brass clasp */}
-      <View style={styles.lidSeam}>
-        <Pressable style={styles.clasp} onPress={() => setExpanded((e) => !e)} accessibilityLabel="Toggle stash chest">
+      <Pressable style={styles.lidSeam} onPress={toggle} accessibilityLabel="Toggle stash chest" accessibilityRole="button" hitSlop={12}>
+        <Pressable style={styles.clasp} onPress={toggle} accessibilityLabel="Toggle stash chest latch" accessibilityRole="button" hitSlop={12}>
           <Text style={{ fontWeight: '900', fontSize: 11, color: '#1C1917' }}>🔒 MASTER STASH LATCH</Text>
         </Pressable>
-      </View>
+      </Pressable>
 
       <View style={styles.head}>
         <CannabisLeaf size={22} color="#FDE047" />
-        <Pressable onPress={() => setExpanded((e) => !e)} style={styles.btn}>
+        <Pressable onPress={toggle} style={styles.btn} accessibilityLabel="Open or close stash chest" accessibilityRole="button" hitSlop={12}>
           <Text style={styles.btnText}>{expanded ? 'Close Chest' : 'Open Chest'}</Text>
         </Pressable>
       </View>
@@ -48,7 +49,7 @@ export function StashBox({ dates, selectedDate, onPick, detail }: {
             {dates.map((d) => (
               <Pressable
                 key={d}
-                onPress={() => onPick(d)}
+                onPress={() => { setExpanded(true); onPick(d); }}
                 style={[styles.chip, selectedDate === d && styles.chipActive]}>
                 <Text style={[styles.chipText, { fontFamily: font }]}>🫙 {d}</Text>
               </Pressable>
