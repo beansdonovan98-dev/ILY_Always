@@ -321,7 +321,7 @@ export default function AIEditorScreen() {
         </MylarPouch>
       ) : null}
 
-      {status ? <Text style={[styles.muted, { fontFamily: font }]}>{status}</Text> : null}
+      {status ? <Text style={[styles.muted, styles.fixedStatus, { fontFamily: font }]}>{status}</Text> : null}
 
       {/* Saved creations */}
       <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Saved Creations 🎞️</Text>} hint="Our filthiest masterpieces, saved forever for repeat mischief 💚" defaultStrain="WEDDING CAKE" stampRight="THC: 23.5%">
@@ -462,5 +462,6 @@ const styles = StyleSheet.create({
   closeBtn: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 50, backgroundColor: 'rgba(0,0,0,0.1)' },
   closeBtnText: { fontWeight: '700', fontSize: 13 },
   muted: { fontSize: 13, opacity: 0.65, textAlign: 'center' },
+  fixedStatus: { color: '#000000', opacity: 1 },
   hint: { fontSize: 12, opacity: 0.6, marginTop: 8, lineHeight: 17 },
 });

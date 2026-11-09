@@ -18,7 +18,8 @@ async function loadNotifications() {
 }
 
 /**
- * Registers this phone's Expo push token so the partner can be notified.
+ * Registers this phone's APNs device token so the partner can be notified.
+ * Uses the native APNs token (no Expo projectId / Expo account required).
  * Requires a native build (expo-notifications) — a safe no-op on web.
  */
 export async function registerPushToken(coupleId: string, user: HealthUser): Promise<void> {
@@ -31,10 +32,12 @@ export async function registerPushToken(coupleId: string, user: HealthUser): Pro
       current.granted ? current : await Notifications.requestPermissionsAsync();
     if (!permission.granted) return;
 
-    const token = await Notifications.getExpoPushTokenAsync();
-    const expoPushToken = token.data;
+    const tokenResp = await Notifications.getDevicePushTokenAsync();
+    if (!tokenResp || tokenResp.type !== 'ios') return;
+    const deviceToken = tokenResp.data as string;
+    if (!deviceToken) return;
 
-    await setItem(TOKEN_KEY(coupleId, user), expoPushToken);
+    await setItem(TOKEN_KEY(coupleId, user), deviceToken);
 
     if (hasSupabaseEnv && coupleId) {
       try {
@@ -42,7 +45,7 @@ export async function registerPushToken(coupleId: string, user: HealthUser): Pro
           {
             couple_id: coupleId,
             user_key: user,
-            expo_push_token: expoPushToken,
+            expo_push_token: deviceToken,
             updated_at: new Date().toISOString(),
           },
           { onConflict: 'couple_id,user_key' }

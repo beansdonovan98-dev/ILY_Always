@@ -1,12 +1,12 @@
-// Supabase Edge Function: send-push
-// Notifies your lover when something happens on this phone
-// (login, daily cover photo, playtime message, dose taken).
+// Supabase Edge Function: send-push (APNs direct — no Expo required)
+// Notifies your lover via native APNs device tokens.
 //
 // Deploy (one time, from the repo root):
 //   supabase functions deploy send-push
 //
-// It needs the project's SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
-// (Supabase provides these as secrets automatically).
+// Secrets needed (set once):
+//   supabase secrets set APNS_KEY_ID=<10-char key id> APNS_TEAM_ID=<team id> APNS_APP_ID=com.spector.ILYAlways
+//   supabase secrets set APNS_KEY="$(cat apns-key.p8)"  (the .p8 file contents)
 
 import { createClient } from 'npm:@supabase/supabase-js';
 
@@ -28,6 +28,30 @@ const COPY: Record<string, (from: string) => { title: string; body: string }> = 
       ? { title: 'Your lover passed you a joint 🔥', body: 'He lit it for you — take a hit, gorgeous 🌿' }
       : { title: 'Your lover passed you a joint 🔥', body: 'She lit it for you — take a hit, gorgeous 🌿' },
 };
+
+// APNs provider auth is JWT with ES256 signed by the .p8 key.
+// Deno supports WebCrypto EC256 via importKey('pkcs8').
+async function makeApnsJwt(keyId: string, teamId: string, keyPem: string): Promise<string> {
+  const header = { alg: 'ES256', kid: keyId };
+  const now = Math.floor(Date.now() / 1000);
+  const payload = { iss: teamId, iat: now };
+  const b64 = (obj: unknown) =>
+    btoa(JSON.stringify(obj)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
+  const signingInput = `${b64(header)}.${b64(payload)}`;
+
+  const pemBody = keyPem.replace('-----BEGIN PRIVATE KEY-----', '').replace('-----END PRIVATE KEY-----', '').replaceAll(/\s/g, '');
+  const keyBytes = Uint8Array.from(atob(pemBody), (c) => c.charCodeAt(0));
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8',
+    keyBytes,
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, cryptoKey, new TextEncoder().encode(signingInput));
+  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig))).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
+  return `${signingInput}.${sigB64}`;
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -58,32 +82,46 @@ Deno.serve(async (req) => {
       .eq('user_key', partner)
       .maybeSingle();
 
-    const token = data?.expo_push_token;
-    if (!token) {
+    const deviceToken = data?.expo_push_token;
+    if (!deviceToken) {
       return new Response(JSON.stringify({ ok: false, reason: 'no partner token' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const res = await fetch('https://exp.host/--/api/v2/push/send', {
+    const keyId = Deno.env.get('APNS_KEY_ID') ?? '';
+    const teamId = Deno.env.get('APNS_TEAM_ID') ?? '';
+    const keyPem = Deno.env.get('APNS_KEY') ?? '';
+    const bundleId = Deno.env.get('APNS_APP_ID') ?? 'com.spector.ILYAlways';
+    if (!keyId || !teamId || !keyPem || !keyPem.includes('BEGIN PRIVATE KEY')) {
+      return new Response(JSON.stringify({ ok: false, reason: 'apns secrets missing' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const jwt = await makeApnsJwt(keyId, teamId, keyPem);
+
+    const apnsRes = await fetch(`https://api.push.apple.com/3/device/${deviceToken}`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
+        'authorization': `bearer ${jwt}`,
+        'apns-topic': bundleId,
+        'apns-push-type': 'alert',
+        'apns-priority': '10',
       },
       body: JSON.stringify({
-        to: token,
-        sound: 'default',
-        priority: 'high',
-        badge: 1,
-        title: copy.title,
-        body: copy.body,
-        data: { kind, from_user },
+        aps: {
+          alert: { title: copy.title, body: copy.body },
+          sound: 'default',
+          badge: 1,
+        },
+        kind,
+        from_user,
       }),
     });
-    const result = await res.json();
+    const apnsText = await apnsRes.text();
 
-    return new Response(JSON.stringify({ ok: true, expo: result }), {
+    return new Response(JSON.stringify({ ok: apnsRes.ok, apns: apnsText }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {

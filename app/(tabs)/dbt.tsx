@@ -187,28 +187,25 @@ export default function DBTScreen() {
   );
 
   const assignmentComplete = () => {
-    // No shortcuts: every day you must fill out whatever this skill asks
-    // before the app will count you as practiced.
-    if (skill.taskType === 'journal') return noteSaved && response.trim().length > 0;
-    if (skill.taskType === 'check') return done && noteSaved && response.trim().length > 0;
-    const answered = answer !== '';
-    const noted = noteSaved && response.trim().length > 0;
+    // No shortcuts: every day you must do this skill's work before it counts.
+    // A written journal entry alone counts — the "Save Response" tap is not required.
+    if (skill.taskType === 'journal') return response.trim().length > 0 || (noteSaved && savedNote.trim().length > 0);
+    if (skill.taskType === 'check') return response.trim().length > 0 || (noteSaved && savedNote.trim().length > 0);
+    const answered = answer !== '' || emotionAnswer !== '';
+    const noted = response.trim().length > 0 || (noteSaved && savedNote.trim().length > 0);
     return answered && noted;
   };
 
   const markDone = async () => {
     if (!assignmentComplete()) return;
     void markActivity('dbt', currentUser, '');
-    const next = !done;
-    setDone(next);
-    await setItem(DONE_KEY(today), next);
-    if (next) {
-      setStreak((s) => s + 1);
-      setCelebration({
-        mode: streak + 1 >= 7 ? 'big' : 'small',
-        message: `${skill.emoji} ${skill.name} practiced — proud of you, darling 💚`,
-      });
-    }
+    setDone(true);
+    await setItem(DONE_KEY(today), true);
+    setStreak((s) => s + 1);
+    setCelebration({
+      mode: streak + 1 >= 7 ? 'big' : 'small',
+      message: `${skill.emoji} ${skill.name} practiced — proud of you, darling 💚`,
+    });
   };
 
   const pickAnswer = async (value: string | number) => {
@@ -515,30 +512,9 @@ export default function DBTScreen() {
         <LeafBorder color={theme.leafColor} />
         <Text style={styles.label}>Today's assignment ✍️</Text>
         <Text style={styles.practice}>{skill.practice}</Text>
-
-        {skill.taskType !== 'check' && (
-          <>
-            <Pressable onPress={markDone} disabled={!assignmentComplete()} style={styles.pillPress}>
-              <LinearGradient
-                colors={
-                  done
-                    ? [theme.accentColor, theme.accentColor]
-                    : assignmentComplete()
-                    ? [theme.accentColor, '#C86DD7']
-                    : ['#C7C3D4', '#C7C3D4']
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.pill}>
-                <Text style={styles.pillText}>{done ? 'Practiced ✓' : 'I practiced it today ✓'}</Text>
-              </LinearGradient>
-            </Pressable>
-            {!done && !assignmentComplete() ? (
-              <Text style={styles.doneNote}>Answer the assignment above first — no shortcuts, gorgeous 💋</Text>
-            ) : null}
-          </>
-        )}
-
+        {!done && !assignmentComplete() ? (
+          <Text style={styles.doneNote}>Answer below first — no shortcuts, gorgeous 💋</Text>
+        ) : null}
         {renderAssignmentInputs()}
       </MylarPouch>
 
