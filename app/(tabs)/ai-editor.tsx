@@ -102,7 +102,7 @@ export default function AIEditorScreen() {
     const uri = resultUri || sourceUri;
     if (!uri) return;
     setSaving(true);
-    setStatus('Saving to shared covers...');
+    setStatus('Saving to gallery...');
     try {
       const cid = await getCoupleId();
       const row = await uploadMedia({
@@ -117,14 +117,15 @@ export default function AIEditorScreen() {
       });
       await getSignedUrl(row);
       void markActivity('ai-editor', currentUser, cid);
-      setStatus('Saved to shared covers! It will show up on Home 📸');
+      await loadSaved(); // reload so the Saved Creations gallery shows it immediately
+      setStatus('Saved to the gallery below! 💞');
     } catch (e) {
       const msg = e instanceof Error ? e.message : JSON.stringify(e);
       setStatus(`Save failed: ${msg}`);
     } finally {
       setSaving(false);
     }
-  }, [resultUri, sourceUri, currentUser]);
+  }, [resultUri, sourceUri, currentUser, loadSaved]);
 
   /** Saves the current photo directly to this device's photo library. */
   const saveToDevice = useCallback(async () => {
@@ -132,13 +133,21 @@ export default function AIEditorScreen() {
     if (!uri) return;
     setSaving(true);
     try {
-      const { status: perm } = await MediaLibrary.requestPermissionsAsync();
+      const { status: perm } = await MediaLibrary.requestPermissionsAsync(true);
       if (perm !== 'granted') {
         setStatus('Photo library permission not granted — saved to shared covers instead.');
         await saveToCovers();
         return;
       }
-      await MediaLibrary.saveToLibraryAsync(uri);
+      let fileUri = uri;
+      if (uri.startsWith('data:')) {
+        // saveToLibraryAsync needs a real file URI — write the data URL to disk first.
+        const FS = await import('expo-file-system/legacy');
+        const filePath = `${FS.documentDirectory}ai-edit-${Date.now()}.png`;
+        await FS.writeAsStringAsync(filePath, uri.split(',')[1] || '', { encoding: FS.EncodingType.Base64 });
+        fileUri = filePath;
+      }
+      await MediaLibrary.saveToLibraryAsync(fileUri);
       setStatus('Saved to your photo library 💾');
     } catch (e) {
       const msg = e instanceof Error ? e.message : JSON.stringify(e);
@@ -202,7 +211,7 @@ export default function AIEditorScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.pill}>
-            <Text style={styles.pillText}>{saving ? 'Saving...' : 'Save to Shared Covers 💞'}</Text>
+            <Text style={styles.pillText}>{saving ? 'Saving...' : 'Save to Gallery 💞'}</Text>
           </LinearGradient>
         </Pressable>
 
@@ -225,7 +234,7 @@ export default function AIEditorScreen() {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.pill}>
-              <Text style={styles.pillText}>{saving ? 'Saving...' : 'Save to Shared Covers 💞'}</Text>
+              <Text style={styles.pillText}>{saving ? 'Saving...' : 'Save to Gallery 💞'}</Text>
             </LinearGradient>
           </Pressable>
 
@@ -261,7 +270,7 @@ export default function AIEditorScreen() {
                   try {
                     const url = savedUrls[photo.id];
                     if (!url) return;
-                    const { status: perm } = await MediaLibrary.requestPermissionsAsync();
+                    const { status: perm } = await MediaLibrary.requestPermissionsAsync(true);
                     if (perm === 'granted') {
                       await MediaLibrary.saveToLibraryAsync(url);
                       setStatus('Saved to your photo library 💾');

@@ -51,6 +51,11 @@ export function validateSize(byteSize: number): void {
   }
 }
 
+async function uriToBlob(uri: string): Promise<Blob> {
+  const res = await fetch(uri);
+  return await res.blob();
+}
+
 export async function uploadMedia(params: {
   coupleId: string;
   kind: MediaKind;
@@ -68,7 +73,9 @@ export async function uploadMedia(params: {
   const safeName = params.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
   const storagePath = `${params.coupleId}/${params.kind}/${Date.now()}-${safeName}`;
 
-  const response = await fetch(params.localUri);
+  const response = params.localUri.startsWith('data:')
+    ? { blob: async () => await uriToBlob(params.localUri) } as any
+    : await fetch(params.localUri);
   const blob = await response.blob();
 
   const size = params.byteSize > 0 ? params.byteSize : blob.size;
