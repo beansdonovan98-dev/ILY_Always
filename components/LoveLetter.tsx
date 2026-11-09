@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { AppText as Text } from '@/components/AppText';
 import { MylarPouch } from '@/components/MylarPouch';
+import { CannabisLeaf } from '@/components/CannabisLeaf';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { bongHaptic } from '@/components/CannabisFeatures';
@@ -53,7 +54,24 @@ export function LoveLetterExperience({ onClose }: { onClose: () => void }) {
   const revealSecret = async () => {
     void bongHaptic();
     setSecret(true);
-    setTimeout(() => setFinal(true), 900);
+    setTimeout(() => setFinal(true), 4900); // +4s hold on the secret message
+  };
+
+  const [reply, setReply] = useState('');
+  const [replySaved, setReplySaved] = useState(false);
+  const saveReply = async () => {
+    if (!reply.trim()) return;
+    void bongHaptic();
+    const { getCoupleId } = await import('@/lib/couple');
+    const cid = await getCoupleId();
+    const prev = settings?.letter_body || 'Reply';
+    await updateSettings({
+      letter_body: `${prev}\n\nReply: ${reply}`,
+      letter_updated_at: new Date().toISOString(),
+    });
+    setReply('');
+    setReplySaved(true);
+    setTimeout(() => setReplySaved(false), 2000);
   };
 
   const saveLetter = async () => {
@@ -88,7 +106,15 @@ export function LoveLetterExperience({ onClose }: { onClose: () => void }) {
             ) : opened === 1 ? (
               <EnvelopeOpening />
             ) : (
-              <Text style={styles.letterBody}>{shownBody}</Text>
+              <View style={{ width: '100%', alignItems: 'center' }}>
+                <View pointerEvents="none" style={{ position: 'absolute', top: -8, right: -8, opacity: 0.16 }}>
+                  <CannabisLeaf size={90} color="#2E7D32" />
+                </View>
+                <View pointerEvents="none" style={{ position: 'absolute', bottom: -10, left: -8, opacity: 0.14 }}>
+                  <CannabisLeaf size={70} color="#7B1FA2" />
+                </View>
+                <Text style={styles.letterBody}>{shownBody}</Text>
+              </View>
             )}
           </Pressable>
 
@@ -100,6 +126,23 @@ export function LoveLetterExperience({ onClose }: { onClose: () => void }) {
 
           {secret && !final && <Text style={styles.secretBody}>{shownSecret}</Text>}
           {final && <Text style={styles.final}>{shownFinal}</Text>}
+
+          {opened >= 2 && (
+            <View style={{ marginTop: 14 }}>
+              <Text style={[styles.tapHint, { marginTop: 0 }]}>Reply to your lover 💋</Text>
+              <TextInput
+                value={reply}
+                onChangeText={setReply}
+                multiline
+                placeholder="Write your reply..."
+                placeholderTextColor="rgba(58,42,46,0.45)"
+                style={styles.input}
+              />
+              <Pressable onPress={saveReply} style={[styles.secretBtn, { backgroundColor: theme.accentColor }]}>
+                <Text style={styles.secretBtnText}>{replySaved ? 'Reply sent 💞' : 'Reply 💌'}</Text>
+              </Pressable>
+            </View>
+          )}
 
           {/* editable by both partners — only the letter text changes */}
           <Pressable onPress={() => setEditing((e) => !e)} style={[styles.editBtn, { borderColor: theme.borderColor }]}>
@@ -196,6 +239,7 @@ const styles = StyleSheet.create({
   closeText: { color: '#fff', fontWeight: '800' },
   cardTitle: { fontSize: 19, fontWeight: '800', marginBottom: 4 },
   envelope: {
+    overflow: 'hidden',
     minHeight: 200, borderRadius: 18, backgroundColor: '#FFC9D7', alignItems: 'center', justifyContent: 'center',
     padding: 18, borderWidth: 2, borderColor: '#FF8FAB', marginTop: 6,
   },

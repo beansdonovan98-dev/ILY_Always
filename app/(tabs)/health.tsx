@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
@@ -146,6 +146,7 @@ export default function HealthScreen() {
   const [myWater, setMyWater] = useState<Record<string, number>>({});
   const [theirWater, setTheirWater] = useState<Record<string, number>>({});
   const [celebration, setCelebration] = useState<{ mode: 'small' | 'big'; message: string } | null>(null);
+  const celebratedRef = useRef<string>('');
   const [period, setPeriod] = useState<PeriodState>({ ...EMPTY_PERIOD });
   const [pain, setPain] = useState(0);
   const [symptoms, setSymptoms] = useState<string[]>([]);
@@ -329,14 +330,19 @@ export default function HealthScreen() {
   const toggleTask = async (task: DailyTask) => {
     void markActivity('health', me, coupleId);
     const today = localDateKey();
+    const wasDone = dailyDone(myDaily, task.id, today);
     const next = await toggleDailyCheck(coupleId, me, myDaily, task.id, today);
     setMyDaily(next);
-    if (dailyDone(next, task.id, today)) {
-      const doneForDay = (d: string) => dailyDone(next, task.id, d);
-      if (isPerfectWeek(doneForDay)) {
-        setCelebration({ mode: 'big', message: `${task.emoji} ${task.label} — 7 days in a row! 🔥` });
-      } else {
-        setCelebration({ mode: 'small', message: `${task.emoji} ${task.label} — crossed off! ✔️` });
+    const nowDone = dailyDone(next, task.id, today);
+    if (nowDone && !wasDone) {
+      // one small celebration per cross-off (only on the check, never on uncheck)
+      setCelebration({ mode: 'small', message: `${task.emoji} ${task.label} — crossed off! ✔️` });
+    }
+    // grand celebration once ALL of today's tasks are done (end-of-day complete)
+    if (tasks.length > 0 && tasks.every((t) => dailyDone(next, t.id, today))) {
+      if (celebratedRef.current !== today) {
+        celebratedRef.current = today;
+        setCelebration({ mode: 'big', message: `EVERYTHING DONE TODAY. This house is a temple today. 🫧👑🌿` });
       }
     }
   };

@@ -963,8 +963,18 @@ export async function setWaterCups(
 /* 7-day streak helpers (shared by daily list + water)                 */
 /* ------------------------------------------------------------------ */
 
+export function sundayOfKey(dateKey: string): string {
+  const d = new Date(`${dateKey}T12:00:00`);
+  d.setDate(d.getDate() - d.getDay()); // getDay(): 0 = Sunday -> day 1 of the week
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export function weekDaysStartingSunday(n = 7): string[] {
+  return Array.from({ length: n }, (_, i) => shiftDateKey(sundayOfKey(localDateKey()), i));
+}
+
 export function lastSevenDays(): string[] {
-  return Array.from({ length: 7 }, (_, i) => shiftDateKey(localDateKey(), i - 6));
+  return weekDaysStartingSunday(7);
 }
 
 export function streakEndingToday(doneForDay: (dateKey: string) => boolean): number {

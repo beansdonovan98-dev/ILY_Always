@@ -13,7 +13,7 @@ export function StashBox({ dates, selectedDate, onPick, detail }: {
 }) {
   const theme = useAppTheme();
   const font = theme.fontFamily;
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const toggle = () => setExpanded((e) => !e);
 
   return (
@@ -30,10 +30,10 @@ export function StashBox({ dates, selectedDate, onPick, detail }: {
       </Text>
 
       {/* lid seam + brass clasp */}
-      <Pressable style={styles.lidSeam} onPress={toggle} accessibilityLabel="Toggle stash chest" accessibilityRole="button" hitSlop={12}>
-        <Pressable style={styles.clasp} onPress={toggle} accessibilityLabel="Toggle stash chest latch" accessibilityRole="button" hitSlop={12}>
+      <Pressable style={styles.lidSeam} onPress={toggle} accessibilityLabel="Toggle stash chest latch" accessibilityRole="button" hitSlop={12}>
+        <View style={styles.clasp}>
           <Text style={{ fontWeight: '900', fontSize: 11, color: '#1C1917' }}>🔒 MASTER STASH LATCH</Text>
-        </Pressable>
+        </View>
       </Pressable>
 
       <View style={styles.head}>

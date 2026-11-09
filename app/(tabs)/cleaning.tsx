@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 
@@ -43,6 +43,15 @@ export default function CleaningScreen() {
   const [checks, setChecks] = useState<Record<string, boolean>>({});
   const [streaks, setStreaks] = useState<Streaks>({ daily: 0, twoDay: 0, weekly: 0 });
   const [celebration, setCelebration] = useState<{ mode: 'small' | 'big' | 'mega'; message: string } | null>(null);
+  const celebrated7 = useRef(false);
+
+  useEffect(() => {
+    if (streaks.daily >= 7 && !celebrated7.current) {
+      celebrated7.current = true;
+      setCelebration({ mode: 'big', message: `7 DAYS CLEAN. The lair has never looked this filthy-sexy. 👑` });
+    }
+    if (streaks.daily < 7) celebrated7.current = false;
+  }, [streaks.daily]);
 
   const today = localDateKey();
   const focusHidden = isFocusHiddenToday();
@@ -205,6 +214,33 @@ export default function CleaningScreen() {
         {WEEKLY_CHORES.map((c) => renderCheckRow('weekly', c))}
       </MylarPouch>
 
+      {/* 7-day daily-cleaning tracker */}
+      <MylarPouch title={<Text style={styles.cardTitle}>7-Day Cleaning Tracker</Text>} defaultStrain="BLUE DREAM" stampRight="THC: 22.5%">
+        <LeafBorder color={theme.leafColor} />
+        <Text style={[styles.cardHint, { color: theme.subtitleColor }]}>
+          Do the Daily Hustle 7 days straight — Sunday is day 1 — and the lair celebrates with you.
+        </Text>
+        <View style={styles.streakRow}>
+          {Array.from({ length: 7 }, (_, i) => {
+            const filled = i < Math.min(streaks.daily, 7);
+            return (
+              <View
+                key={i}
+                style={[
+                  styles.streakDot,
+                  filled
+                    ? { backgroundColor: theme.accentColor, borderColor: theme.accentColor }
+                    : { backgroundColor: 'rgba(255,255,255,0.5)', borderColor: theme.borderColor },
+                ]}>
+                <Text style={[styles.streakDotText, filled && { color: '#FFFFFF' }]}>{filled ? '✓' : '·'}</Text>
+              </View>
+            );
+          })}
+        </View>
+        <Text style={styles.streakText}>🔥 {streaks.daily}/7 days — Sunday is day 1</Text>
+        {streaks.daily >= 7 && <Text style={styles.bigCelebration}>7 DAYS CLEAN. The lair has never looked this filthy-sexy. 👑</Text>}
+      </MylarPouch>
+
       <Celebration
         mode={celebration?.mode ?? null}
         message={celebration?.message ?? ''}
@@ -231,6 +267,14 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 19, fontWeight: '800', marginBottom: 4 },
   cardHint: { fontSize: 13, fontStyle: 'italic', opacity: 0.72, marginBottom: 10, lineHeight: 18 },
   streakLine: { fontSize: 13, fontWeight: '800', opacity: 0.8, marginBottom: 8 },
+  streakRow: { flexDirection: 'row', gap: 6, marginTop: 4 },
+  streakDot: {
+    width: 26, height: 26, borderRadius: 13, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  streakDotText: { fontSize: 13, fontWeight: '800' },
+  streakText: { fontSize: 14, fontWeight: '800', marginTop: 8 },
+  bigCelebration: { fontSize: 16, fontWeight: '900', marginTop: 8, color: '#E11D48' },
   placeholder: { alignItems: 'center', paddingVertical: 24, gap: 10 },
   placeholderEmoji: { fontSize: 44 },
   placeholderText: { fontSize: 14, fontStyle: 'italic', opacity: 0.7, textAlign: 'center', lineHeight: 20 },

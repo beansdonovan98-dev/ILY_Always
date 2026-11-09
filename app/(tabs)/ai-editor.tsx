@@ -53,10 +53,11 @@ export default function AIEditorScreen() {
         .from('media')
         .select('*')
         .eq('couple_id', cid)
-        .eq('kind', 'shared')
         .order('created_at', { ascending: false });
       if (error) return;
-      const rows = ((data || []) as MediaRow[]).filter((r) => (r.file_name || '').startsWith('ai-edit-'));
+      const rows = ((data || []) as MediaRow[]).filter(
+        (r) => (r.file_name || '').startsWith('ai-edit-') && r.kind === 'private'
+      );
       setSavedPhotos(rows);
       const urls: Record<string, string> = {};
       await Promise.all(rows.map(async (r) => { try { urls[r.id] = await getSignedUrl(r); } catch {} }));
@@ -109,13 +110,13 @@ export default function AIEditorScreen() {
       const cid = await getCoupleId();
       const row = await uploadMedia({
         coupleId: cid,
-        kind: 'shared',
+        kind: 'private',
         localUri: uri,
         fileName: `ai-edit-${Date.now()}.png`,
         mimeType: 'image/png',
         byteSize: 0,
         uploadedBy: currentUser,
-        dailyDate: localDateKey(),
+        dailyDate: null,
       });
       await getSignedUrl(row);
       void markActivity('ai-editor', currentUser, cid);
