@@ -13,9 +13,13 @@ function json(status: number, payload: Record<string, unknown>) {
 }
 
 /**
- * AI photo edit — OpenAI only.
- * Tries gpt-image-1, then gpt-image-1-mini, then dall-e-2, falling through
- * on "model does not exist" errors so whichever your account supports wins.
+ * AI photo edit — RunPod (uncensored SDXL/LUX.2 img2img).
+ * Proxies the app's photo to the user's private RunPod endpoint so the
+ * API key stays in secrets (never shipped in the app).
+ *
+ * Secrets needed:
+ *   RUNPOD_API_KEY=...
+ *   RUNPOD_ENDPOINT_ID=... (the pq2pwxs2hxv7sf segment)
  */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -28,48 +32,55 @@ serve(async (req) => {
       return json(400, { error: 'Missing imageBase64 or prompt.' });
     }
 
-    const openaiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiKey) {
+    const runpodKey = Deno.env.get('RUNPOD_API_KEY');
+    const endpoint = Deno.env.get('RUNPOD_ENDPOINT_ID') || 'pq2pwxs2hxv7sf';
+    if (!runpodKey) {
       return json(500, {
-        error: 'OPENAI_API_KEY is not set on the Supabase project. Run: supabase secrets set OPENAI_API_KEY=sk-...',
+        error: 'RUNPOD_API_KEY is not set on the Supabase project. Run: supabase secrets set RUNPOD_API_KEY=rpa_...',
       });
     }
 
     const mime = mimeType || 'image/jpeg';
-    const ext = mime.includes('png') ? 'png' : 'jpg';
-    const bytes = Uint8Array.from(atob(imageBase64), (c) => c.charCodeAt(0));
-    const blob = new Blob([bytes], { type: mime });
+    const dataUrl = `data:${mime};base64,${imageBase64}`;
 
-    // OpenAI only. Newer accounts expose gpt-image-2 / 1.5 / mini —
-    // older ones dall-e-2/gpt-image-1. Trying the chain covers both.
-    const models = ['gpt-image-2', 'gpt-image-1.5', 'gpt-image-1-mini', 'gpt-image-1', 'dall-e-2'];
-    let lastMessage = 'OpenAI rejected the request.';
-    for (const model of models) {
-      const form = new FormData();
-      form.append('image', blob, `image.${ext}`);
-      form.append('prompt', prompt);
-      form.append('n', '1');
-      form.append('size', '1024x1024');
-      form.append('model', model);
+    // Your RunPod sync endpoint (LUX.2 img2img). Keep face/body identical,
+    // only restyle — matches the prompt the app sends.
+    const runpodRes = await fetch(`https://api.runpod.ai/v2/${endpoint}/runsync`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${runpodKey}`,
+      },
+      body: JSON.stringify({
+        input: {
+          api_name: 'img2img',
+          init_images: [dataUrl],
+          prompt:
+            `${prompt}. Maintain the exact facial features, likenesses, and structural head placement of all subjects visible in the base photo 100% identical as an unchangeable blueprint.`,
+          denoising_strength: 0.55,
+          steps: 30,
+          cfg_scale: 7.0,
+        },
+      }),
+    });
 
-      const res = await fetch('https://api.openai.com/v1/images/edits', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${openaiKey}` },
-        body: form,
-      });
-
-      const jsonRes = await res.json().catch(() => ({}));
-      if (res.ok) {
-        const b64 = jsonRes?.data?.[0]?.b64_json;
-        if (b64) return json(200, { b64 });
-        return json(502, { error: `The AI came back without an image (model: ${model}).` });
-      }
-      const message = jsonRes?.error?.message || 'OpenAI rejected the request.';
-      lastMessage = `${model}: ${message}`;
-      // Only fall through on "model does not exist" style errors.
-      if (res.status === 400 && !/does not exist|not supported|unknown model/i.test(message)) break;
+    const runpodJson = await runpodRes.json().catch(() => ({}));
+    if (!runpodRes.ok) {
+      return json(502, { error: `RunPod rejected the request (HTTP ${runpodRes.status}).` });
     }
-    return json(502, { error: `AI provider could not edit with any known model (${lastMessage}).` });
+
+    const images: string[] = runpodJson?.output?.images || [];
+    if (!images.length) {
+      return json(502, { error: 'RunPod came back without an image. Try a different prompt.' });
+    }
+
+    // Download the result image and return it as base64 for the app.
+    const imgRes = await fetch(images[0]);
+    const imgBuf = new Uint8Array(await imgRes.arrayBuffer());
+    let binary = '';
+    for (let i = 0; i < imgBuf.length; i++) binary += String.fromCharCode(imgBuf[i]);
+    const b64 = btoa(binary);
+    return json(200, { b64 });
   } catch (e) {
     return json(500, { error: `AI editor crashed: ${String(e)}` });
   }

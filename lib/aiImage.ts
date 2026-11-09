@@ -4,7 +4,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
 
 const FRIENDLY: Record<number, string> = {
-  401: 'Your OpenAI API key is invalid or missing.',
+  401: 'Your RunPod API key is invalid or missing.',
   403: 'The AI provider blocked this request (permissions).',
   429: 'The AI provider is rate-limited — wait a minute and try again.',
   502: 'The AI provider hit an error — try again in a bit.',
