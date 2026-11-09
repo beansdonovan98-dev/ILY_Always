@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import { AppText as Text } from '@/components/AppText';
@@ -37,6 +37,8 @@ export default function AIEditorScreen() {
   const [savedUrls, setSavedUrls] = useState<Record<string, string>>({});
   // Joint-burning edit timer (1 = fresh, 0 = done)
   const [editBurn, setEditBurn] = useState(1);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading) return;
@@ -157,6 +159,43 @@ export default function AIEditorScreen() {
     }
   }, [resultUri, sourceUri, saveToCovers]);
 
+  /** Saves a gallery thumbnail to this device's photo library (explicit tap / long-press). */
+  const saveGalleryPhoto = useCallback(async (photo: MediaRow) => {
+    const url = savedUrls[photo.id];
+    if (!url) {
+      setStatus('Image not ready yet — try again in a moment.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { status: perm } = await MediaLibrary.requestPermissionsAsync(true);
+      if (perm !== 'granted') {
+        setStatus('Photo library permission not granted — save was cancelled.');
+        return;
+      }
+      await MediaLibrary.saveToLibraryAsync(url);
+      setStatus('Saved to your photo library 💾');
+      void loadSaved(); // refresh gallery state after save
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : JSON.stringify(e);
+      setStatus(`Save failed: ${msg}`);
+    } finally {
+      setSaving(false);
+    }
+  }, [savedUrls, loadSaved]);
+
+  /** Confirm then save a gallery thumbnail. */
+  const confirmSaveGalleryPhoto = useCallback((photo: MediaRow) => {
+    Alert.alert(
+      'Save to Photos?',
+      'Save this creation to your photo library?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Save', onPress: () => void saveGalleryPhoto(photo) },
+      ],
+    );
+  }, [saveGalleryPhoto]);
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={[styles.title, { fontFamily: font }]}>{aiTitle}</Text>
@@ -252,38 +291,54 @@ export default function AIEditorScreen() {
         <Text style={[styles.cardHint, { color: appTheme.subtitleColor }]}>
           Every edit you saved, kept forever — they never clear, gorgeous 💚
         </Text>
+        {previewUri && (
+          <View style={[styles.previewWrap, { borderColor: appTheme.borderColor }]}>
+            <ExpoImage source={{ uri: previewUri }} style={styles.previewPhoto} contentFit="contain" />
+            <View style={styles.previewActions}>
+              <Pressable
+                onPress={() => previewId && confirmSaveGalleryPhoto(savedPhotos.find((p) => p.id === previewId) as MediaRow)}
+                style={[styles.ghostPill, { borderColor: appTheme.borderColor }]}>
+                <Text style={styles.ghostPillText}>Save 💾</Text>
+              </Pressable>
+              <Pressable onPress={() => { setPreviewUri(null); setPreviewId(null); }} style={styles.closeBtn}>
+                <Text style={styles.closeBtnText}>Close ✕</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
         {savedPhotos.length === 0 ? (
           <Text style={styles.muted}>No saved creations yet — save your first edit above ✨</Text>
         ) : (
-          <View style={styles.grid}>
-            {savedPhotos.map((photo) => (
-              <MylarPouch
-                key={photo.id}
-                title={<Text style={styles.cardTitle}>{photo.file_name}</Text>}
-                hint="So pretty it makes us wet — tap to keep it 💋"
-                defaultStrain="AI EDIT"
-                stampRight="THC: 33.3%"
-                style={{ width: '31%' }}>
-              <Pressable
-                style={[styles.thumbWrap, { borderColor: appTheme.borderColor, width: '100%' }]}
-                onPress={async () => {
-                  try {
-                    const url = savedUrls[photo.id];
-                    if (!url) return;
-                    const { status: perm } = await MediaLibrary.requestPermissionsAsync(true);
-                    if (perm === 'granted') {
-                      await MediaLibrary.saveToLibraryAsync(url);
-                      setStatus('Saved to your photo library 💾');
-                    }
-                  } catch {}
-                }}>
-                <ExpoImage source={{ uri: savedUrls[photo.id] || '' }} style={styles.thumb} contentFit="cover" />
-              </Pressable>
-              </MylarPouch>
-            ))}
-          </View>
+          <ScrollView
+            style={[styles.galleryScroll, { borderColor: appTheme.borderColor }]}
+            contentContainerStyle={styles.galleryContent}
+            showsVerticalScrollIndicator
+            nestedScrollEnabled>
+            {savedPhotos.map((photo) => {
+              const url = savedUrls[photo.id];
+              return (
+                <View key={photo.id} style={[styles.tile, { borderColor: appTheme.borderColor, backgroundColor: appTheme.accentSoft }]}>
+                  <Pressable
+                    style={styles.thumbPress}
+                    onPress={() => { setPreviewUri(url || null); setPreviewId(photo.id); }}
+                    onLongPress={() => confirmSaveGalleryPhoto(photo)}
+                    accessibilityLabel={`Preview ${photo.file_name}. Long-press to save.`}
+                  >
+                    <ExpoImage source={{ uri: url || '' }} style={styles.thumb} contentFit="cover" />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => confirmSaveGalleryPhoto(photo)}
+                    style={[styles.tileSaveBtn, { borderColor: appTheme.borderColor }]}
+                    accessibilityLabel={`Save ${photo.file_name} to photos`}
+                  >
+                    <Text style={styles.tileSaveText}>Save 💾</Text>
+                  </Pressable>
+                </View>
+              );
+            })}
+          </ScrollView>
         )}
-        {savedPhotos.length > 0 && <Text style={styles.muted}>Tap any creation to save it to your photos 💾</Text>}
+        {savedPhotos.length > 0 && <Text style={styles.muted}>Tap a tile to preview · Long-press or tap Save to keep it in your photos 💾</Text>}
       </MylarPouch>
     </ScrollView>
   );
@@ -332,8 +387,19 @@ const styles = StyleSheet.create({
   photoWrap: { marginTop: 12, borderRadius: 18, overflow: 'hidden', borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.35)' },
   photo: { width: '100%', height: 240 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+  galleryScroll: { maxHeight: 380, borderWidth: 1, borderRadius: 16, padding: 8, backgroundColor: 'rgba(255,255,255,0.25)' },
+  galleryContent: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tile: { width: '31%', aspectRatio: 1, borderRadius: 14, overflow: 'hidden', borderWidth: 1.5, backgroundColor: 'rgba(255,255,255,0.35)' },
+  thumbPress: { flex: 1, borderRadius: 14, overflow: 'hidden' },
   thumbWrap: { width: '31%', aspectRatio: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.35)' },
   thumb: { width: '100%', height: '100%' },
+  tileSaveBtn: { position: 'absolute', bottom: 6, left: 6, right: 6, alignItems: 'center', paddingVertical: 5, borderRadius: 999, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.85)' },
+  tileSaveText: { fontWeight: '800', fontSize: 11 },
+  previewWrap: { marginTop: 10, borderRadius: 16, overflow: 'hidden', borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.35)' },
+  previewPhoto: { width: '100%', height: 240 },
+  previewActions: { flexDirection: 'row', gap: 10, padding: 10, alignItems: 'center' },
+  closeBtn: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 50, backgroundColor: 'rgba(0,0,0,0.1)' },
+  closeBtnText: { fontWeight: '700', fontSize: 13 },
   muted: { fontSize: 13, opacity: 0.65, textAlign: 'center' },
   hint: { fontSize: 12, opacity: 0.6, marginTop: 8, lineHeight: 17 },
 });

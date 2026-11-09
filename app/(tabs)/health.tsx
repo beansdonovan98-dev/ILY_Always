@@ -157,6 +157,7 @@ export default function HealthScreen() {
   const [mDose, setMDose] = useState('');
   const [mTime, setMTime] = useState('');
   const [mReminder, setMReminder] = useState(true);
+  const [mWho, setMWho] = useState<string>('both');
   const [fEx, setFEx] = useState('');
   const [fSets, setFSets] = useState('');
   const [fReps, setFReps] = useState('');
@@ -261,12 +262,14 @@ export default function HealthScreen() {
       dosage: mDose.trim(),
       timeLabel: mTime.trim(),
       reminder: mReminder,
+      who: mWho,
     });
     setMeds(next);
     setMName('');
     setMDose('');
     setMTime('');
     setMReminder(true);
+    setMWho('both');
     void syncMedReminders(next);
   };
 
@@ -431,6 +434,10 @@ export default function HealthScreen() {
   const renderWeightTrackerCard = () => {
     const hisList = me === 'daddy' ? weights : theirWeights;
     const hersList = me === 'princess' ? weights : theirWeights;
+    const combined = [
+      ...hisList.map((w) => ({ ...w, who: 'his' as const })),
+      ...hersList.map((w) => ({ ...w, who: 'hers' as const })),
+    ].sort((a, b) => b.at - a.at);
 
     return (
       <MylarPouch title={<Text style={styles.cardTitle}>Weight Tracker ⚖️</Text>} hint="Every pound, every curve, all ours to worship" defaultStrain="SOUR DIESEL" stampRight="THC: 21.5%">
@@ -443,41 +450,15 @@ export default function HealthScreen() {
           {me === 'daddy' ? 'His' : 'Hers'} — only you can edit yours
         </Text>
 
-        <View style={styles.sideRow}>
-          <View style={styles.sideCol}>
-            <Text style={styles.sideLabel}>🍆 His (lbs)</Text>
-            <TextInput
-              value={me === 'daddy' ? wVal : ''}
-              onChangeText={me === 'daddy' ? setWVal : undefined}
-              placeholder="—"
-              placeholderTextColor="rgba(58,42,46,0.4)"
-              keyboardType="decimal-pad"
-              style={[
-                styles.input,
-                styles.weightInput,
-                { borderColor: theme.borderColor, color: theme.textColor, opacity: me === 'daddy' ? 1 : 0.5 },
-              ]}
-            />
-            {me === 'daddy' && <Pill label={editingWeightId ? 'Save' : 'Log'} onPress={addWeight} />}
-          </View>
-
-          <View style={styles.sideCol}>
-            <Text style={styles.sideLabel}>🍑 Hers (lbs)</Text>
-            <TextInput
-              value={me === 'princess' ? wVal : ''}
-              onChangeText={me === 'princess' ? setWVal : undefined}
-              placeholder="—"
-              placeholderTextColor="rgba(58,42,46,0.4)"
-              keyboardType="decimal-pad"
-              style={[
-                styles.input,
-                styles.weightInput,
-                { borderColor: theme.borderColor, color: theme.textColor, opacity: me === 'princess' ? 1 : 0.5 },
-              ]}
-            />
-            {me === 'princess' && <Pill label={editingWeightId ? 'Save' : 'Log'} onPress={addWeight} />}
-          </View>
-        </View>
+        <TextInput
+          value={wVal}
+          onChangeText={setWVal}
+          placeholder="Log weight (lbs)"
+          placeholderTextColor="rgba(58,42,46,0.4)"
+          keyboardType="decimal-pad"
+          style={[styles.input, { borderColor: theme.borderColor, color: theme.textColor }]}
+        />
+        <Pill label={editingWeightId ? 'Save' : 'Log'} onPress={addWeight} />
 
         {editingWeightId ? (
           <GhostPill
@@ -489,38 +470,30 @@ export default function HealthScreen() {
           />
         ) : null}
 
-        <View style={styles.sideRow}>
-          {[hisList, hersList].map((list, side) => (
-            <View key={side} style={styles.sideCol}>
-              <View style={styles.list}>
-                {[...list]
-                  .reverse()
-                  .slice(0, 5)
-                  .map((w) => {
-                    const editable = (side === 0 && me === 'daddy') || (side === 1 && me === 'princess');
-                    return (
-                      <View key={w.id} style={styles.listRow}>
-                        <Text style={styles.listText}>
-                          {w.value} lbs — {w.dateKey}
-                        </Text>
-                        {editable && (
-                          <>
-                            <GhostPill
-                              label="Edit"
-                              onPress={() => {
-                                setEditingWeightId(w.id);
-                                setWVal(String(w.value));
-                              }}
-                            />
-                            <GhostPill label="Delete" onPress={() => deleteWeight(w.id)} />
-                          </>
-                        )}
-                      </View>
-                    );
-                  })}
+        <View style={styles.list}>
+          {combined.map((w) => {
+            const editable = (w.who === 'his' && me === 'daddy') || (w.who === 'hers' && me === 'princess');
+            return (
+              <View key={`${w.who}-${w.id}`} style={styles.weightRow}>
+                <Text style={styles.listText}>
+                  {w.value} lbs — {w.dateKey} ({w.who === 'his' ? 'His 🍆' : 'Hers 🍑'})
+                </Text>
+                {editable && (
+                  <View style={styles.weightActions}>
+                    <GhostPill
+                      label="Edit"
+                      onPress={() => {
+                        setEditingWeightId(w.id);
+                        setWVal(String(w.value));
+                      }}
+                    />
+                    <GhostPill label="Delete" onPress={() => deleteWeight(w.id)} />
+                  </View>
+                )}
               </View>
-            </View>
-          ))}
+            );
+          })}
+          {combined.length === 0 && <Text style={styles.empty}>No weights logged yet.</Text>}
         </View>
       </MylarPouch>
     );
@@ -655,8 +628,8 @@ export default function HealthScreen() {
         </View>
 
         {BODY_FIELDS.map((field) => (
-          <View key={field.key} style={styles.metricColumn}>
-            <Text style={styles.metricLabel}>
+          <View key={field.key} style={styles.metricRow}>
+            <Text style={styles.metricLabel} numberOfLines={1}>
               {field.emoji} {field.label}
             </Text>
             {isMe ? (
@@ -666,7 +639,7 @@ export default function HealthScreen() {
                 placeholder="—"
                 placeholderTextColor="rgba(58,42,46,0.4)"
                 keyboardType="decimal-pad"
-                style={[styles.metricInput, styles.metricInputFull, { borderColor: theme.borderColor, color: theme.textColor }]}
+                style={[styles.metricInput, styles.metricInputCompact, { borderColor: theme.borderColor, color: theme.textColor }]}
               />
             ) : (
               <Text style={styles.metricValue}>{metrics[field.key] || '—'}</Text>
@@ -888,6 +861,27 @@ export default function HealthScreen() {
           />
         </View>
 
+        <Text style={styles.label}>Who is this for?</Text>
+        <View style={styles.whoRow}>
+          {[
+            { value: 'his', label: 'His 🍆' },
+            { value: 'hers', label: 'Hers 🍑' },
+            { value: 'both', label: 'Both' },
+          ].map((opt) => (
+            <Pressable
+              key={opt.value}
+              onPress={() => setMWho(opt.value)}
+              style={[
+                styles.whoPill,
+                mWho === opt.value
+                  ? { backgroundColor: theme.accentSoft, borderColor: theme.accentColor }
+                  : { backgroundColor: 'rgba(255,255,255,0.5)', borderColor: theme.borderColor },
+              ]}>
+              <Text style={[styles.whoPillText, mWho === opt.value && { fontWeight: '800' }]}>{opt.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+
         <View style={styles.reminderRow}>
           <Text style={styles.reminderLabel}>🔔 Daily reminder</Text>
           <LighterToggle value={mReminder} onValueChange={setMReminder} />
@@ -899,12 +893,13 @@ export default function HealthScreen() {
 
         {meds.map((m) => {
           const dose = medLogs.find((l) => l.medId === m.id);
+          const whoLabel = m.who === 'his' ? 'His 🍆' : m.who === 'hers' ? 'Hers 🍑' : 'Both';
           return (
             <View key={m.id} style={[styles.medRow, { borderColor: theme.borderColor }]}>
               <View style={styles.flex}>
                 <Text style={styles.medName}>{m.name}</Text>
                 <Text style={styles.smallHint}>
-                  {m.dosage || 'No dose'} •{' '}
+                  {whoLabel} • {m.dosage || 'No dose'} •{' '}
                   {m.timeLabel ? formatReminderTime(m.timeLabel) : 'Anytime'}
                   {m.reminder ? ' • 🔔' : ''}
                 </Text>
@@ -1115,21 +1110,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 10,
-    marginBottom: 8,
+    gap: 6,
+    marginBottom: 6,
   },
   metricLabel: { fontSize: 14, flex: 1 },
   metricValue: { fontSize: 15, fontWeight: '700', opacity: 0.8 },
   metricInput: {
-    width: 96,
+    width: 72,
     borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 7,
-    paddingHorizontal: 10,
+    borderRadius: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
     textAlign: 'right',
     backgroundColor: 'rgba(255,255,255,0.55)',
-    fontSize: 15,
+    fontSize: 13,
   },
+  metricInputCompact: { width: 72, minHeight: 36, marginTop: 0 },
   smallHint: { fontSize: 12, opacity: 0.65, marginTop: 4, marginBottom: 6 },
   pillPress: { alignSelf: 'flex-start', marginTop: 8 },
   pill: { paddingVertical: 12, paddingHorizontal: 22, borderRadius: 50 },
@@ -1209,7 +1205,7 @@ const styles = StyleSheet.create({
   sideLabel: { fontSize: 11, fontWeight: '700', opacity: 0.7, marginBottom: 4 },
   ownLine: { fontSize: 11, fontStyle: 'italic', opacity: 0.65, marginTop: 2 },
   weightInput: { minHeight: 38, paddingVertical: 6, marginTop: 0 },
-  sideCard: { flex: 1, marginTop: 0 },
+  sideCard: { flex: 1, marginTop: 0, padding: 10 },
   metricColumn: { flexDirection: 'column', alignItems: 'stretch', gap: 3, marginBottom: 7 },
   metricInputFull: { width: '100%', textAlign: 'left', minHeight: 38, paddingVertical: 6 },
   fitnessRow: {
@@ -1226,6 +1222,21 @@ const styles = StyleSheet.create({
   fitnessLeft: { flex: 1 },
   fitnessName: { fontSize: 15, fontWeight: '700' },
   fitnessDetail: { fontSize: 12, opacity: 0.65, marginTop: 2 },
+  whoRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  whoPill: { flex: 1, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 999, borderWidth: 1, alignItems: 'center' },
+  whoPillText: { fontSize: 13, fontWeight: '700' },
+  weightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(120,120,120,0.18)',
+    borderRadius: 12,
+    padding: 10,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+  },
+  weightActions: { flexDirection: 'row', gap: 6, flexShrink: 0 },
   reminderRow: {
     flexDirection: 'row',
     alignItems: 'center',

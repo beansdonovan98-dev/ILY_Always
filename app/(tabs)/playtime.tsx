@@ -309,17 +309,27 @@ export default function PlaytimeScreen() {
           {uploadStatus ? <Text style={styles.muted}>{uploadStatus}</Text> : null}
           <ScrollView style={styles.photoScroll} showsVerticalScrollIndicator>
           <View style={styles.photoGrid}>
-          {media.map((m) => (
+          {media.map((m) => {
+            const loverKey = activeUser === 'daddy' ? 'princess' : 'daddy';
+            const myCaption = (m.captions && m.captions[activeUser]) || m.caption || '';
+            const loverCaption = (m.captions && m.captions[loverKey]) || '';
+            return (
             <View key={m.id} style={[styles.photoCard, { borderColor: appTheme.borderColor }]}>
               <Pressable onPress={() => router.push(`/media/${m.id}`)}>
-                <Image source={{ uri: signedUrls[m.id] || '' }} style={styles.photo} contentFit="contain" />
+                <Image source={{ uri: signedUrls[m.id] || '' }} style={styles.photo} contentFit="cover" />
               </Pressable>
-              <Text style={[styles.muted, { fontFamily: font }]}>{m.file_name}</Text>
+              <Text style={[styles.muted, { fontFamily: font }]} numberOfLines={1}>{m.file_name}</Text>
+              <Text style={styles.captionText} numberOfLines={2}>You: {myCaption || 'No caption yet'}</Text>
+              <Text style={styles.captionText} numberOfLines={2}>Lover: {loverCaption || 'No caption yet'}</Text>
+              <Pressable onPress={() => router.push(`/media/${m.id}`)} style={styles.editCaptionBtn}>
+                <Text style={styles.editCaptionText}>Edit caption</Text>
+              </Pressable>
               <Pressable onPress={() => router.push(`/media/${m.id}`)} style={styles.commentHeader}>
                 <Text style={styles.commentHeaderText}>Comments ({(m.comments || []).length}) — tap to open</Text>
               </Pressable>
             </View>
-          ))}
+            );
+          })}
           </View>
           </ScrollView>
         </MylarPouch>
@@ -344,8 +354,8 @@ const styles = StyleSheet.create({
   chatBox: { marginBottom: 8 },
   chatScroll: { maxHeight: 380, marginBottom: 8 },
   photoScroll: { maxHeight: 380, marginTop: 6 },
-  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  photoCard: { width: '31%', borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', marginBottom: 8 },
+  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-start' },
+  photoCard: { width: 135, borderRadius: 12, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', marginBottom: 8, padding: 6, flexGrow: 0, flexShrink: 0 },
   chatMsg: { marginBottom: 8, padding: 8, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
   chatAuthor: { fontWeight: '700', fontSize: 13 },
   chatText: { fontSize: 15 },
@@ -355,7 +365,10 @@ const styles = StyleSheet.create({
   btnText: { fontWeight: '600' },
   muted: { fontSize: 12, opacity: 0.6 },
   loveNote: { fontSize: 14, fontStyle: 'italic', color: '#c2185b', marginTop: 6, marginBottom: 12, textAlign: 'center' },
-  photo: { width: '100%', height: 220 },
+  photo: { width: 135, height: 135, borderRadius: 8 },
+  captionText: { fontSize: 11, fontWeight: '600', marginTop: 4 },
+  editCaptionBtn: { paddingVertical: 6, paddingHorizontal: 8, borderRadius: 8, backgroundColor: 'rgba(100,150,255,0.25)', marginTop: 6, alignSelf: 'stretch', alignItems: 'center' },
+  editCaptionText: { fontWeight: '700', fontSize: 12 },
   commentHeader: { padding: 10 },
   commentHeaderText: { fontWeight: '600' },
   commentsBox: { padding: 10 },

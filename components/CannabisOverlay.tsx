@@ -110,6 +110,10 @@ export default function CannabisOverlay({ color = '#2E7D4F', smoke = '#CBD5E1' }
     { left: 120, size: 44, dur: 13000, sway: -16, delay: 3200, col: smoke },
     { left: 220, size: 62, dur: 12000, sway: 12, delay: 6000, col: smoke },
     { left: 300, size: 48, dur: 14000, sway: -12, delay: 9000, col: smoke },
+    { left: 60, size: 52, dur: 12500, sway: 16, delay: 1400, col: smoke },
+    { left: 170, size: 50, dur: 11500, sway: -14, delay: 4500, col: smoke },
+    { left: 265, size: 58, dur: 13500, sway: 10, delay: 7500, col: smoke },
+    { left: 335, size: 46, dur: 12000, sway: -18, delay: 10500, col: smoke },
   ];
 
   return (
@@ -123,15 +127,15 @@ export default function CannabisOverlay({ color = '#2E7D4F', smoke = '#CBD5E1' }
       {/* burst remounts a fresh set of fast puffs when the pill is tapped */}
       {burst > 0 && (
         <View key={burst} pointerEvents="none" style={styles.root}>
-          {Array.from({ length: 5 }).map((_, i) => (
+          {Array.from({ length: 12 }).map((_, i) => (
             <SmokePuffRise
               key={i}
               left={40 + Math.random() * 280}
-              size={40 + Math.random() * 36}
-              dur={3600 + Math.random() * 1600}
+              size={56 + Math.random() * 64}
+              dur={5200 + Math.random() * 2800}
               sway={(Math.random() - 0.5) * 30}
               delay={0}
-              col="#E2E8F0"
+              col={smoke}
             />
           ))}
         </View>

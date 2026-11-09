@@ -255,6 +255,7 @@ export interface Med {
   dosage: string;
   timeLabel: string;
   reminder: boolean;
+  who: string;
   createdAt: number;
 }
 
@@ -278,6 +279,7 @@ function rowToMed(row: Record<string, unknown>): Med {
     dosage: (row.dosage as string) ?? '',
     timeLabel: (row.schedule_time as string) ?? '',
     reminder: Boolean(row.reminder),
+    who: (row.who as string) ?? 'both',
     createdAt: row.created_at ? Date.parse(row.created_at as string) : Date.now(),
   };
 }
@@ -306,7 +308,7 @@ export async function loadMeds(coupleId: string): Promise<Med[]> {
 
 export async function addMed(
   coupleId: string,
-  input: { name: string; dosage: string; timeLabel: string; reminder: boolean }
+  input: { name: string; dosage: string; timeLabel: string; reminder: boolean; who?: string }
 ): Promise<Med[]> {
   const current = await loadMeds(coupleId);
   const med: Med = {
@@ -315,25 +317,33 @@ export async function addMed(
     dosage: input.dosage,
     timeLabel: input.timeLabel,
     reminder: input.reminder,
+    who: input.who ?? 'both',
     createdAt: Date.now(),
   };
   const next = [...current, med];
   await setItem(medsKey(coupleId), next);
 
   if (hasSupabaseEnv && coupleId) {
+    const base = {
+      id: med.id,
+      couple_id: coupleId,
+      name: med.name,
+      dosage: med.dosage,
+      schedule_time: med.timeLabel,
+      reminder: med.reminder,
+      created_at: new Date(med.createdAt).toISOString(),
+    };
     try {
-      const { error } = await supabase.from('health_meds').insert({
-        id: med.id,
-        couple_id: coupleId,
-        name: med.name,
-        dosage: med.dosage,
-        schedule_time: med.timeLabel,
-        reminder: med.reminder,
-        created_at: new Date(med.createdAt).toISOString(),
-      });
+      const { error } = await supabase.from('health_meds').insert({ ...base, who: med.who });
       if (error) throw error;
     } catch (e) {
-      console.warn('[health] addMed fell back to local cache', e);
+      // Graceful if `who` column does not exist yet — retry without it.
+      try {
+        const { error: retryError } = await supabase.from('health_meds').insert(base);
+        if (retryError) throw retryError;
+      } catch (retryErr) {
+        console.warn('[health] addMed fell back to local cache', retryErr);
+      }
     }
   }
 
@@ -346,20 +356,30 @@ export async function updateMed(coupleId: string, id: string, patch: Partial<Med
   await setItem(medsKey(coupleId), next);
 
   if (hasSupabaseEnv && coupleId) {
+    const patchPayload = {
+      ...(patch.name !== undefined ? { name: patch.name } : {}),
+      ...(patch.dosage !== undefined ? { dosage: patch.dosage } : {}),
+      ...(patch.timeLabel !== undefined ? { schedule_time: patch.timeLabel } : {}),
+      ...(patch.reminder !== undefined ? { reminder: patch.reminder } : {}),
+      ...(patch.who !== undefined ? { who: patch.who } : {}),
+    };
     try {
-      const { error } = await supabase
-        .from('health_meds')
-        .update({
-          ...(patch.name !== undefined ? { name: patch.name } : {}),
-          ...(patch.dosage !== undefined ? { dosage: patch.dosage } : {}),
-          ...(patch.timeLabel !== undefined ? { schedule_time: patch.timeLabel } : {}),
-          ...(patch.reminder !== undefined ? { reminder: patch.reminder } : {}),
-        })
-        .eq('id', id)
-        .eq('couple_id', coupleId);
+      const { error } = await supabase.from('health_meds').update(patchPayload).eq('id', id).eq('couple_id', coupleId);
       if (error) throw error;
     } catch (e) {
-      console.warn('[health] updateMed fell back to local cache', e);
+      // Graceful if `who` column missing — retry without it.
+      if ((patchPayload as Record<string, unknown>).who !== undefined) {
+        try {
+          const { who: _omitted, ...withoutWho } = patchPayload as Record<string, unknown> & { who?: string };
+          void _omitted;
+          const { error: retryError } = await supabase.from('health_meds').update(withoutWho).eq('id', id).eq('couple_id', coupleId);
+          if (retryError) throw retryError;
+        } catch (retryErr) {
+          console.warn('[health] updateMed fell back to local cache', retryErr);
+        }
+      } else {
+        console.warn('[health] updateMed fell back to local cache', e);
+      }
     }
   }
 

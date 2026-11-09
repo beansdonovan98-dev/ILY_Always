@@ -13,7 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { daySeed, FACTS_OF_THE_DAY, RELATIONSHIP_START, todayKey, USERS, WORDS_OF_THE_DAY } from '@/constants/content';
 import { getItem, setItem } from '@/lib/storage';
 import { useTabLabel } from '@/hooks/useTabLabel';
-import { localDateKey } from '@/lib/days';
+
 import { useUsage } from '@/contexts/UsageContext';
 import { getCoupleId } from '@/lib/couple';
 import { notifyPartner } from '@/lib/push';
@@ -333,12 +333,20 @@ export default function HomeScreen() {
         <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardHint}>Little whispers for your heart</Text>
 
-        {loveNotes.filter((n) => localDateKey(new Date(n.created_at)) === todayKey()).map((n) => (
-          <MylarPouch key={n.id} title={<Text style={styles.cardTitle}>{USERS[n.author as keyof typeof USERS]?.label || n.author}</Text>} hint="A steamy secret, whispered now, just for you" defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%" style={{ marginBottom: 6 }}>
-            <Text style={styles.body}>{n.text}</Text>
-            <Text style={styles.muted}>{new Date(n.created_at).toLocaleString()}</Text>
-          </MylarPouch>
-        ))}
+        {loveNotes.length === 0 && (
+          <Text style={styles.muted}>No love notes yet — leave the first one below 💕</Text>
+        )}
+        {[...loveNotes]
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .map((n) => (
+            <View key={n.id} style={styles.noteRow}>
+              <View style={styles.noteRowHeader}>
+                <Text style={styles.noteAuthor}>{USERS[n.author as keyof typeof USERS]?.label || n.author}</Text>
+                <Text style={styles.muted}>{new Date(n.created_at).toLocaleString()}</Text>
+              </View>
+              <Text style={styles.body}>{n.text}</Text>
+            </View>
+          ))}
 
         <Text style={styles.muted}>Yesterday's notes live in The Days of Old 🧙‍♂️</Text>
 
@@ -402,6 +410,9 @@ const styles = StyleSheet.create({
   big: { fontSize: 26, fontWeight: '800', marginVertical: 4 },
   loveNote: { fontSize: 14, fontStyle: 'italic', marginTop: 8, textAlign: 'center' },
   noteCard: { padding: 12, marginBottom: 8, borderRadius: 14, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.4)' },
+  noteRow: { paddingVertical: 10, paddingHorizontal: 12, marginBottom: 8, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,111,145,0.35)', backgroundColor: 'rgba(255,255,255,0.45)' },
+  noteRowHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  noteAuthor: { fontSize: 13, fontWeight: '800' },
   row: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' },
   muted: { fontSize: 13, opacity: 0.65, marginTop: 4 },
   stretch: { flex: 1 },

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { DeviceEventEmitter, Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/AppText';
 import { JointVector } from '@/components/CannabisHardware';
+import { SMOKE_BURST_EVENT } from '@/components/CannabisOverlay';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUsage } from '@/contexts/UsageContext';
 import { getCoupleId } from '@/lib/couple';
@@ -24,6 +25,7 @@ export function PassTheJoint() {
 
   const pass = async () => {
     setFlying(true);
+    DeviceEventEmitter.emit(SMOKE_BURST_EVENT);
     void bongHaptic();
     const cid = await getCoupleId();
     void notifyPartner(cid, currentUser, 'joint');
@@ -54,6 +56,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     top: 100,
+    zIndex: 999,
+    elevation: 999,
     transform: [{ translateX: 120 }, { translateY: -60 }, { rotate: '20deg' }],
   },
 });
