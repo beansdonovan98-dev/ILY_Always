@@ -4,6 +4,7 @@ import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
 import { CannabisDivider, WeedCard } from '@/components/CannabisHardware';
 import { MylarPouch } from '@/components/MylarPouch';
+import { LoveLetterExperience } from '@/components/LoveLetter';
 import { JointBurnTimer, BongRefresh, bongHaptic } from '@/components/CannabisFeatures';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { Image as ExpoImage } from 'expo-image';
@@ -31,6 +32,7 @@ export default function HomeScreen() {
 
   const [coupleId, setCoupleId] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [letterOpen, setLetterOpen] = useState(false);
   const [loveNotes, setLoveNotes] = useState<Array<{ id: string; author: string; text: string; created_at: string }>>([]);
   const [noteDraft, setNoteDraft] = useState('');
 
@@ -219,10 +221,20 @@ export default function HomeScreen() {
         />
       }>
       <BongRefresh refreshing={refreshing} color={appTheme.leafColor} />
-      <Text style={styles.header}>{homeTitle}</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={styles.header}>{homeTitle}</Text>
+        <Pressable
+          onPress={() => setLetterOpen(true)}
+          style={[styles.letterIcon, { borderColor: appTheme.borderColor, backgroundColor: 'rgba(255,150,170,0.25)' }]}
+          accessibilityLabel="Open your love letter">
+          <Text style={styles.letterIconText}>💌</Text>
+        </Pressable>
+      </View>
       <Text style={[styles.subtitle, { color: appTheme.subtitleColor }]}>
         Our little corner of the world — snuggles, giggles, and little secrets, just us two 💞
       </Text>
+
+      {letterOpen && <LoveLetterExperience onClose={() => setLetterOpen(false)} />}
 
       {/* 1. Relationship Tracker */}
       <MylarPouch title={<Text style={styles.cardTitle}>Relationship Tracker</Text>} hint="Every second with you, and I still want more" defaultStrain="GRANDDADDY P." stampRight="THC: 28.5%">
@@ -371,6 +383,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 24, paddingBottom: 60, alignItems: 'stretch', gap: 36, maxWidth: '100%' },
   header: { fontSize: 34, fontWeight: '800', marginBottom: 4 },
+  letterIcon: { width: 46, height: 46, borderRadius: 23, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  letterIconText: { fontSize: 22 },
   subheader: { fontSize: 17, opacity: 0.75, marginBottom: 4 },
   subtitle: { fontSize: 17, fontStyle: 'italic', lineHeight: 24, marginBottom: 4 },
   card: {

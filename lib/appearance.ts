@@ -17,6 +17,10 @@ export interface CoupleSettings {
   avatar_daddy: string | null;
   avatar_princess: string | null;
   love_notes: Array<{ id: string; author: string; text: string; created_at: string }> | null;
+  letter_body: string | null;
+  secret_message: string | null;
+  final_message: string | null;
+  letter_updated_at: string | null;
   updated_at: string;
 }
 

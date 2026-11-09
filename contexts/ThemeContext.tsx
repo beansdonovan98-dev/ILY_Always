@@ -29,6 +29,10 @@ const BASE_SETTINGS: CoupleSettings = {
   avatar_daddy: null,
   avatar_princess: null,
   love_notes: null,
+  letter_body: null,
+  secret_message: null,
+  final_message: null,
+  letter_updated_at: null,
   updated_at: new Date(0).toISOString(),
 };
 
