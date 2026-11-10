@@ -419,7 +419,7 @@ async function handleStyleEdit(
       init_images: [imageCheck.raw],
       denoising_strength: preset.denoising,
       width: 512,
-      height: 512,
+      height: 768,
       steps: 28,
       cfg_scale: 7,
       sampler_name: 'Euler a',
@@ -427,6 +427,20 @@ async function handleStyleEdit(
       batch_size: 1,
       n_iter: 1,
       seed: -1,
+      alwayson_scripts: {
+        controlnet: {
+          args: [
+            {
+              enabled: true,
+              module: 'faceid',
+              model: 'ip-adapter-faceid_sdxl.safetensors',
+              image: imageCheck.raw,
+              weight: 0.8,
+              ip_adapter_weight: 0.8,
+            },
+          ],
+        },
+      },
     },
   };
 
