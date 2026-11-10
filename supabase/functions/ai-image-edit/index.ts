@@ -389,6 +389,30 @@ function buildStylePrompt(prefix: string, userPrompt: string): string {
   return prompt;
 }
 
+function controlNetUnit(
+  module: string,
+  model: string,
+  image: string,
+  weight: number
+): Record<string, unknown> {
+  return {
+    enabled: true,
+    module,
+    model,
+    image,
+    weight,
+    resize_mode: 0,      // Just Resize
+    lowvram: false,
+    processor_res: 512,
+    threshold_a: 64,
+    threshold_b: 64,
+    guidance_start: 0,
+    guidance_end: 1,
+    control_mode: 0,     // Balanced
+    pixel_perfect: true,
+  };
+}
+
 async function handleStyleEdit(
   imageBase64: string,
   styleMode: string,
@@ -426,20 +450,13 @@ async function handleStyleEdit(
       alwayson_scripts: {
         controlnet: {
           args: [
-            {
-              enabled: true,
-              module: 'ip-adapter_face_id',
-              model: 'ip-adapter-faceid_sdxl.safetensors',
-              image: imageCheck.raw,
-              weight: 0.85,
-            },
-            {
-              enabled: true,
-              module: poseModule,
-              model: poseModel,
-              image: imageCheck.raw,
-              weight: 0.8,
-            },
+            controlNetUnit(
+              'ip-adapter_face_id',
+              'ip-adapter-faceid_sdxl.safetensors',
+              imageCheck.raw,
+              0.85
+            ),
+            controlNetUnit(poseModule, poseModel, imageCheck.raw, 0.8),
           ],
         },
       },
