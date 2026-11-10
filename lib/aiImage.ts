@@ -11,8 +11,8 @@ const FRIENDLY: Record<number, string> = {
 };
 
 export async function editImageWithAI(imageUrl: string, prompt: string): Promise<string> {
-  // OpenAI only accepts PNG/JPEG. iPhones shoot HEIC by default -> convert
-  // to JPEG first so the AI never sees an unsupported file type.
+  // The RunPod worker only reliably decodes PNG/JPEG. iPhones shoot HEIC by
+  // default -> convert to JPEG first so the AI never sees an unsupported file.
   let uri = imageUrl;
   let mimeType = 'image/jpeg';
   try {

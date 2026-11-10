@@ -12,15 +12,54 @@ function json(status: number, payload: Record<string, unknown>) {
   });
 }
 
+type RunpodJob = {
+  id?: string;
+  status?: string;
+  error?: string;
+  output?: unknown;
+};
+
 /**
- * AI photo edit — RunPod (uncensored SDXL/LUX.2 img2img).
- * Proxies the app's photo to the user's private RunPod endpoint so the
- * API key stays in secrets (never shipped in the app).
- *
- * Secrets needed:
- *   RUNPOD_API_KEY=...
- *   RUNPOD_ENDPOINT_ID=... (the pq2pwxs2hxv7sf segment)
+ * Pull the first image out of whatever shape the worker returned.
+ * Covers: output.images[], output.image, output[] , {image: ...}, {images:[...]}
  */
+function firstImage(out: unknown, depth = 0): string | null {
+  if (!out || depth > 4) return null;
+  if (typeof out === 'string') {
+    if (out.startsWith('data:image')) return out;
+    if (/^https?:\/\//i.test(out)) return out;
+    if (/^[A-Za-z0-9+/=\s]{200,}$/.test(out)) return `data:image/png;base64,${out.replace(/\s/g, '')}`;
+    return null;
+  }
+  if (Array.isArray(out)) {
+    for (const item of out) {
+      const hit = firstImage(item, depth + 1);
+      if (hit) return hit;
+    }
+    return null;
+  }
+  if (typeof out === 'object') {
+    const obj = out as Record<string, unknown>;
+    for (const key of ['images', 'image', 'b64', 'b64_json', 'base64', 'url', 'output', 'data']) {
+      if (key in obj) {
+        const hit = firstImage(obj[key], depth + 1);
+        if (hit) return hit;
+      }
+    }
+  }
+  return null;
+}
+
+function runpodErrorMessage(job: RunpodJob): string | null {
+  if (job.error) return job.error;
+  const out = job.output as Record<string, unknown> | undefined;
+  if (out && typeof out === 'object') {
+    const msg = out.error ?? out.message ?? out.detail;
+    if (typeof msg === 'string' && msg) return msg;
+  }
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -43,14 +82,16 @@ serve(async (req) => {
     const mime = mimeType || 'image/jpeg';
     const dataUrl = `data:${mime};base64,${imageBase64}`;
 
-    // Your RunPod sync endpoint (LUX.2 img2img). Keep face/body identical,
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${runpodKey}`,
+    };
+
+    // Your RunPod sync endpoint (LUX.2 / FLUX img2img). Keep face/body identical,
     // only restyle — matches the prompt the app sends.
     const runpodRes = await fetch(`https://api.runpod.ai/v2/${endpoint}/runsync`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${runpodKey}`,
-      },
+      headers,
       body: JSON.stringify({
         input: {
           api_name: 'img2img',
@@ -64,23 +105,55 @@ serve(async (req) => {
       }),
     });
 
-    const runpodJson = await runpodRes.json().catch(() => ({}));
+    let job = (await runpodRes.json().catch(() => ({}))) as RunpodJob;
+
     if (!runpodRes.ok) {
-      return json(502, { error: `RunPod rejected the request (HTTP ${runpodRes.status}).` });
+      return json(502, {
+        error: runpodErrorMessage(job) || `RunPod rejected the request (HTTP ${runpodRes.status}).`,
+      });
     }
 
-    const images: string[] = runpodJson?.output?.images || [];
-    if (!images.length) {
-      return json(502, { error: 'RunPod came back without an image. Try a different prompt.' });
+    // runsync usually blocks until done, but if the worker is cold it can
+    // return IN_QUEUE / IN_PROGRESS with an id -> poll /status until done.
+    const deadline = Date.now() + 120_000;
+    while (
+      job.id &&
+      (job.status === 'IN_QUEUE' || job.status === 'IN_PROGRESS' || job.status === 'RUNNING') &&
+      Date.now() < deadline
+    ) {
+      await new Promise((r) => setTimeout(r, 1500));
+      const pollRes = await fetch(`https://api.runpod.ai/v2/${endpoint}/status/${job.id}`, { headers });
+      job = (await pollRes.json().catch(() => ({}))) as RunpodJob;
     }
 
-    // Download the result image and return it as base64 for the app.
-    const imgRes = await fetch(images[0]);
-    const imgBuf = new Uint8Array(await imgRes.arrayBuffer());
-    let binary = '';
-    for (let i = 0; i < imgBuf.length; i++) binary += String.fromCharCode(imgBuf[i]);
-    const b64 = btoa(binary);
-    return json(200, { b64 });
+    if (job.status === 'FAILED') {
+      return json(502, { error: runpodErrorMessage(job) || 'RunPod job failed.' });
+    }
+
+    const image = firstImage(job.output);
+    if (!image) {
+      return json(502, {
+        error: runpodErrorMessage(job) || `RunPod returned no image (status: ${job.status || 'unknown'}).`,
+      });
+    }
+
+    // URL result -> download and inline as base64 so the app doesn't need auth.
+    if (/^https?:\/\//i.test(image)) {
+      const imgRes = await fetch(image);
+      if (!imgRes.ok) {
+        return json(502, { error: `Could not download the result image (HTTP ${imgRes.status}).` });
+      }
+      const imgBuf = new Uint8Array(await imgRes.arrayBuffer());
+      let binary = '';
+      const chunk = 0x8000;
+      for (let i = 0; i < imgBuf.length; i += chunk) {
+        binary += String.fromCharCode(...imgBuf.subarray(i, i + chunk));
+      }
+      return json(200, { b64: btoa(binary) });
+    }
+
+    // Already a data URL.
+    return json(200, { b64: image.replace(/^data:image\/[a-z+]+;base64,/, '') });
   } catch (e) {
     return json(500, { error: `AI editor crashed: ${String(e)}` });
   }
