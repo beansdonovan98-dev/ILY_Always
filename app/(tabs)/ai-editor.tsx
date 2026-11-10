@@ -163,10 +163,10 @@ export default function AIEditorScreen() {
     if (busyRef.current) return; // ignore accidental double-taps
     busyRef.current = true;
 
-    // Same photo + same prompt = same user action. If the last attempt timed
-    // out, reuse its request id so we poll the existing job instead of
+    // Same photo + prompt + strength = same user action. If the last attempt
+    // timed out, reuse its request id so we poll the existing job instead of
     // submitting (and paying for) a duplicate.
-    const signature = `${sourceUri}\n${trimmed}`;
+    const signature = `${sourceUri}\n${trimmed}\n${styleStrength}`;
     const requestId =
       requestRef.current?.signature === signature
         ? requestRef.current.id

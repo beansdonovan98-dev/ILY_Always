@@ -373,6 +373,8 @@ create table if not exists ai_image_jobs (
   error       text,
   couple_id   text,
   result_path text,
+  variation_token text,
+  final_prompt text,
   created_at  timestamptz default now(),
   updated_at  timestamptz default now()
 );

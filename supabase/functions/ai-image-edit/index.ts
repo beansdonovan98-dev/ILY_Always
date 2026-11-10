@@ -44,12 +44,19 @@ type JobRow = {
   error: string | null;
   couple_id: string | null;
   result_path: string | null;
+  variation_token: string | null;
+  final_prompt: string | null;
   created_at: string;
   updated_at: string;
 };
 
 function normalizeStatus(value: unknown): string {
   return String(value ?? '').trim().toUpperCase();
+}
+
+/** 5-char random tag so the same prompt explores different details. */
+function makeVariationToken(): string {
+  return Math.random().toString(36).slice(2, 7).padEnd(5, '0');
 }
 
 function isFailedStatus(status: string): boolean {
@@ -473,10 +480,21 @@ serve(async (req) => {
     }
     const rawImageBase64 = imageCheck.raw;
 
+    // One variation token per new job. It is stored on the row, so retries
+    // reuse the exact same prompt instead of generating a different image.
+    const newVariationToken = makeVariationToken();
+    const newFinalPrompt = `${prompt} | variant:${newVariationToken}`;
+
     // Atomic-ish claim: primary-key insert only succeeds for the first caller.
     const { data: inserted, error: insertError } = await db
       .from('ai_image_jobs')
-      .insert({ request_id: requestId, status: 'PENDING', couple_id: coupleId || null })
+      .insert({
+        request_id: requestId,
+        status: 'PENDING',
+        couple_id: coupleId || null,
+        variation_token: newVariationToken,
+        final_prompt: newFinalPrompt,
+      })
       .select('*')
       .maybeSingle();
 
@@ -535,6 +553,21 @@ serve(async (req) => {
       }
     }
 
+    // Reuse the stored token/prompt for retries. Old rows created before this
+    // column existed get backfilled once.
+    const jobVariationToken = row?.variation_token || newVariationToken;
+    const jobFinalPrompt = row?.final_prompt || `${prompt} | variant:${jobVariationToken}`;
+    if (row && (!row.variation_token || !row.final_prompt)) {
+      await db
+        .from('ai_image_jobs')
+        .update({
+          variation_token: jobVariationToken,
+          final_prompt: jobFinalPrompt,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('request_id', requestId);
+    }
+
     const runpodRes = await fetch(`${RUNPOD_BASE}/${endpoint}/run`, {
       method: 'POST',
       headers,
@@ -542,7 +575,7 @@ serve(async (req) => {
         input: {
           task: 'image_edit',
           prompt:
-            `${prompt}. Maintain the exact facial features, likenesses, and structural head placement of all subjects visible in the base photo 100% identical as an unchangeable blueprint.`,
+            `${jobFinalPrompt}. Maintain the exact facial features, likenesses, and structural head placement of all subjects visible in the base photo 100% identical as an unchangeable blueprint.`,
           image_b64: rawImageBase64,
           n: 1,
           response_format: 'b64_json',
