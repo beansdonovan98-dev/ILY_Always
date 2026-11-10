@@ -422,7 +422,7 @@ async function handleStyleEdit(
       height: 512,
       steps: 28,
       cfg_scale: 7,
-      sampler_name: 'DPM++ 2M Karras',
+      sampler_name: 'Euler a',
       resize_mode: 0,
       batch_size: 1,
       n_iter: 1,
