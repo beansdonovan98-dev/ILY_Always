@@ -416,17 +416,9 @@ async function handleStyleEdit(
     input: {
       prompt,
       negative_prompt: negativePrompt,
-      init_images: [imageCheck.raw],
-      denoising_strength: preset.denoising,
+      steps: 25,
       width: 512,
       height: 768,
-      steps: 28,
-      cfg_scale: 7,
-      sampler_name: 'Euler a',
-      resize_mode: 0,
-      batch_size: 1,
-      n_iter: 1,
-      seed: -1,
       alwayson_scripts: {
         controlnet: {
           args: [
