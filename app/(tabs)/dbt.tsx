@@ -131,29 +131,63 @@ export default function DBTScreen() {
   const skill = SKILLS[window2.index % SKILLS.length];
   const taskAnswerKey = ANSWER_KEY(window2.windowKey, skill.id);
 
+  const fetchPartner = useCallback(async () => {
+    try {
+      const { getCoupleId } = await import('@/lib/couple');
+      const cid = await getCoupleId();
+      setCoupleId(cid);
+      const { supabase } = await import('@/lib/supabase');
+      const partner = currentUser === 'daddy' ? 'princess' : 'daddy';
+      // Latest answer from the partner in this window — includes assignment
+      // diagrams / picks, not just the journal note.
+      const { data } = await supabase
+        .from('dbt_responses')
+        .select('user_key,response')
+        .eq('couple_id', cid)
+        .eq('window_key', window2.windowKey)
+        .eq('user_key', partner)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data) {
+        setPartnerResponse((data as any).response || '');
+        setPartnerAuthor((data as any).user_key || partner);
+      } else {
+        setPartnerResponse('');
+      }
+    } catch {}
+  }, [currentUser, window2.windowKey]);
+
   useEffect(() => {
+    void fetchPartner();
+  }, [fetchPartner]);
+
+  // Live updates: as soon as she saves, his screen shows it (and vice versa).
+  useEffect(() => {
+    let cancelled = false;
+    let sb: any = null;
+    let channel: any = null;
+    if (!coupleId) return;
     (async () => {
-      try {
-        const { getCoupleId } = await import('@/lib/couple');
-        const cid = await getCoupleId();
-        setCoupleId(cid);
-        const { supabase } = await import('@/lib/supabase');
-        const partner = currentUser === 'daddy' ? 'princess' : 'daddy';
-        const { data } = await supabase
-          .from('dbt_responses')
-          .select('user_key,response')
-          .eq('couple_id', cid)
-          .eq('window_key', window2.windowKey)
-          .eq('skill_id', skill.id)
-          .eq('user_key', partner)
-          .maybeSingle();
-        if (data) {
-          setPartnerResponse((data as any).response || '');
-          setPartnerAuthor((data as any).user_key || partner);
-        }
-      } catch {}
+      const mod = await import('@/lib/supabase');
+      if (cancelled) return;
+      sb = mod.supabase;
+      channel = sb
+        .channel(`dbt-${coupleId}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'dbt_responses', filter: `couple_id=eq.${coupleId}` },
+          () => {
+            void fetchPartner();
+          }
+        )
+        .subscribe();
     })();
-  }, [currentUser, skill.id, window2.windowKey]);
+    return () => {
+      cancelled = true;
+      if (sb && channel) void sb.removeChannel(channel);
+    };
+  }, [coupleId, fetchPartner]);
 
   const load = useCallback(async () => {
     setDone(await getItem<boolean>(DONE_KEY(today), false));
@@ -183,7 +217,8 @@ export default function DBTScreen() {
   useFocusEffect(
     useCallback(() => {
       void load();
-    }, [load])
+      void fetchPartner();
+    }, [load, fetchPartner])
   );
 
   const assignmentComplete = () => {
@@ -211,19 +246,50 @@ export default function DBTScreen() {
   const pickAnswer = async (value: string | number) => {
     setAnswer(value);
     await setItem(taskAnswerKey, value);
+    syncToPartner(String(value));
   };
+
+  // Debounced shared save: any answer (diagram, pick, rate, note) is visible
+  // to the partner without needing the Save button.
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const syncToPartner = useCallback(
+    (text: string) => {
+      if (!coupleId) return;
+      if (syncTimer.current) clearTimeout(syncTimer.current);
+      syncTimer.current = setTimeout(async () => {
+        try {
+          const { supabase } = await import('@/lib/supabase');
+          await supabase.from('dbt_responses').upsert(
+            {
+              couple_id: coupleId,
+              window_key: window2.windowKey,
+              skill_id: skill.id,
+              user_key: currentUser,
+              response: text,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'couple_id,window_key,skill_id,user_key' }
+          );
+        } catch {}
+      }, 600);
+    },
+    [coupleId, currentUser, window2.windowKey, skill.id]
+  );
 
   const saveResponse = async () => {
     const cid = coupleId || '';
     // save locally, then also save to Supabase so partner sees it.
     await setItem(RESPONSE_KEY(window2.windowKey, skill.id), response);
-    try {
-      const { supabase } = await import('@/lib/supabase');
-      await supabase.from('dbt_responses').upsert(
-        { couple_id: cid, window_key: window2.windowKey, skill_id: skill.id, user_key: currentUser, response, updated_at: new Date().toISOString() },
-        { onConflict: 'couple_id,window_key,skill_id,user_key' }
-      );
-    } catch {}
+    syncToPartner(response);
+    if (cid) {
+      try {
+        const { supabase } = await import('@/lib/supabase');
+        await supabase.from('dbt_responses').upsert(
+          { couple_id: cid, window_key: window2.windowKey, skill_id: skill.id, user_key: currentUser, response, updated_at: new Date().toISOString() },
+          { onConflict: 'couple_id,window_key,skill_id,user_key' }
+        );
+      } catch {}
+    }
     setSavedNote(response);
     setNoteSaved(true);
   };
@@ -277,6 +343,7 @@ export default function DBTScreen() {
         diagramCache.current[skill.id] = JSON.stringify(next);
         setDiagramVersion((v) => v + 1);
         void setItem(RESPONSE_KEY(window2.windowKey, skill.id), JSON.stringify(next));
+        syncToPartner(JSON.stringify(next));
         setNoteSaved(true);
       };
       const labels =
@@ -451,6 +518,29 @@ export default function DBTScreen() {
     return renderJournal();
   };
 
+  const partnerPretty = (() => {
+    if (!partnerResponse) return '';
+    const t = partnerResponse.trim();
+    if (t.startsWith('[')) {
+      try {
+        const arr = JSON.parse(t) as string[];
+        const lines = arr.map((v, i) => (v && v.trim() ? `${i + 1}. ${v}` : '')).filter(Boolean);
+        if (lines.length) return lines.join('\n');
+      } catch {}
+    }
+    return partnerResponse;
+  })();
+
+  const renderPartnerAnswer = () =>
+    partnerPretty ? (
+      <View style={{ marginTop: 12, padding: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: theme.borderColor }}>
+        <Text style={[styles.label, { marginTop: 0 }]}>
+          {partnerAuthor === 'princess' ? 'Her response 🍑' : 'His response 🍆'}
+        </Text>
+        <Text style={styles.practice}>{partnerPretty}</Text>
+      </View>
+    ) : null;
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>{dbtTitle}</Text>
@@ -516,6 +606,7 @@ export default function DBTScreen() {
           <Text style={styles.doneNote}>Answer below first — no shortcuts, gorgeous 💋</Text>
         ) : null}
         {renderAssignmentInputs()}
+        {renderPartnerAnswer()}
       </MylarPouch>
 
       <CannabisDivider color={theme.leafColor} />
@@ -524,12 +615,7 @@ export default function DBTScreen() {
       <MylarPouch title={<Text style={styles.cardTitle}>Response Journal 📓</Text>} hint="Spill every sweet, secret little feeling here ✍️💚" defaultStrain="SOUR DIESEL" stampRight="THC: 23.5%">
         <LeafBorder color={theme.leafColor} />
         {renderResponseJournal()}
-        {partnerResponse ? (
-          <View style={{ marginTop: 12, padding: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: theme.borderColor }}>
-            <Text style={[styles.label, { marginTop: 0 }]}>{partnerAuthor === 'princess' ? 'Her response 🍑' : 'His response 🍆'}</Text>
-            <Text style={styles.practice}>{partnerResponse}</Text>
-          </View>
-        ) : null}
+        {renderPartnerAnswer()}
         <Pressable onPress={markDone} disabled={!assignmentComplete()} style={styles.pillPress}>
           <LinearGradient
             colors={done ? [theme.accentColor, theme.accentColor] : assignmentComplete() ? [theme.accentColor, '#C86DD7'] : ['#C7C3D4', '#C7C3D4']}

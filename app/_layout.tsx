@@ -2,13 +2,14 @@ import { useFonts } from 'expo-font';
 import { DefaultTheme, Stack, ThemeProvider as NavThemeProvider, type Theme } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import 'react-native-reanimated';
 
 import { initCrashReporting } from '@/lib/sentry';
 import LoginScreen from '@/components/LoginScreen';
 import { UsageProvider, useUsage } from '@/contexts/UsageContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
+import { notifyPartner, registerPushToken } from '@/lib/push';
 import AnimatedGradientBackground from '@/components/AnimatedGradientBackground';
 import CannabisOverlay from '@/components/CannabisOverlay';
 import Mode420 from '@/components/Mode420';
@@ -93,6 +94,28 @@ function AuthGate() {
   );
 }
 
+/** Keeps this phone's APNs token fresh and pings the lover on each login. */
+function PushSync() {
+  const { authenticated, ready, currentUser } = useUsage();
+  const { coupleId } = useTheme();
+  const wasAuth = useRef(false);
+
+  useEffect(() => {
+    if (!ready || !authenticated || !coupleId) {
+      wasAuth.current = authenticated;
+      return;
+    }
+    // Refresh the token on every login (reinstalls / new builds change it).
+    void registerPushToken(coupleId, currentUser);
+    if (!wasAuth.current) {
+      wasAuth.current = true;
+      void notifyPartner(coupleId, currentUser, 'login');
+    }
+  }, [ready, authenticated, coupleId, currentUser]);
+
+  return null;
+}
+
 function RootLayoutNav() {
   const { settings } = useTheme();
   const palette = (settings?.background_gradient
@@ -122,6 +145,7 @@ function RootLayoutNav() {
         <AnimatedGradientBackground>
           <NavThemeProvider value={APP_NAV_THEME}>
             <StatusBar style={statusStyle} />
+            <PushSync />
             <AuthGate />
           </NavThemeProvider>
           {/* Ambient smoke + falling leaves across every screen (untappable) */}

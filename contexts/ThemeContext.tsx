@@ -33,6 +33,11 @@ const BASE_SETTINGS: CoupleSettings = {
   secret_message: null,
   final_message: null,
   letter_updated_at: null,
+  letter_reply_body: null,
+  letter_reply_secret: null,
+  letter_reply_final: null,
+  letter_reply_from: null,
+  letter_reply_at: null,
   updated_at: new Date(0).toISOString(),
 };
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
@@ -13,7 +13,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { useTabLabel } from '@/hooks/useTabLabel';
 import { JointBurnTimer, bongHaptic } from '@/components/CannabisFeatures';
 import { getCoupleId } from '@/lib/couple';
-import { editImageWithAI } from '@/lib/aiImage';
+import { AIEditError, createAIRequestId, editImageWithAI } from '@/lib/aiImage';
 import { uploadMedia, getSignedUrl, deleteMedia, MediaRow } from '@/lib/media';
 import { supabase } from '@/lib/supabase';
 import { localDateKey } from '@/lib/days';
@@ -39,6 +39,9 @@ export default function AIEditorScreen() {
   const [editBurn, setEditBurn] = useState(1);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  // Reuse the same request id if the user retries after a timeout/network drop,
+  // so the server returns the existing RunPod job instead of paying twice.
+  const requestRef = useRef<{ signature: string; id: string } | null>(null);
 
   useEffect(() => {
     if (!loading) return;
@@ -82,15 +85,33 @@ export default function AIEditorScreen() {
   }, []);
 
   const runEdit = useCallback(async () => {
-    if (!sourceUri || !prompt.trim()) return;
+    const trimmed = prompt.trim();
+    if (!sourceUri || !trimmed) return;
+
+    // Same photo + same prompt = same user action. If the last attempt timed
+    // out, reuse its request id so we poll the existing job instead of
+    // submitting (and paying for) a duplicate.
+    const signature = `${sourceUri}\n${trimmed}`;
+    const requestId =
+      requestRef.current?.signature === signature
+        ? requestRef.current.id
+        : createAIRequestId();
+    requestRef.current = { signature, id: requestId };
+
     setLoading(true);
     setEditBurn(1);
     setStatus('Editing with AI...');
     try {
-      const edited = await editImageWithAI(sourceUri, prompt.trim());
+      const edited = await editImageWithAI(sourceUri, trimmed, requestId);
       setResultUri(edited);
+      requestRef.current = null;
       setStatus('Done! Tap Save to keep it 💞');
     } catch (e) {
+      // A definitive job failure should get a fresh id next tap. Timeouts and
+      // network errors keep the id so the retry continues the same job.
+      if (!(e instanceof AIEditError) || !e.retryable) {
+        requestRef.current = null;
+      }
       const msg = e instanceof Error ? e.message : JSON.stringify(e);
       setStatus(`Error: ${msg}`);
     } finally {

@@ -21,6 +21,11 @@ export interface CoupleSettings {
   secret_message: string | null;
   final_message: string | null;
   letter_updated_at: string | null;
+  letter_reply_body: string | null;
+  letter_reply_secret: string | null;
+  letter_reply_final: string | null;
+  letter_reply_from: string | null;
+  letter_reply_at: string | null;
   updated_at: string;
 }
 

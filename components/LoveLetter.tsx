@@ -5,6 +5,7 @@ import { MylarPouch } from '@/components/MylarPouch';
 import { CannabisLeaf } from '@/components/CannabisLeaf';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useUsage } from '@/contexts/UsageContext';
 import { bongHaptic } from '@/components/CannabisFeatures';
 import Animated, {
   cancelAnimation,
@@ -23,6 +24,7 @@ const THREE_DAYS = 3 * 24 * 60 * 60 * 1000;
 export function LoveLetterExperience({ onClose }: { onClose: () => void }) {
   const theme = useAppTheme();
   const { settings, updateSettings } = useTheme();
+  const { currentUser } = useUsage();
   const [opened, setOpened] = useState(0);
   const [secret, setSecret] = useState(false);
   const [final, setFinal] = useState(false);
@@ -57,21 +59,52 @@ export function LoveLetterExperience({ onClose }: { onClose: () => void }) {
     setTimeout(() => setFinal(true), 4900); // +4s hold on the secret message
   };
 
-  const [reply, setReply] = useState('');
-  const [replySaved, setReplySaved] = useState(false);
-  const saveReply = async () => {
-    if (!reply.trim()) return;
+  // Reply composer — a full letter in the same 3 stages (body / secret / final),
+  // stored in its own reply columns so it never overwrites the original letter.
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [rBody, setRBody] = useState('');
+  const [rSecret, setRSecret] = useState('');
+  const [rFinal, setRFinal] = useState('');
+  const [replySent, setReplySent] = useState(false);
+  const sendReply = async () => {
+    if (!rBody.trim() && !rSecret.trim() && !rFinal.trim()) return;
     void bongHaptic();
-    const { getCoupleId } = await import('@/lib/couple');
-    const cid = await getCoupleId();
-    const prev = settings?.letter_body || 'Reply';
     await updateSettings({
-      letter_body: `${prev}\n\nReply: ${reply}`,
-      letter_updated_at: new Date().toISOString(),
+      letter_reply_body: rBody.trim() || 'I read every word… and I love you.',
+      letter_reply_secret: rSecret.trim() || null,
+      letter_reply_final: rFinal.trim() || null,
+      letter_reply_from: currentUser,
+      letter_reply_at: new Date().toISOString(),
     });
-    setReply('');
-    setReplySaved(true);
-    setTimeout(() => setReplySaved(false), 2000);
+    setRBody('');
+    setRSecret('');
+    setRFinal('');
+    setReplyOpen(false);
+    setReplySent(true);
+    setTimeout(() => setReplySent(false), 2200);
+  };
+
+  // Incoming reply from the other partner, revealed exactly like the main letter.
+  const [inOpened, setInOpened] = useState(0);
+  const [inSecret, setInSecret] = useState(false);
+  const [inFinal, setInFinal] = useState(false);
+  const replyFrom = settings?.letter_reply_from || '';
+  const replyAt = settings?.letter_reply_at ? Date.parse(settings.letter_reply_at) : 0;
+  const incomingReply = !!(
+    replyFrom &&
+    replyFrom !== currentUser &&
+    replyAt &&
+    Date.now() - replyAt < THREE_DAYS
+  );
+  const openIncoming = () => {
+    void bongHaptic();
+    setInOpened(1);
+    setTimeout(() => setInOpened(2), 700);
+  };
+  const revealIncomingSecret = () => {
+    void bongHaptic();
+    setInSecret(true);
+    setTimeout(() => setInFinal(true), 4900);
   };
 
   const saveLetter = async () => {
@@ -91,10 +124,19 @@ export function LoveLetterExperience({ onClose }: { onClose: () => void }) {
       <ScrollView contentContainerStyle={{ padding: 24, gap: 22 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text style={[styles.kicker, { color: theme.subtitleColor }]}>A letter for you 💌</Text>
-          <Pressable onPress={onClose} style={[styles.close, { borderColor: theme.borderColor }]}>
-            <Text style={styles.closeText}>✕</Text>
-          </Pressable>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Pressable
+              onPress={() => setReplyOpen((o) => !o)}
+              style={[styles.close, { borderColor: theme.borderColor, backgroundColor: 'rgba(142,36,87,0.75)' }]}>
+              <Text style={styles.closeText}>{replyOpen ? '✕ Close' : '↩ Reply'}</Text>
+            </Pressable>
+            <Pressable onPress={onClose} style={[styles.close, { borderColor: theme.borderColor }]}>
+              <Text style={styles.closeText}>✕</Text>
+            </Pressable>
+          </View>
         </View>
+
+        {replySent && <Text style={[styles.tapHint, { color: '#FFE1EC' }]}>Your reply is on its way, gorgeous 💞</Text>}
 
         <MylarPouch title={<Text style={styles.cardTitle}>Sealed with love 💗</Text>} hint="Something special is waiting inside, darling" defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
           <Pressable onPress={open} style={[styles.envelope]}>
@@ -128,18 +170,39 @@ export function LoveLetterExperience({ onClose }: { onClose: () => void }) {
           {final && <Text style={styles.final}>{shownFinal}</Text>}
 
           {opened >= 2 && (
+            <Pressable onPress={() => setReplyOpen(true)} style={[styles.editBtn, { borderColor: theme.borderColor }]}>
+              <Text style={styles.editBtnText}>↩️ Write a letter back</Text>
+            </Pressable>
+          )}
+
+          {replyOpen && (
             <View style={{ marginTop: 14 }}>
-              <Text style={[styles.tapHint, { marginTop: 0 }]}>Reply to your lover 💋</Text>
+              <Text style={[styles.tapHint, { marginTop: 0 }]}>Your reply — same three stages she gets 💋</Text>
               <TextInput
-                value={reply}
-                onChangeText={setReply}
+                value={rBody}
+                onChangeText={setRBody}
                 multiline
-                placeholder="Write your reply..."
+                placeholder="The letter body — what you want to say"
                 placeholderTextColor="rgba(58,42,46,0.45)"
                 style={styles.input}
               />
-              <Pressable onPress={saveReply} style={[styles.secretBtn, { backgroundColor: theme.accentColor }]}>
-                <Text style={styles.secretBtnText}>{replySaved ? 'Reply sent 💞' : 'Reply 💌'}</Text>
+              <TextInput
+                value={rSecret}
+                onChangeText={setRSecret}
+                multiline
+                placeholder="Secret message (hidden until she taps)"
+                placeholderTextColor="rgba(58,42,46,0.45)"
+                style={styles.input}
+              />
+              <TextInput
+                value={rFinal}
+                onChangeText={setRFinal}
+                placeholder="Final reveal line"
+                placeholderTextColor="rgba(58,42,46,0.45)"
+                style={styles.input}
+              />
+              <Pressable onPress={sendReply} style={[styles.secretBtn, { backgroundColor: theme.accentColor }]}>
+                <Text style={styles.secretBtnText}>Send my letter 💌</Text>
               </Pressable>
             </View>
           )}
@@ -162,6 +225,41 @@ export function LoveLetterExperience({ onClose }: { onClose: () => void }) {
             </View>
           )}
         </MylarPouch>
+
+        {incomingReply && (
+          <MylarPouch
+            title={<Text style={styles.cardTitle}>A letter back {replyFrom === 'princess' ? '🍑' : '🍆'}</Text>}
+            hint="A reply sealed just for you, darling — open it slowly 💌"
+            defaultStrain="WEDDING CAKE"
+            stampRight="THC: 25%">
+            <Pressable onPress={openIncoming} style={styles.envelope}>
+              {inOpened === 0 ? (
+                <>
+                  <Text style={styles.envelopeEmoji}>💌</Text>
+                  <Text style={styles.tapHint}>Tap to open your reply</Text>
+                </>
+              ) : inOpened === 1 ? (
+                <EnvelopeOpening />
+              ) : (
+                <View style={{ width: '100%', alignItems: 'center' }}>
+                  <Text style={styles.letterBody}>{settings?.letter_reply_body}</Text>
+                </View>
+              )}
+            </Pressable>
+
+            {inOpened >= 2 && settings?.letter_reply_secret && !inSecret && (
+              <Pressable onPress={revealIncomingSecret} style={[styles.secretBtn, { backgroundColor: theme.accentColor }]}>
+                <Text style={styles.secretBtnText}>💗 SECRET MESSAGE</Text>
+              </Pressable>
+            )}
+            {inSecret && !inFinal && settings?.letter_reply_secret ? (
+              <Text style={styles.secretBody}>{settings.letter_reply_secret}</Text>
+            ) : null}
+            {(inFinal || !settings?.letter_reply_secret) && inOpened >= 2 && settings?.letter_reply_final ? (
+              <Text style={styles.final}>{settings.letter_reply_final}</Text>
+            ) : null}
+          </MylarPouch>
+        )}
       </ScrollView>
     </View>
   );

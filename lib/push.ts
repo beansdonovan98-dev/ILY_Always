@@ -72,6 +72,13 @@ export async function notifyPartner(
   if (!coupleId || Platform.OS === 'web') return;
   if (!hasSupabaseEnv) return;
 
+  // Refresh this phone's token before every send. If a token row is stale
+  // (reinstall, new build, permission granted later), the partner's phone
+  // would silently get nothing — this keeps both rows current.
+  try {
+    await registerPushToken(coupleId, user);
+  } catch {}
+
   try {
     const { error } = await supabase.functions.invoke('send-push', {
       body: { couple_id: coupleId, from_user: user, kind },

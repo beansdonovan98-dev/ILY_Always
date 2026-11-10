@@ -82,12 +82,14 @@ Deno.serve(async (req) => {
       .eq('user_key', partner)
       .maybeSingle();
 
-    const deviceToken = data?.expo_push_token;
-    if (!deviceToken) {
-      return new Response(JSON.stringify({ ok: false, reason: 'no partner token' }), {
+    const rawToken = (data?.expo_push_token ?? '').toString().trim();
+    if (!rawToken) {
+      return new Response(JSON.stringify({ ok: false, reason: `no token for ${partner}`, partner }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+    // Tolerate a token accidentally stored with angle brackets/spaces.
+    const deviceToken = rawToken.replace(/[<>\s]/g, '');
 
     const keyId = Deno.env.get('APNS_KEY_ID') ?? '';
     const teamId = Deno.env.get('APNS_TEAM_ID') ?? '';
@@ -100,30 +102,42 @@ Deno.serve(async (req) => {
     }
 
     const jwt = await makeApnsJwt(keyId, teamId, keyPem);
-
-    const apnsRes = await fetch(`https://api.push.apple.com/3/device/${deviceToken}`, {
-      method: 'POST',
-      headers: {
-        'authorization': `bearer ${jwt}`,
-        'apns-topic': bundleId,
-        'apns-push-type': 'alert',
-        'apns-priority': '10',
+    const payload = JSON.stringify({
+      aps: {
+        alert: { title: copy.title, body: copy.body },
+        sound: 'default',
+        badge: 1,
       },
-      body: JSON.stringify({
-        aps: {
-          alert: { title: copy.title, body: copy.body },
-          sound: 'default',
-          badge: 1,
-        },
-        kind,
-        from_user,
-      }),
+      kind,
+      from_user,
     });
-    const apnsText = await apnsRes.text();
 
-    return new Response(JSON.stringify({ ok: apnsRes.ok, apns: apnsText }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    const sendTo = async (host: string) => {
+      const res = await fetch(`https://${host}/3/device/${deviceToken}`, {
+        method: 'POST',
+        headers: {
+          'authorization': `bearer ${jwt}`,
+          'apns-topic': bundleId,
+          'apns-push-type': 'alert',
+          'apns-priority': '10',
+        },
+        body: payload,
+      });
+      return { ok: res.ok, status: res.status, text: await res.text(), host };
+    };
+
+    // TestFlight/App Store tokens are production. Dev builds are sandbox.
+    // If production says the token is bad, retry against sandbox — otherwise
+    // one phone can silently never receive while the other works.
+    let apns = await sendTo('api.push.apple.com');
+    if (!apns.ok && apns.status === 400 && /BadDeviceToken|DeviceTokenNotForTopic/.test(apns.text)) {
+      apns = await sendTo('api.sandbox.push.apple.com');
+    }
+
+    return new Response(
+      JSON.stringify({ ok: apns.ok, host: apns.host, apnsStatus: apns.status, apns: apns.text, partner }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,

@@ -50,8 +50,8 @@ function LeafPuff({ left, leafSize, dur, delay, color, fromY, toY }: {
 }
 
 /** One smoke puff rising and expanding in a loop. */
-function SmokePuffRise({ left, size, dur, sway, delay, col }: {
-  left: number; size: number; dur: number; sway: number; delay: number; col: string;
+function SmokePuffRise({ left, size, dur, sway, delay, col, opacity = 0.5, from = 0 }: {
+  left: number; size: number; dur: number; sway: number; delay: number; col: string; opacity?: number; from?: number;
 }) {
   const p = useSharedValue(0);
   useEffect(() => {
@@ -70,18 +70,18 @@ function SmokePuffRise({ left, size, dur, sway, delay, col }: {
   const style = useAnimatedStyle(() => ({
     position: 'absolute' as const,
     left,
-    bottom: 0,
-    opacity: 0.5 * Math.sin(Math.PI * p.value),
+    bottom: from,
+    opacity: opacity * Math.sin(Math.PI * p.value),
     transform: [
-      { translateY: -500 * p.value },
+      { translateY: -760 * p.value },
       { translateX: Math.sin(p.value * Math.PI * 2) * sway },
-      { scale: 0.7 + 1.4 * p.value },
+      { scale: 0.7 + 1.5 * p.value },
     ],
   }));
 
   return (
     <Animated.View style={style}>
-      <SmokePuff size={size} color={col} />
+      <SmokePuff size={size} color={col} opacity={0.85} />
     </Animated.View>
   );
 }
@@ -122,19 +122,21 @@ export default function CannabisOverlay({ color = '#2E7D4F', smoke = '#CBD5E1' }
         <LeafPuff key={`leaf-${i}`} left={l.left} leafSize={l.leafSize} dur={l.dur} delay={l.delay} color={color} fromY={-60} toY={820} />
       ))}
       {smokes.map((s, i) => (
-        <SmokePuffRise key={`smoke-${i}`} left={s.left} size={s.size} dur={s.dur} sway={s.sway} delay={s.delay} col={s.col} />
+        <SmokePuffRise key={`smoke-${i}`} left={s.left} size={s.size} dur={s.dur} sway={s.sway} delay={s.delay} col={s.col} opacity={0.14} />
       ))}
-      {/* burst remounts a fresh set of fast puffs when the pill is tapped */}
+      {/* burst remounts a fresh set of fast puffs when the pill/zipper is pressed */}
       {burst > 0 && (
-        <View key={burst} pointerEvents="none" style={styles.root}>
-          {Array.from({ length: 12 }).map((_, i) => (
+        <View key={burst} pointerEvents="none" style={styles.burst}>
+          {Array.from({ length: 22 }).map((_, i) => (
             <SmokePuffRise
               key={i}
-              left={40 + Math.random() * 280}
-              size={56 + Math.random() * 64}
-              dur={5200 + Math.random() * 2800}
-              sway={(Math.random() - 0.5) * 30}
+              left={-10 + Math.random() * 360}
+              size={90 + Math.random() * 90}
+              dur={2200 + Math.random() * 1800}
+              sway={(Math.random() - 0.5) * 40}
               delay={0}
+              from={20 + Math.random() * 320}
+              opacity={0.55 + Math.random() * 0.35}
               col={smoke}
             />
           ))}
@@ -146,4 +148,5 @@ export default function CannabisOverlay({ color = '#2E7D4F', smoke = '#CBD5E1' }
 
 const styles = StyleSheet.create({
   root: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 50, elevation: 50 },
+  burst: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 60, elevation: 60 },
 });

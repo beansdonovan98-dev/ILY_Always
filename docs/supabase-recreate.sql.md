@@ -319,3 +319,61 @@ drop table if exists health_meds cascade;
 ```
 
 then re-run section 2.
+
+## Letter replies + shared DBT answers (run once)
+
+The love letter now has a separate reply letter (same 3-stage reveal) that
+never overwrites the original, and DBT answers are shared with your partner.
+Run this block in the Supabase SQL editor:
+
+```sql
+-- Love letter (main + reply)
+alter table couple_settings add column if not exists letter_body text;
+alter table couple_settings add column if not exists secret_message text;
+alter table couple_settings add column if not exists final_message text;
+alter table couple_settings add column if not exists letter_updated_at timestamptz;
+alter table couple_settings add column if not exists letter_reply_body text;
+alter table couple_settings add column if not exists letter_reply_secret text;
+alter table couple_settings add column if not exists letter_reply_final text;
+alter table couple_settings add column if not exists letter_reply_from text;
+alter table couple_settings add column if not exists letter_reply_at timestamptz;
+
+-- Shared DBT responses (journal + assignment, both partners)
+create table if not exists dbt_responses (
+  id          uuid primary key default gen_random_uuid(),
+  couple_id   text not null,
+  window_key  text not null,
+  skill_id    text not null,
+  user_key    text not null check (user_key in ('daddy','princess')),
+  response    text default '',
+  updated_at  timestamptz default now()
+);
+create unique index if not exists dbt_responses_unique
+  on dbt_responses (couple_id, window_key, skill_id, user_key);
+
+alter table dbt_responses enable row level security;
+drop policy if exists "dbt_responses_all" on dbt_responses;
+create policy "dbt_responses_all" on dbt_responses
+  for all using (true) with check (true);
+
+grant select, insert, update, delete on dbt_responses to anon, authenticated;
+
+-- Live partner updates (safe if already enabled)
+do $$
+begin
+  alter publication supabase_realtime add table dbt_responses;
+exception when duplicate_object then null;
+end $$;
+
+-- Darkroom job tracker (async RunPod jobs, so long generations never time out)
+create table if not exists ai_image_jobs (
+  request_id  text primary key,
+  job_id      text,
+  status      text default 'PENDING',
+  error       text,
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now()
+);
+alter table ai_image_jobs enable row level security;
+-- No anon policy on purpose: only the Edge Function (service role) touches it.
+```
