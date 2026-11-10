@@ -414,9 +414,11 @@ async function handleStyleEdit(
 
   const payload = {
     input: {
+      init_images: [imageCheck.raw],
+      denoising_strength: 0.65,
       prompt,
       negative_prompt: negativePrompt,
-      steps: 25,
+      steps: 28,
       width: 512,
       height: 768,
       alwayson_scripts: {
@@ -427,7 +429,7 @@ async function handleStyleEdit(
               module: 'ip-adapter_face_id',
               model: 'ip-adapter-faceid_sdxl.safetensors',
               image: imageCheck.raw,
-              weight: 0.8,
+              weight: 0.85,
             },
           ],
         },
