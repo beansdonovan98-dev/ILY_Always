@@ -432,7 +432,7 @@ async function handleStyleEdit(
           args: [
             {
               enabled: true,
-              module: 'faceid',
+              module: 'ip-adapter_face_id',
               model: 'ip-adapter-faceid_sdxl.safetensors',
               image: imageCheck.raw,
               weight: 0.8,
