@@ -66,7 +66,7 @@ serve(async (req) => {
   }
 
   try {
-    const { imageBase64, prompt, mimeType } = await req.json();
+    const { imageBase64, prompt } = await req.json();
     if (!imageBase64 || !prompt) {
       return json(400, { error: 'Missing imageBase64 or prompt.' });
     }
@@ -79,28 +79,27 @@ serve(async (req) => {
       });
     }
 
-    const mime = mimeType || 'image/jpeg';
-    const dataUrl = `data:${mime};base64,${imageBase64}`;
-
     const headers = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${runpodKey}`,
     };
 
-    // Your RunPod sync endpoint (LUX.2 / FLUX img2img). Keep face/body identical,
-    // only restyle — matches the prompt the app sends.
+    // worker-vllm-omni schema: image edit is `task: "image_edit"` with the
+    // source image as `<field>_b64`. The old A1111 fields (api_name /
+    // init_images) are silently ignored -> the worker falls back to plain
+    // text-to-image and you get a completely different picture.
     const runpodRes = await fetch(`https://api.runpod.ai/v2/${endpoint}/runsync`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
         input: {
-          api_name: 'img2img',
-          init_images: [dataUrl],
+          task: 'image_edit',
           prompt:
             `${prompt}. Maintain the exact facial features, likenesses, and structural head placement of all subjects visible in the base photo 100% identical as an unchangeable blueprint.`,
-          denoising_strength: 0.55,
-          steps: 30,
-          cfg_scale: 7.0,
+          image_b64: imageBase64,
+          n: 1,
+          response_format: 'b64_json',
+          output_format: 'png',
         },
       }),
     });
