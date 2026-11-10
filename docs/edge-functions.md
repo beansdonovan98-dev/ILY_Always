@@ -93,6 +93,46 @@ The client prefers `url` and falls back to
 `{ request_id, couple_id }` is persisted in AsyncStorage so reopening the app
 can re-check the job without resubmitting.
 
+### Style-preset flow (A1111 + ReActor)
+
+A second, synchronous flow exists for the style picker. It is used when the
+request contains `styleMode`:
+
+```json
+{
+  "imageBase64": "<raw base64>",
+  "styleMode": "tarot-card",
+  "userPrompt": "standing in a moonlit garden"
+}
+```
+
+It looks up `STYLE_PRESETS` in `stylePresets.ts`, builds:
+
+```text
+<preset.prefix><userPrompt>, rating_explicit, explicit anatomical details
+```
+
+and posts to `https://api.runpod.ai/v2/9piw839ax2kghq/runsync` with
+`init_images: [imageBase64]`, `denoising_strength: preset.denoising`, and an
+`alwayson_scripts.reactor` block using the source image for face swap.
+
+Success response:
+
+```json
+{
+  "b64": "iVBORw0KGgo...",
+  "image": "data:image/png;base64,iVBORw0KGgo...",
+  "mimeType": "image/png",
+  "styleMode": "tarot-card",
+  "denoising_strength": 0.46,
+  "prompt": "..."
+}
+```
+
+This flow uses `/runsync`, so very slow workers can hit the Edge Function
+timeout. The existing async `/run` + `/status` flow is still used by the
+current app build when `styleMode` is absent.
+
 ### About "censored" / uncensored models
 
 Fooocus-style (Stable Diffusion, no cloud filter) **cannot run inside the

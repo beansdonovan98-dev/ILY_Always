@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'npm:@supabase/supabase-js';
+import { STYLE_PRESETS } from './stylePresets.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,6 +9,7 @@ const corsHeaders = {
 
 const RUNPOD_BASE = 'https://api.runpod.ai/v2';
 const DEFAULT_ENDPOINT = '7ckfcko9p6h503';
+const STYLE_ENDPOINT = 'https://api.runpod.ai/v2/9piw839ax2kghq/runsync';
 
 // Reject blank/1x1/truncated uploads before they reach RunPod and burn GPU time.
 const MIN_IMAGE_BASE64_CHARS = 20_000;
@@ -345,6 +347,173 @@ async function publicJobWithResult(
   return base;
 }
 
+function extractA1111Image(output: unknown): string | null {
+  if (!output) return null;
+  if (typeof output === 'string') return stripDataUrl(output);
+
+  if (Array.isArray(output)) {
+    for (const item of output) {
+      const hit = extractA1111Image(item);
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  if (typeof output === 'object') {
+    const obj = output as Record<string, unknown>;
+    if (typeof obj.image === 'string') return stripDataUrl(obj.image);
+    if (Array.isArray(obj.images) && typeof obj.images[0] === 'string') {
+      return stripDataUrl(obj.images[0]);
+    }
+    if (Array.isArray(obj.data) && obj.data[0] && typeof obj.data[0] === 'object') {
+      const rec = obj.data[0] as Record<string, unknown>;
+      if (typeof rec.b64_json === 'string') return stripDataUrl(rec.b64_json);
+    }
+    for (const key of ['output', 'data', 'result']) {
+      if (key in obj) {
+        const hit = extractA1111Image(obj[key]);
+        if (hit) return hit;
+      }
+    }
+  }
+
+  return extractImageB64(output);
+}
+
+function buildStylePrompt(prefix: string, userPrompt: string): string {
+  let prompt = `${prefix}${userPrompt}`.trim();
+  // The presets already include these, but keep the guarantee for custom styles.
+  if (!/rating_explicit/i.test(prompt)) prompt += ', rating_explicit';
+  if (!/explicit anatomical details/i.test(prompt)) prompt += ', explicit anatomical details';
+  return prompt;
+}
+
+/** ReActor built-in API args: source image first, then the standard flags. */
+function reactorArgs(imageBase64: string): unknown[] {
+  return [
+    imageBase64,
+    true,                 // enabled
+    '0',                  // source faces index
+    '0',                  // target face index
+    'inswapper_128.onnx', // face swap model
+    'CodeFormer',         // face restorer
+    1,                    // restorer visibility
+    true,                 // restore first
+    'None',               // upscaler
+    1,                    // upscale scale
+    1,                    // upscale visibility
+    false,                // keep original resolution
+    true,                 // swap in generating
+    1,                    // console log level
+    0,                    // gender source
+    0,                    // gender target
+    false,                // ...
+    0.5,                  // ...
+    true,                 // ...
+    false,                // ...
+    'CUDA',               // device
+    false,                // ...
+    0,                    // ...
+    'None',               // ...
+    '',                   // ...
+    null,                 // ...
+  ];
+}
+
+async function handleStyleEdit(
+  imageBase64: string,
+  styleMode: string,
+  userPrompt: string
+): Promise<Response> {
+  const runpodKey = Deno.env.get('RUNPOD_API_KEY');
+  if (!runpodKey) {
+    return json(500, {
+      error: 'RUNPOD_API_KEY is not set on the Supabase project. Run: supabase secrets set RUNPOD_API_KEY=rpa_...',
+    });
+  }
+
+  const preset = STYLE_PRESETS[styleMode];
+  if (!preset) {
+    return json(400, {
+      error: `Unknown styleMode "${styleMode}".`,
+      styles: Object.keys(STYLE_PRESETS),
+    });
+  }
+
+  const imageCheck = validateInputImage(imageBase64);
+  if (!imageCheck.ok) {
+    return json(400, { error: imageCheck.error });
+  }
+
+  const prompt = buildStylePrompt(preset.prefix, userPrompt);
+  const negativePrompt =
+    'lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, ' +
+    'jpeg artifacts, blurry, watermark, text, signature, deformed, disfigured, mutated, extra limbs';
+
+  const payload = {
+    input: {
+      prompt,
+      negative_prompt: negativePrompt,
+      init_images: [imageCheck.raw],
+      denoising_strength: preset.denoising,
+      width: 1024,
+      height: 1024,
+      steps: 30,
+      cfg_scale: 7,
+      sampler_name: 'DPM++ 2M Karras',
+      resize_mode: 0,
+      batch_size: 1,
+      n_iter: 1,
+      seed: -1,
+      alwayson_scripts: {
+        reactor: {
+          args: reactorArgs(imageCheck.raw),
+        },
+      },
+    },
+  };
+
+  const runpodRes = await fetch(STYLE_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${runpodKey}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const raw = await runpodRes.text().catch(() => '');
+  let job: RunpodJob = {};
+  try {
+    job = JSON.parse(raw) as RunpodJob;
+  } catch {
+    job = {};
+  }
+
+  const status = normalizeStatus(job.status);
+  if (!runpodRes.ok || isFailedStatus(status) || job.error) {
+    const error = runpodErrorMessage(job) || `RunPod style worker rejected the request (HTTP ${runpodRes.status}).`;
+    return json(502, { error, status: 'FAILED', runpod_status: runpodRes.status });
+  }
+
+  const b64 = extractA1111Image(job.output);
+  if (!b64) {
+    return json(502, {
+      error: runpodErrorMessage(job) || 'The style worker completed but returned no image.',
+      status: 'FAILED',
+    });
+  }
+
+  return json(200, {
+    b64,
+    image: `data:image/png;base64,${b64}`,
+    mimeType: 'image/png',
+    styleMode,
+    denoising_strength: preset.denoising,
+    prompt,
+  });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -356,6 +525,18 @@ serve(async (req) => {
     }
 
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+
+    // New style-preset flow: { imageBase64, styleMode, userPrompt }.
+    // The legacy async flow below still works for the existing app build.
+    const styleMode = String(body.styleMode ?? '').trim();
+    const userPrompt = String(body.userPrompt ?? '').trim();
+    const styleImageBase64 = String(body.imageBase64 ?? body.image_base64 ?? '').trim();
+    if (styleMode || body.userPrompt !== undefined) {
+      if (!styleMode) return json(400, { error: 'Missing styleMode.' });
+      if (!styleImageBase64) return json(400, { error: 'Missing imageBase64.' });
+      return await handleStyleEdit(styleImageBase64, styleMode, userPrompt);
+    }
+
     const action = String(body.action ?? 'start').trim().toLowerCase();
     const requestId = String(body.request_id ?? body.requestId ?? '').trim();
     const coupleId = String(body.couple_id ?? body.coupleId ?? '').trim();
