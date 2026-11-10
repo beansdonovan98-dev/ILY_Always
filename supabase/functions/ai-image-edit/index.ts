@@ -390,30 +390,6 @@ function buildStylePrompt(prefix: string, userPrompt: string): string {
   return prompt;
 }
 
-function controlNetUnit(
-  module: string,
-  model: string,
-  image: string,
-  weight: number
-): Record<string, unknown> {
-  return {
-    enabled: true,
-    module,
-    model,
-    image,
-    weight,
-    resize_mode: 0,      // Just Resize
-    lowvram: false,
-    processor_res: 512,
-    threshold_a: 64,
-    threshold_b: 64,
-    guidance_start: 0,
-    guidance_end: 1,
-    control_mode: 0,     // Balanced
-    pixel_perfect: true,
-  };
-}
-
 async function handleStyleEdit(
   imageBase64: string,
   styleMode: string,
@@ -437,10 +413,7 @@ async function handleStyleEdit(
   const prompt = buildStylePrompt(preset.prefix, effectivePrompt);
   const negativePrompt = 'score_6, score_5, score_4, deformed, bad anatomy, blurry';
 
-  // If the worker names these differently, override with Supabase secrets.
-  const poseModule = Deno.env.get('CONTROLNET_POSE_MODULE') || 'openpose';
-  const poseModel = Deno.env.get('CONTROLNET_POSE_MODEL') || 'thibaud_xl_openpose.safetensors';
-
+  // This worker has no ControlNet/IP-Adapter extension, so use plain txt2img.
   const payload = {
     input: {
       prompt,
@@ -448,19 +421,6 @@ async function handleStyleEdit(
       steps: 28,
       width: 512,
       height: 768,
-      alwayson_scripts: {
-        controlnet: {
-          args: [
-            controlNetUnit(
-              'ip-adapter_face_id',
-              'ip-adapter-faceid_sdxl.safetensors',
-              imageCheck.raw,
-              0.85
-            ),
-            controlNetUnit(poseModule, poseModel, imageCheck.raw, 0.8),
-          ],
-        },
-      },
     },
   };
 
@@ -506,7 +466,6 @@ async function handleStyleEdit(
     image: `data:image/png;base64,${b64}`,
     mimeType: 'image/png',
     styleMode,
-    denoising_strength: preset.denoising,
     prompt,
   });
 }
