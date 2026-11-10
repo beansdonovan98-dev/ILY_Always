@@ -381,13 +381,7 @@ serve(async (req) => {
             .from('ai_image_jobs')
             .update({ status: 'FAILED', error, updated_at: new Date().toISOString() })
             .eq('request_id', requestId);
-          return json(200, {
-            requestId,
-            jobId: row.job_id,
-            status: 'FAILED',
-            error,
-            debug_output: job.output,
-          });
+          return json(200, { requestId, jobId: row.job_id, status: 'FAILED', error });
         }
 
         // Preferred path: store the PNG once, return a short signed URL.
@@ -465,6 +459,12 @@ serve(async (req) => {
     if (!prompt || !imageBase64) {
       return json(400, { error: 'Missing imageBase64 or prompt.' });
     }
+
+    // One user-facing control: 0.28 (realistic) -> 0.35 (balanced) -> 0.45 (stylized).
+    const rawStrength = Number(body.denoising_strength ?? body.denoisingStrength);
+    const denoisingStrength = Number.isFinite(rawStrength)
+      ? Math.min(0.45, Math.max(0.28, rawStrength))
+      : 0.35;
 
     // Refuse blank / 1x1 / truncated images before spending any GPU time.
     const imageCheck = validateInputImage(imageBase64);
@@ -547,6 +547,9 @@ serve(async (req) => {
           n: 1,
           response_format: 'b64_json',
           output_format: 'png',
+          denoising_strength: denoisingStrength,
+          steps: 36,
+          cfg_scale: 5.5,
         },
       }),
     });
