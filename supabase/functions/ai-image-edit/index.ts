@@ -9,7 +9,8 @@ const corsHeaders = {
 
 const RUNPOD_BASE = 'https://api.runpod.ai/v2';
 const DEFAULT_ENDPOINT = '7ckfcko9p6h503';
-const STYLE_ENDPOINT_BASE = 'https://api.runpod.ai/v2/9piw839ax2kghq';
+const STYLE_ENDPOINT_ID = Deno.env.get('RUNPOD_STYLE_ENDPOINT_ID') || '9piw839ax2kghq';
+const STYLE_ENDPOINT_BASE = `${RUNPOD_BASE}/${STYLE_ENDPOINT_ID}`;
 const STYLE_ENDPOINT = `${STYLE_ENDPOINT_BASE}/runsync`;
 
 // Reject blank/1x1/truncated uploads before they reach RunPod and burn GPU time.
