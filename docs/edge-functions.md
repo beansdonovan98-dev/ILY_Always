@@ -18,8 +18,8 @@ Secrets needed:
 
 ```bash
 supabase secrets set RUNPOD_API_KEY=rpa_...
-# optional, defaults to 7o8kroj3vd91b2
-supabase secrets set RUNPOD_ENDPOINT_ID=7o8kroj3vd91b2
+# optional, defaults to 7ckfcko9p6h503
+supabase secrets set RUNPOD_ENDPOINT_ID=7ckfcko9p6h503
 ```
 
 The function also needs the `ai_image_jobs` table. Run this once in the

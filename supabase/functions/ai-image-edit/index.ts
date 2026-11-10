@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const RUNPOD_BASE = 'https://api.runpod.ai/v2';
-const DEFAULT_ENDPOINT = '7o8kroj3vd91b2';
+const DEFAULT_ENDPOINT = '7ckfcko9p6h503';
 
 // Reject blank/1x1/truncated uploads before they reach RunPod and burn GPU time.
 const MIN_IMAGE_BASE64_CHARS = 20_000;
@@ -317,6 +317,20 @@ serve(async (req) => {
     // receive the short Storage URL instead. Default true keeps old builds alive.
     const includeB64 = body.include_b64 !== false;
     const endpoint = Deno.env.get('RUNPOD_ENDPOINT_ID') || DEFAULT_ENDPOINT;
+
+    // Diagnostics: worker/queue health for the endpoint, no job created.
+    if (action === 'health') {
+      const healthKey = Deno.env.get('RUNPOD_API_KEY');
+      if (!healthKey) return json(500, { error: 'RUNPOD_API_KEY is not set.' });
+      const healthRes = await fetch(`${RUNPOD_BASE}/${endpoint}/health`, {
+        headers: { Authorization: `Bearer ${healthKey}` },
+      });
+      const healthText = await healthRes.text();
+      return new Response(healthText, {
+        status: healthRes.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     if (!requestId || requestId.length > 160) {
       return json(400, { error: 'Missing or invalid request_id.' });
