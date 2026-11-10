@@ -482,14 +482,20 @@ async function handleStyleEdit(
 
   const status = normalizeStatus(job.status);
   if (!runpodRes.ok || isFailedStatus(status) || job.error) {
-    const error = runpodErrorMessage(job) || `RunPod style worker rejected the request (HTTP ${runpodRes.status}).`;
-    return json(502, { error, status: 'FAILED', runpod_status: runpodRes.status });
+    const detail = runpodErrorMessage(job) || `RunPod style worker rejected the request (HTTP ${runpodRes.status}).`;
+    const rawHint = raw ? ` | worker: ${raw.slice(0, 1500)}` : '';
+    return json(502, {
+      error: `${detail}${rawHint}`,
+      status: 'FAILED',
+      runpod_status: runpodRes.status,
+    });
   }
 
   const b64 = extractA1111Image(job.output);
   if (!b64) {
+    const rawHint = raw ? ` | worker: ${raw.slice(0, 1500)}` : '';
     return json(502, {
-      error: runpodErrorMessage(job) || 'The style worker completed but returned no image.',
+      error: `${runpodErrorMessage(job) || 'The style worker completed but returned no image.'}${rawHint}`,
       status: 'FAILED',
     });
   }
