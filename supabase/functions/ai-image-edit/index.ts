@@ -412,10 +412,12 @@ async function handleStyleEdit(
   const prompt = buildStylePrompt(preset.prefix, effectivePrompt);
   const negativePrompt = 'score_6, score_5, score_4, deformed, bad anatomy, blurry';
 
+  // If the worker names these differently, override with Supabase secrets.
+  const poseModule = Deno.env.get('CONTROLNET_POSE_MODULE') || 'openpose';
+  const poseModel = Deno.env.get('CONTROLNET_POSE_MODEL') || 'thibaud_xl_openpose.safetensors';
+
   const payload = {
     input: {
-      init_images: [imageCheck.raw],
-      denoising_strength: 0.65,
       prompt,
       negative_prompt: negativePrompt,
       steps: 28,
@@ -430,6 +432,13 @@ async function handleStyleEdit(
               model: 'ip-adapter-faceid_sdxl.safetensors',
               image: imageCheck.raw,
               weight: 0.85,
+            },
+            {
+              enabled: true,
+              module: poseModule,
+              model: poseModel,
+              image: imageCheck.raw,
+              weight: 0.8,
             },
           ],
         },
