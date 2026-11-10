@@ -389,38 +389,6 @@ function buildStylePrompt(prefix: string, userPrompt: string): string {
   return prompt;
 }
 
-/** ReActor built-in API args: source image first, then the standard flags. */
-function reactorArgs(imageBase64: string): unknown[] {
-  return [
-    imageBase64,
-    true,                 // enabled
-    '0',                  // source faces index
-    '0',                  // target face index
-    'inswapper_128.onnx', // face swap model
-    'CodeFormer',         // face restorer
-    1,                    // restorer visibility
-    true,                 // restore first
-    'None',               // upscaler
-    1,                    // upscale scale
-    1,                    // upscale visibility
-    false,                // keep original resolution
-    true,                 // swap in generating
-    1,                    // console log level
-    0,                    // gender source
-    0,                    // gender target
-    false,                // ...
-    0.5,                  // ...
-    true,                 // ...
-    false,                // ...
-    'CUDA',               // device
-    false,                // ...
-    0,                    // ...
-    'None',               // ...
-    '',                   // ...
-    null,                 // ...
-  ];
-}
-
 async function handleStyleEdit(
   imageBase64: string,
   styleMode: string,
@@ -459,11 +427,6 @@ async function handleStyleEdit(
       batch_size: 1,
       n_iter: 1,
       seed: -1,
-      alwayson_scripts: {
-        reactor: {
-          args: reactorArgs(imageCheck.raw),
-        },
-      },
     },
   };
 
