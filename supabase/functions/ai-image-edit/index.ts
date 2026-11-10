@@ -432,23 +432,16 @@ async function handleStyleEdit(
     });
   }
 
-  const preset = STYLE_PRESETS[styleMode];
-  if (!preset) {
-    return json(400, {
-      error: `Unknown styleMode "${styleMode}".`,
-      styles: Object.keys(STYLE_PRESETS),
-    });
-  }
+  const preset = STYLE_PRESETS[styleMode] || STYLE_PRESETS['tarot-card'];
+  const effectivePrompt = userPrompt || 'surrounded by cannabis plants and neon green smoke';
 
   const imageCheck = validateInputImage(imageBase64);
   if (!imageCheck.ok) {
     return json(400, { error: imageCheck.error });
   }
 
-  const prompt = buildStylePrompt(preset.prefix, userPrompt);
-  const negativePrompt =
-    'lowres, bad anatomy, bad hands, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, ' +
-    'jpeg artifacts, blurry, watermark, text, signature, deformed, disfigured, mutated, extra limbs';
+  const prompt = buildStylePrompt(preset.prefix, effectivePrompt);
+  const negativePrompt = 'score_6, score_5, score_4, deformed, bad anatomy, blurry';
 
   const payload = {
     input: {
@@ -456,9 +449,9 @@ async function handleStyleEdit(
       negative_prompt: negativePrompt,
       init_images: [imageCheck.raw],
       denoising_strength: preset.denoising,
-      width: 1024,
-      height: 1024,
-      steps: 30,
+      width: 512,
+      height: 512,
+      steps: 28,
       cfg_scale: 7,
       sampler_name: 'DPM++ 2M Karras',
       resize_mode: 0,
