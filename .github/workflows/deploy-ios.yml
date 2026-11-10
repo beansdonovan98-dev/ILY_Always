@@ -3,7 +3,17 @@ name: deploy-ios
 on:
   push:
     branches: [main, master]
+    paths-ignore:
+      - '.github/**'
+      - 'docs/**'
+      - 'supabase/**'
+      - '**.md'
+      - '.gitignore'
   workflow_dispatch:
+
+concurrency:
+  group: deploy-ios-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
