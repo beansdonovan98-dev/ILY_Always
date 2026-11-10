@@ -1,12 +1,11 @@
 # Edge Functions
 
-Three functions live in `supabase/functions/`. Deploy them once (needs the
+Two functions live in `supabase/functions/`. Deploy them once (needs the
 Supabase CLI — `npm i -g supabase`, `supabase login`, `supabase link --project-ref <ref>`):
 
 ```bash
 supabase functions deploy ai-image-edit
 supabase functions deploy send-push
-supabase functions deploy send-daily-code
 ```
 
 ## `ai-image-edit` (Dirty Darkroom 🔥)
@@ -32,33 +31,43 @@ create table if not exists ai_image_jobs (
   job_id      text,
   status      text default 'PENDING',
   error       text,
+  couple_id   text,
+  result_path text,
   created_at  timestamptz default now(),
   updated_at  timestamptz default now()
 );
 alter table ai_image_jobs enable row level security;
 drop policy if exists "ai_image_jobs_all" on ai_image_jobs;
-create policy "ai_image_jobs_all" on ai_image_jobs
-  for all using (true) with check (true);
-grant select, insert, update, delete on ai_image_jobs to anon, authenticated;
+-- No anon policy on purpose: only the ai-image-edit Edge Function's service
+-- role reads/writes job rows. The Expo app never queries this table directly.
 ```
 
-(Or apply `supabase/migrations/20261109000100_ai_image_jobs.sql`.)
+(Or apply both migrations in `supabase/migrations/`.)
 
 ### How the app talks to it
 
-1. `POST { action: "start", request_id, imageBase64, prompt }`
-   - Inserts `{ request_id, status: "PENDING" }` first (primary-key dedupe).
+1. `POST { action: "start", request_id, couple_id, imageBase64, prompt }`
+   - Validates the source image **before** calling RunPod: non-empty, at least
+     20k base64 chars, valid JPEG/PNG/WebP magic bytes, and dimensions at least
+     64×64. Blank/1×1/truncated images are rejected with HTTP 400 and cost no
+     GPU time.
+   - Inserts `{ request_id, status: "PENDING", couple_id }` first (primary-key
+     dedupe).
    - Submits `POST https://api.runpod.ai/v2/<endpoint>/run`.
    - Stores `{ job_id, status }` and returns immediately.
    - A retry with the same `request_id` returns the stored `job_id` instead of
      submitting a second paid job.
-2. `POST { action: "status", request_id }` repeatedly until done.
-   - `COMPLETED` → returns `b64` parsed from `output.data[0].b64_json`.
+2. `POST { action: "status", request_id, couple_id }` repeatedly until done.
+   - `COMPLETED` → uploads the PNG to Supabase Storage at
+     `couple-private/<couple_id>/ai-edits/<request_id>.png` and returns a
+     7-day signed `url`. Falls back to `b64` if Storage fails.
    - `FAILED` / `CANCELLED` / `TIMED_OUT` → returns the error and stops.
    - `IN_QUEUE` / `IN_PROGRESS` / `RUNNING` / `PENDING` → keep polling.
    - HTTP 200 with `status: "FAILED"` is treated as a failure.
 
-The client turns the base64 into `data:image/png;base64,...` for display.
+The client prefers `url` and falls back to `data:image/png;base64,...` when
+Storage is unavailable. The pending `{ request_id, couple_id }` is persisted
+in AsyncStorage so reopening the app can re-check the job without resubmitting.
 
 ### About "censored" / uncensored models
 
@@ -74,8 +83,3 @@ Notifies your partner when you log in, add a daily cover photo, or post in
 Playtime. Needs only the project's `SUPABASE_URL` and
 `SUPABASE_SERVICE_ROLE_KEY`, which Supabase provides to functions
 automatically. Also needs the `push_tokens` table from the SQL doc.
-
-## `send-daily-code` (SMS room code)
-
-Sends the daily room code through Twilio. Needs `TWILIO_ACCOUNT_SID`,
-`TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER` secrets.

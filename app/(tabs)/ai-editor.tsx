@@ -13,14 +13,24 @@ import { Image as ExpoImage } from 'expo-image';
 import { useTabLabel } from '@/hooks/useTabLabel';
 import { JointBurnTimer, bongHaptic } from '@/components/CannabisFeatures';
 import { getCoupleId } from '@/lib/couple';
-import { AIEditError, createAIRequestId, editImageWithAI } from '@/lib/aiImage';
+import { AIEditError, checkAIJob, createAIRequestId, editImageWithAI } from '@/lib/aiImage';
 import { uploadMedia, getSignedUrl, deleteMedia, MediaRow } from '@/lib/media';
+import { getItem, setItem } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 import { localDateKey } from '@/lib/days';
 import { useUsage } from '@/contexts/UsageContext';
 import { markActivity } from '@/lib/activity';
 
 import { useAppFont } from '@/hooks/useAppFont';
+
+const PENDING_JOB_KEY = 'ai-editor:pending-job';
+
+type PendingJob = {
+  requestId: string;
+  signature: string;
+  coupleId: string;
+  createdAt: number;
+};
 
 export default function AIEditorScreen() {
   const font = useAppFont();
@@ -42,6 +52,8 @@ export default function AIEditorScreen() {
   // Reuse the same request id if the user retries after a timeout/network drop,
   // so the server returns the existing RunPod job instead of paying twice.
   const requestRef = useRef<{ signature: string; id: string } | null>(null);
+  // Hard click lock: state updates are async, so two quick taps can both fire.
+  const busyRef = useRef(false);
 
   useEffect(() => {
     if (!loading) return;
@@ -68,10 +80,40 @@ export default function AIEditorScreen() {
     } catch {}
   }, []);
 
+  /** If the app was closed mid-edit, check that job once when the screen opens. */
+  const resumePending = useCallback(async () => {
+    if (busyRef.current) return;
+    const pending = await getItem<PendingJob | null>(PENDING_JOB_KEY, null);
+    if (!pending?.requestId) return;
+    if (Date.now() - (pending.createdAt || 0) > 24 * 60 * 60 * 1000) {
+      await setItem(PENDING_JOB_KEY, null);
+      return;
+    }
+    try {
+      const job = await checkAIJob(pending.requestId, pending.coupleId);
+      if (job.status === 'COMPLETED') {
+        const uri = job.url || (job.b64 ? `data:image/png;base64,${job.b64}` : '');
+        if (uri) {
+          setResultUri(uri);
+          setStatus('Your last AI edit finished while you were away 💞');
+        }
+        await setItem(PENDING_JOB_KEY, null);
+      } else if (job.status === 'FAILED' || job.status === 'CANCELLED' || job.status === 'TIMED_OUT') {
+        await setItem(PENDING_JOB_KEY, null);
+        setStatus(`Error: ${job.error || 'The AI editor failed.'}`);
+      } else if (job.status) {
+        setStatus('Your last AI edit is still running — tap AI Edit to keep waiting.');
+      }
+    } catch {
+      // Network/backend blip: leave the pending job for the next focus.
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       void loadSaved();
-    }, [loadSaved])
+      void resumePending();
+    }, [loadSaved, resumePending])
   );
 
   const pickSource = useCallback(async () => {
@@ -87,6 +129,8 @@ export default function AIEditorScreen() {
   const runEdit = useCallback(async () => {
     const trimmed = prompt.trim();
     if (!sourceUri || !trimmed) return;
+    if (busyRef.current) return; // ignore accidental double-taps
+    busyRef.current = true;
 
     // Same photo + same prompt = same user action. If the last attempt timed
     // out, reuse its request id so we poll the existing job instead of
@@ -102,19 +146,31 @@ export default function AIEditorScreen() {
     setEditBurn(1);
     setStatus('Editing with AI...');
     try {
-      const edited = await editImageWithAI(sourceUri, trimmed, requestId);
+      const coupleId = await getCoupleId();
+      // Persist before submitting, so force-quitting and reopening can resume.
+      await setItem<PendingJob>(PENDING_JOB_KEY, {
+        requestId,
+        signature,
+        coupleId,
+        createdAt: Date.now(),
+      });
+
+      const edited = await editImageWithAI(sourceUri, trimmed, requestId, coupleId);
       setResultUri(edited);
       requestRef.current = null;
+      await setItem(PENDING_JOB_KEY, null);
       setStatus('Done! Tap Save to keep it 💞');
     } catch (e) {
       // A definitive job failure should get a fresh id next tap. Timeouts and
       // network errors keep the id so the retry continues the same job.
       if (!(e instanceof AIEditError) || !e.retryable) {
         requestRef.current = null;
+        await setItem(PENDING_JOB_KEY, null);
       }
       const msg = e instanceof Error ? e.message : JSON.stringify(e);
       setStatus(`Error: ${msg}`);
     } finally {
+      busyRef.current = false;
       setLoading(false);
       setEditBurn(0);
       void bongHaptic();
@@ -169,6 +225,12 @@ export default function AIEditorScreen() {
         const FS = await import('expo-file-system/legacy');
         const filePath = `${FS.documentDirectory}ai-edit-${Date.now()}.png`;
         await FS.writeAsStringAsync(filePath, uri.split(',')[1] || '', { encoding: FS.EncodingType.Base64 });
+        fileUri = filePath;
+      } else if (/^https?:\/\//i.test(uri)) {
+        // Storage results come back as signed URLs — download before saving.
+        const FS = await import('expo-file-system/legacy');
+        const filePath = `${FS.documentDirectory}ai-edit-${Date.now()}.png`;
+        await FS.downloadAsync(uri, filePath);
         fileUri = filePath;
       }
       await MediaLibrary.saveToLibraryAsync(fileUri);

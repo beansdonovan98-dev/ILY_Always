@@ -1,3 +1,5 @@
+import * as ImageManipulator from 'expo-image-manipulator';
+
 import { supabase } from '@/lib/supabase';
 
 export type MediaKind = 'shared' | 'private';
@@ -8,6 +10,12 @@ export const MEDIA_BUCKETS: Record<MediaKind, string> = {
 };
 
 export const MAX_MEDIA_BYTES = 60 * 1024 * 1024;
+const MAX_UPLOAD_WIDTH = 1600;
+const UPLOAD_JPEG_QUALITY = 0.8;
+
+// Reuse signed URLs while they are valid. A fresh signature creates a new URL,
+// which busts the image cache and forces a fresh download on every screen focus.
+const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
 
 export interface MediaRow {
   id: string;
@@ -70,20 +78,50 @@ export async function uploadMedia(params: {
   dailyDate?: string | null;
 }): Promise<MediaRow> {
   const bucket = MEDIA_BUCKETS[params.kind];
-  const safeName = params.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+
+  // Shrink local camera/library photos before they ever reach Storage. This
+  // cuts both storage size and every future download (egress).
+  let localUri = params.localUri;
+  let fileName = params.fileName;
+  let mimeType = params.mimeType;
+  let width = params.width ?? null;
+  let height = params.height ?? null;
+
+  const isLocalFile = !localUri.startsWith('data:') && !/^https?:\/\//i.test(localUri);
+  const isGif = mimeType === 'image/gif' || /\.gif$/i.test(fileName);
+  if (isLocalFile && !isGif) {
+    try {
+      const actions = width && width > MAX_UPLOAD_WIDTH
+        ? [{ resize: { width: MAX_UPLOAD_WIDTH } }]
+        : [];
+      const prepared = await ImageManipulator.manipulateAsync(localUri, actions, {
+        compress: UPLOAD_JPEG_QUALITY,
+        format: ImageManipulator.SaveFormat.JPEG,
+      });
+      localUri = prepared.uri;
+      mimeType = 'image/jpeg';
+      fileName = `${fileName.replace(/\.[^.]+$/, '') || `photo-${Date.now()}`}.jpg`;
+      width = prepared.width;
+      height = prepared.height;
+    } catch {
+      // Keep the original if the converter is unavailable.
+    }
+  }
+
+  const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
   const storagePath = `${params.coupleId}/${params.kind}/${Date.now()}-${safeName}`;
 
-  const response = params.localUri.startsWith('data:')
-    ? { blob: async () => await uriToBlob(params.localUri) } as any
-    : await fetch(params.localUri);
+  const response = localUri.startsWith('data:')
+    ? { blob: async () => await uriToBlob(localUri) } as any
+    : await fetch(localUri);
   const blob = await response.blob();
 
-  const size = params.byteSize > 0 ? params.byteSize : blob.size;
+  const size = blob.size || params.byteSize;
   validateSize(size);
 
   const { error: uploadError } = await supabase.storage
     .from(bucket)
-    .upload(storagePath, blob, { contentType: params.mimeType, upsert: false });
+    .upload(storagePath, blob, { contentType: mimeType, upsert: false });
 
   if (uploadError) throw uploadError;
 
@@ -93,11 +131,11 @@ export async function uploadMedia(params: {
       couple_id: params.coupleId,
       kind: params.kind,
       storage_path: storagePath,
-      file_name: params.fileName,
-      mime_type: params.mimeType,
+      file_name: fileName,
+      mime_type: mimeType,
       byte_size: size,
-      width: params.width ?? null,
-      height: params.height ?? null,
+      width,
+      height,
       caption: params.caption ?? null,
       captions: {},
       comments: [],
@@ -116,14 +154,24 @@ export async function uploadMedia(params: {
 }
 
 export async function getSignedUrl(row: MediaRow, expiresIn = 3600): Promise<string> {
+  const cacheKey = `${row.kind}:${row.storage_path}`;
+  const cached = signedUrlCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.url;
+
   const bucket = MEDIA_BUCKETS[row.kind];
   const { data, error } = await supabase.storage.from(bucket).createSignedUrl(row.storage_path, expiresIn);
   if (error || !data?.signedUrl) throw error || new Error('Failed to create signed URL');
+
+  // Reuse this exact URL until shortly before it expires. Same URL = Expo
+  // Image's disk cache actually hits instead of re-downloading on every focus.
+  const ttlMs = Math.max(30, expiresIn - 120) * 1000;
+  signedUrlCache.set(cacheKey, { url: data.signedUrl, expiresAt: Date.now() + ttlMs });
   return data.signedUrl;
 }
 
 export async function deleteMedia(row: MediaRow): Promise<void> {
   const bucket = MEDIA_BUCKETS[row.kind];
+  signedUrlCache.delete(`${row.kind}:${row.storage_path}`);
   await supabase.storage.from(bucket).remove([row.storage_path]);
   const { error } = await supabase.from('media').delete().eq('id', row.id);
   if (error) throw error;

@@ -371,6 +371,8 @@ create table if not exists ai_image_jobs (
   job_id      text,
   status      text default 'PENDING',
   error       text,
+  couple_id   text,
+  result_path text,
   created_at  timestamptz default now(),
   updated_at  timestamptz default now()
 );

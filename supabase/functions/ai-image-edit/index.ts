@@ -9,6 +9,16 @@ const corsHeaders = {
 const RUNPOD_BASE = 'https://api.runpod.ai/v2';
 const DEFAULT_ENDPOINT = 'pq2pwxs2hxv7sf';
 
+// Reject blank/1x1/truncated uploads before they reach RunPod and burn GPU time.
+const MIN_IMAGE_BASE64_CHARS = 20_000;
+const MAX_IMAGE_BASE64_CHARS = 4_000_000;
+const MIN_IMAGE_DIMENSION = 64;
+
+// Completed images are written here so the client gets a short signed URL
+// instead of a multi-MB base64 JSON body. Falls back to base64 if upload fails.
+const STORAGE_BUCKET = 'couple-private';
+const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
+
 // If a job row is PENDING with no job_id for this long, the submit request
 // probably died before RunPod answered. Allow a later retry to claim it.
 const STALE_PENDING_MS = 2 * 60_000;
@@ -32,6 +42,8 @@ type JobRow = {
   job_id: string | null;
   status: string;
   error: string | null;
+  couple_id: string | null;
+  result_path: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -46,6 +58,128 @@ function isFailedStatus(status: string): boolean {
 
 function stripDataUrl(value: string): string {
   return value.replace(/^data:image\/[a-z0-9.+-]+;base64,/i, '').replace(/\s/g, '');
+}
+
+type ImageInfo = {
+  format: 'png' | 'jpeg' | 'webp';
+  width?: number;
+  height?: number;
+};
+
+function base64ToBytes(value: string): Uint8Array | null {
+  try {
+    return Uint8Array.from(atob(value), (c) => c.charCodeAt(0));
+  } catch {
+    return null;
+  }
+}
+
+function imageInfoFromBytes(bytes: Uint8Array): ImageInfo | null {
+  // PNG: 89 50 4E 47 0D 0A 1A 0A, dimensions at bytes 16-23.
+  if (
+    bytes.length >= 24 &&
+    bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 &&
+    bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a
+  ) {
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    return { format: 'png', width: view.getUint32(16), height: view.getUint32(20) };
+  }
+
+  // JPEG: FF D8 FF ... walk markers until a SOF segment with dimensions.
+  if (bytes.length >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
+    let i = 2;
+    while (i + 9 < bytes.length) {
+      if (bytes[i] !== 0xff) {
+        i++;
+        continue;
+      }
+      const marker = bytes[i + 1];
+      if (
+        marker === 0xd8 || marker === 0xd9 || marker === 0x01 ||
+        (marker >= 0xd0 && marker <= 0xd7)
+      ) {
+        i += 2;
+        continue;
+      }
+      const len = (bytes[i + 2] << 8) | bytes[i + 3];
+      if (len < 2) break;
+      const isSof =
+        (marker >= 0xc0 && marker <= 0xc3) ||
+        (marker >= 0xc5 && marker <= 0xc7) ||
+        (marker >= 0xc9 && marker <= 0xcb) ||
+        (marker >= 0xcd && marker <= 0xcf);
+      if (isSof) {
+        const height = (bytes[i + 5] << 8) | bytes[i + 6];
+        const width = (bytes[i + 7] << 8) | bytes[i + 8];
+        return { format: 'jpeg', width, height };
+      }
+      i += 2 + len;
+    }
+    // Valid JPEG header even if no SOF marker was found in range.
+    return { format: 'jpeg' };
+  }
+
+  // WebP: RIFF....WEBP. Dimensions are left to the worker.
+  if (
+    bytes.length >= 12 &&
+    bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+    bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50
+  ) {
+    return { format: 'webp' };
+  }
+
+  return null;
+}
+
+/** Validates the source image before any paid RunPod request is made. */
+function validateInputImage(imageBase64: string): { ok: true; raw: string } | { ok: false; error: string } {
+  // Accept both a raw base64 string and a data:image/...;base64 URL.
+  const raw = stripDataUrl(imageBase64);
+  if (!raw) return { ok: false, error: 'Missing image data.' };
+  if (raw.length < MIN_IMAGE_BASE64_CHARS) {
+    return {
+      ok: false,
+      error: 'The selected image is too small or blank. Pick a normal photo and try again.',
+    };
+  }
+  if (raw.length > MAX_IMAGE_BASE64_CHARS) {
+    return {
+      ok: false,
+      error: 'The selected image is too large for the AI worker. Try a smaller photo or crop it first.',
+    };
+  }
+
+  const bytes = base64ToBytes(raw);
+  if (!bytes || bytes.length < 24) {
+    return { ok: false, error: 'The selected file is not a valid image.' };
+  }
+
+  const info = imageInfoFromBytes(bytes);
+  if (!info) {
+    return { ok: false, error: 'The selected file is not a valid JPEG, PNG, or WebP image.' };
+  }
+
+  if (
+    info.width !== undefined &&
+    info.height !== undefined &&
+    (info.width < MIN_IMAGE_DIMENSION || info.height < MIN_IMAGE_DIMENSION)
+  ) {
+    return {
+      ok: false,
+      error: `The selected image is too small (${info.width}\u00d7${info.height}). Minimum is ${MIN_IMAGE_DIMENSION}\u00d7${MIN_IMAGE_DIMENSION}.`,
+    };
+  }
+
+  return { ok: true, raw };
+}
+
+async function makeSignedResultUrl(
+  db: NonNullable<ReturnType<typeof getDb>>,
+  path: string
+): Promise<string | null> {
+  const { data, error } = await db.storage.from(STORAGE_BUCKET).createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
+  if (error || !data?.signedUrl) return null;
+  return data.signedUrl;
 }
 
 /**
@@ -101,6 +235,13 @@ function runpodErrorMessage(job: RunpodJob): string | null {
   if (out && typeof out === 'object') {
     const msg = out.error ?? out.message ?? out.detail;
     if (typeof msg === 'string' && msg) return msg;
+    const workerStatus = out.status;
+    if (typeof workerStatus === 'number' && workerStatus >= 400) {
+      return `RunPod worker returned status ${workerStatus}. Try a smaller image.`;
+    }
+    if (typeof workerStatus === 'string' && /^[45]\d\d$/.test(workerStatus)) {
+      return `RunPod worker returned status ${workerStatus}. Try a smaller image.`;
+    }
   }
   return null;
 }
@@ -131,6 +272,20 @@ function publicJob(row: JobRow) {
   };
 }
 
+async function publicJobWithResult(
+  db: NonNullable<ReturnType<typeof getDb>>,
+  row: JobRow
+): Promise<Record<string, unknown>> {
+  const base = publicJob(row);
+  if (normalizeStatus(row.status) === 'COMPLETED' && row.result_path) {
+    const url = await makeSignedResultUrl(db, row.result_path);
+    if (url) {
+      return { ...base, url, path: row.result_path, mimeType: 'image/png' };
+    }
+  }
+  return base;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -144,6 +299,10 @@ serve(async (req) => {
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
     const action = String(body.action ?? 'start').trim().toLowerCase();
     const requestId = String(body.request_id ?? body.requestId ?? '').trim();
+    const coupleId = String(body.couple_id ?? body.coupleId ?? '').trim();
+    // Old app builds only understand b64. New builds send include_b64:false and
+    // receive the short Storage URL instead. Default true keeps old builds alive.
+    const includeB64 = body.include_b64 !== false;
     const endpoint = Deno.env.get('RUNPOD_ENDPOINT_ID') || DEFAULT_ENDPOINT;
 
     if (!requestId || requestId.length > 160) {
@@ -222,13 +381,67 @@ serve(async (req) => {
             .from('ai_image_jobs')
             .update({ status: 'FAILED', error, updated_at: new Date().toISOString() })
             .eq('request_id', requestId);
-          return json(200, { requestId, jobId: row.job_id, status: 'FAILED', error, debug_output: job.output });
+          return json(200, {
+            requestId,
+            jobId: row.job_id,
+            status: 'FAILED',
+            error,
+            debug_output: job.output,
+          });
+        }
+
+        // Preferred path: store the PNG once, return a short signed URL.
+        // result_path means later polls reuse the same object instead of
+        // re-uploading (and avoid returning base64 over and over).
+        let resultPath = row.result_path;
+        let signedUrl: string | null = null;
+
+        if (resultPath) {
+          signedUrl = await makeSignedResultUrl(db, resultPath);
+        } else {
+          const targetCouple = row.couple_id || coupleId;
+          const bytes = base64ToBytes(b64);
+          if (targetCouple && bytes) {
+            const path = `${targetCouple}/ai-edits/${requestId}.png`;
+            const { error: uploadError } = await db.storage
+              .from(STORAGE_BUCKET)
+              .upload(path, new Blob([bytes], { type: 'image/png' }), {
+                contentType: 'image/png',
+                upsert: true,
+              });
+            if (!uploadError) {
+              resultPath = path;
+              signedUrl = await makeSignedResultUrl(db, path);
+            } else {
+              console.error('[ai-image-edit] storage upload failed:', uploadError.message);
+            }
+          }
         }
 
         await db
           .from('ai_image_jobs')
-          .update({ status: 'COMPLETED', error: null, updated_at: new Date().toISOString() })
+          .update({
+            status: 'COMPLETED',
+            error: null,
+            result_path: resultPath,
+            couple_id: row.couple_id || coupleId || null,
+            updated_at: new Date().toISOString(),
+          })
           .eq('request_id', requestId);
+
+        if (signedUrl) {
+          return json(200, {
+            requestId,
+            jobId: row.job_id,
+            status: 'COMPLETED',
+            url: signedUrl,
+            path: resultPath,
+            mimeType: 'image/png',
+            ...(includeB64 ? { b64 } : {}),
+          });
+        }
+
+        // Fallback when Storage is unavailable: keep the old base64 contract.
         return json(200, { requestId, jobId: row.job_id, status: 'COMPLETED', b64 });
       }
 
@@ -253,10 +466,17 @@ serve(async (req) => {
       return json(400, { error: 'Missing imageBase64 or prompt.' });
     }
 
+    // Refuse blank / 1x1 / truncated images before spending any GPU time.
+    const imageCheck = validateInputImage(imageBase64);
+    if (!imageCheck.ok) {
+      return json(400, { error: imageCheck.error });
+    }
+    const rawImageBase64 = imageCheck.raw;
+
     // Atomic-ish claim: primary-key insert only succeeds for the first caller.
     const { data: inserted, error: insertError } = await db
       .from('ai_image_jobs')
-      .insert({ request_id: requestId, status: 'PENDING' })
+      .insert({ request_id: requestId, status: 'PENDING', couple_id: coupleId || null })
       .select('*')
       .maybeSingle();
 
@@ -286,7 +506,7 @@ serve(async (req) => {
             error: row.error || 'RunPod job failed.',
           });
         }
-        return json(200, publicJob(row));
+        return json(200, await publicJobWithResult(db, row));
       }
 
       // PENDING without a job_id: the first submit call is still in flight, or
@@ -323,7 +543,7 @@ serve(async (req) => {
           task: 'image_edit',
           prompt:
             `${prompt}. Maintain the exact facial features, likenesses, and structural head placement of all subjects visible in the base photo 100% identical as an unchangeable blueprint.`,
-          image_b64: imageBase64,
+          image_b64: rawImageBase64,
           n: 1,
           response_format: 'b64_json',
           output_format: 'png',
