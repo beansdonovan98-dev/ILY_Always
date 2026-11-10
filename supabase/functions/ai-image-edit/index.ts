@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const RUNPOD_BASE = 'https://api.runpod.ai/v2';
-const DEFAULT_ENDPOINT = 'pq2pwxs2hxv7sf';
+const DEFAULT_ENDPOINT = '7o8kroj3vd91b2';
 
 // Reject blank/1x1/truncated uploads before they reach RunPod and burn GPU time.
 const MIN_IMAGE_BASE64_CHARS = 20_000;
@@ -34,6 +34,9 @@ type RunpodJob = {
   id?: string;
   status?: string;
   error?: string;
+  detail?: string;
+  title?: string;
+  message?: string;
   output?: unknown;
 };
 
@@ -238,6 +241,9 @@ function extractImageB64(output: unknown, depth = 0): string | null {
 
 function runpodErrorMessage(job: RunpodJob): string | null {
   if (typeof job.error === 'string' && job.error) return job.error;
+  if (typeof job.detail === 'string' && job.detail) return job.detail;
+  if (typeof job.message === 'string' && job.message) return job.message;
+  if (typeof job.title === 'string' && job.title && job.title !== 'Forbidden') return job.title;
   const out = job.output as Record<string, unknown> | undefined;
   if (out && typeof out === 'object') {
     const msg = out.error ?? out.message ?? out.detail;
@@ -578,7 +584,13 @@ serve(async (req) => {
       }),
     });
 
-    const job = (await runpodRes.json().catch(() => ({}))) as RunpodJob;
+    const rawRunpod = await runpodRes.text().catch(() => '');
+    let job: RunpodJob = {};
+    try {
+      job = JSON.parse(rawRunpod) as RunpodJob;
+    } catch {
+      job = {};
+    }
     const runStatus = normalizeStatus(job.status);
 
     if (!runpodRes.ok || isFailedStatus(runStatus) || job.error) {
@@ -587,7 +599,12 @@ serve(async (req) => {
         .from('ai_image_jobs')
         .update({ status: 'FAILED', error, updated_at: new Date().toISOString() })
         .eq('request_id', requestId);
-      return json(502, { requestId, jobId: job.id ?? null, status: 'FAILED', error });
+      return json(502, {
+        requestId,
+        jobId: job.id ?? null,
+        status: 'FAILED',
+        error,
+      });
     }
 
     if (!job.id) {
