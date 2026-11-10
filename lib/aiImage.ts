@@ -97,8 +97,7 @@ export async function editImageWithAI(
   imageUrl: string,
   prompt: string,
   existingRequestId?: string,
-  coupleId?: string,
-  styleStrength = 0.35
+  coupleId?: string
 ): Promise<string> {
   // The RunPod worker only reliably decodes PNG/JPEG. iPhones shoot HEIC by
   // default -> convert to JPEG first so the AI never sees an unsupported file.
@@ -141,7 +140,6 @@ export async function editImageWithAI(
     prompt,
     image_base64: imageBase64,
     imageBase64,
-    denoising_strength: styleStrength,
   });
 
   const startStatus = String(started.status ?? '').toUpperCase();

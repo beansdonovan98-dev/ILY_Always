@@ -467,12 +467,6 @@ serve(async (req) => {
       return json(400, { error: 'Missing imageBase64 or prompt.' });
     }
 
-    // One user-facing control: 0.28 (realistic) -> 0.35 (balanced) -> 0.45 (stylized).
-    const rawStrength = Number(body.denoising_strength ?? body.denoisingStrength);
-    const denoisingStrength = Number.isFinite(rawStrength)
-      ? Math.min(0.45, Math.max(0.28, rawStrength))
-      : 0.35;
-
     // Refuse blank / 1x1 / truncated images before spending any GPU time.
     const imageCheck = validateInputImage(imageBase64);
     if (!imageCheck.ok) {
@@ -580,9 +574,6 @@ serve(async (req) => {
           n: 1,
           response_format: 'b64_json',
           output_format: 'png',
-          denoising_strength: denoisingStrength,
-          steps: 36,
-          cfg_scale: 5.5,
         },
       }),
     });

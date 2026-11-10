@@ -25,32 +25,12 @@ import { useAppFont } from '@/hooks/useAppFont';
 
 const PENDING_JOB_KEY = 'ai-editor:pending-job';
 
-const STRENGTH_MIN = 0.28;
-const STRENGTH_MID = 0.35;
-const STRENGTH_MAX = 0.45;
-
 type PendingJob = {
   requestId: string;
   signature: string;
   coupleId: string;
   createdAt: number;
 };
-
-/** Slider position (0..1) -> denoising strength, with 0.35 exactly at center. */
-function ratioToStrength(ratio: number): number {
-  const t = Math.max(0, Math.min(1, ratio));
-  const value = t <= 0.5
-    ? STRENGTH_MIN + (t / 0.5) * (STRENGTH_MID - STRENGTH_MIN)
-    : STRENGTH_MID + ((t - 0.5) / 0.5) * (STRENGTH_MAX - STRENGTH_MID);
-  return Math.round(value * 100) / 100;
-}
-
-function strengthToRatio(value: number): number {
-  const v = Math.max(STRENGTH_MIN, Math.min(STRENGTH_MAX, value));
-  return v <= STRENGTH_MID
-    ? ((v - STRENGTH_MIN) / (STRENGTH_MID - STRENGTH_MIN)) * 0.5
-    : 0.5 + ((v - STRENGTH_MID) / (STRENGTH_MAX - STRENGTH_MID)) * 0.5;
-}
 
 export default function AIEditorScreen() {
   const font = useAppFont();
@@ -74,17 +54,6 @@ export default function AIEditorScreen() {
   const requestRef = useRef<{ signature: string; id: string } | null>(null);
   // Hard click lock: state updates are async, so two quick taps can both fire.
   const busyRef = useRef(false);
-  const [styleStrength, setStyleStrength] = useState(STRENGTH_MID);
-  const [strengthTrackWidth, setStrengthTrackWidth] = useState(0);
-  const strengthTrackWidthRef = useRef(0);
-
-  const strengthRatio = strengthToRatio(styleStrength);
-
-  const updateStrengthFromX = useCallback((x: number) => {
-    const width = strengthTrackWidthRef.current;
-    if (width <= 0) return;
-    setStyleStrength(ratioToStrength(x / width));
-  }, []);
 
   useEffect(() => {
     if (!loading) return;
@@ -163,10 +132,10 @@ export default function AIEditorScreen() {
     if (busyRef.current) return; // ignore accidental double-taps
     busyRef.current = true;
 
-    // Same photo + prompt + strength = same user action. If the last attempt
-    // timed out, reuse its request id so we poll the existing job instead of
-    // submitting (and paying for) a duplicate.
-    const signature = `${sourceUri}\n${trimmed}\n${styleStrength}`;
+    // Same photo + prompt = same user action. If the last attempt timed out,
+    // reuse its request id so we poll the existing job instead of submitting
+    // (and paying for) a duplicate.
+    const signature = `${sourceUri}\n${trimmed}`;
     const requestId =
       requestRef.current?.signature === signature
         ? requestRef.current.id
@@ -186,7 +155,7 @@ export default function AIEditorScreen() {
         createdAt: Date.now(),
       });
 
-      const edited = await editImageWithAI(sourceUri, trimmed, requestId, coupleId, styleStrength);
+      const edited = await editImageWithAI(sourceUri, trimmed, requestId, coupleId);
       setResultUri(edited);
       requestRef.current = null;
       await setItem(PENDING_JOB_KEY, null);
@@ -206,7 +175,7 @@ export default function AIEditorScreen() {
       setEditBurn(0);
       void bongHaptic();
     }
-  }, [sourceUri, prompt, styleStrength]);
+  }, [sourceUri, prompt]);
 
   /** Saves the edited photo to the couple's shared covers (Supabase storage). */
   const saveToCovers = useCallback(async () => {
@@ -385,54 +354,6 @@ export default function AIEditorScreen() {
           multiline
         />
 
-        <View style={styles.strengthHeader}>
-          <Text style={styles.label}>Style strength</Text>
-          <Text style={[styles.strengthValue, { color: appTheme.textColor }]}>
-            {styleStrength.toFixed(2)}
-          </Text>
-        </View>
-        <View
-          style={styles.sliderTouch}
-          onLayout={(e) => {
-            const width = e.nativeEvent.layout.width;
-            strengthTrackWidthRef.current = width;
-            setStrengthTrackWidth(width);
-          }}
-          onStartShouldSetResponder={() => true}
-          onMoveShouldSetResponder={() => true}
-          onResponderGrant={(e) => updateStrengthFromX(e.nativeEvent.locationX)}
-          onResponderMove={(e) => updateStrengthFromX(e.nativeEvent.locationX)}
-          accessibilityRole="adjustable"
-          accessibilityLabel="Style strength"
-          accessibilityValue={{ min: 28, max: 45, now: Math.round(styleStrength * 100) }}
-          accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
-          onAccessibilityAction={(e) => {
-            const delta = e.nativeEvent.actionName === 'increment' ? 0.01 : -0.01;
-            setStyleStrength((v) => ratioToStrength(strengthToRatio(v) + delta * 5));
-          }}>
-          <View style={[styles.sliderRail, { backgroundColor: appTheme.borderColor }]}>
-            <View
-              style={[
-                styles.sliderFill,
-                { width: strengthRatio * strengthTrackWidth, backgroundColor: appTheme.accentColor },
-              ]}
-            />
-          </View>
-          <View
-            style={[
-              styles.sliderThumb,
-              {
-                left: Math.max(0, Math.min(strengthTrackWidth - 22, strengthRatio * strengthTrackWidth - 11)),
-                borderColor: appTheme.accentColor,
-              },
-            ]}
-          />
-        </View>
-        <View style={styles.sliderEnds}>
-          <Text style={styles.sliderEndText}>More realistic</Text>
-          <Text style={styles.sliderEndText}>More stylized</Text>
-        </View>
-
         {loading && <JointBurnTimer ratio={editBurn} />}
         <Pressable onPress={runEdit} disabled={loading} style={styles.pillPress}>
           <LinearGradient
@@ -591,33 +512,6 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     fontSize: 15,
   },
-  strengthHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 12,
-    marginBottom: 2,
-  },
-  strengthValue: { fontSize: 13, fontWeight: '800', opacity: 0.7 },
-  sliderTouch: { height: 32, justifyContent: 'center', marginTop: 2, marginBottom: 2 },
-  sliderRail: { height: 6, borderRadius: 3, overflow: 'hidden' },
-  sliderFill: { height: 6, borderRadius: 3 },
-  sliderThumb: {
-    position: 'absolute',
-    top: 5,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    backgroundColor: '#FFFFFF',
-  },
-  sliderEnds: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 2,
-    marginBottom: 4,
-  },
-  sliderEndText: { fontSize: 11, opacity: 0.55, fontWeight: '600' },
   pillPress: { alignSelf: 'flex-start', marginTop: 8, marginBottom: 4 },
   pill: { paddingVertical: 13, paddingHorizontal: 26, borderRadius: 50 },
   pillText: { fontWeight: '800', fontSize: 15, color: '#FFFFFF' },
