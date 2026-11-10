@@ -48,6 +48,11 @@ drop policy if exists "ai_image_jobs_all" on ai_image_jobs;
 
 ### How the app talks to it
 
+The worker is **FLUX.2 klein 4B** and enforces a strict input schema. Unknown
+fields hard-fail with `INVALID_INPUT: <field>: Extra inputs are not permitted`.
+Only send: `prompt`, `images`, `width`, `height`, `n`, `steps`, `guidance`,
+`seed` (optional), `output_format`, `quality`.
+
 1. `POST { action: "start", request_id, couple_id, imageBase64, prompt }`
    - Validates the source image **before** calling RunPod: non-empty, at least
      20k base64 chars, valid JPEG/PNG/WebP magic bytes, and dimensions at least
@@ -55,21 +60,38 @@ drop policy if exists "ai_image_jobs_all" on ai_image_jobs;
      GPU time.
    - Inserts `{ request_id, status: "PENDING", couple_id }` first (primary-key
      dedupe).
-   - Submits `POST https://api.runpod.ai/v2/<endpoint>/run`.
+   - Submits `POST https://api.runpod.ai/v2/<endpoint>/run` with:
+     ```json
+     {
+       "input": {
+         "prompt": "<user prompt> | variant:<token>",
+         "images": ["data:image/jpeg;base64,<BASE64>"],
+         "width": 1024,
+         "height": 1024,
+         "n": 1,
+         "steps": 20,
+         "guidance": 5.0,
+         "output_format": "webp",
+         "quality": 90
+       }
+     }
+     ```
    - Stores `{ job_id, status }` and returns immediately.
    - A retry with the same `request_id` returns the stored `job_id` instead of
      submitting a second paid job.
 2. `POST { action: "status", request_id, couple_id }` repeatedly until done.
-   - `COMPLETED` → uploads the PNG to Supabase Storage at
-     `couple-private/<couple_id>/ai-edits/<request_id>.png` and returns a
-     7-day signed `url`. Falls back to `b64` if Storage fails.
+   - `COMPLETED` → reads `output.images[0].b64` and
+     `output.images[0].mime_type`, uploads to Supabase Storage at
+     `couple-private/<couple_id>/ai-edits/<request_id>.<ext>`, and returns a
+     7-day signed `url`. Falls back to `b64` + `mimeType` if Storage fails.
    - `FAILED` / `CANCELLED` / `TIMED_OUT` → returns the error and stops.
    - `IN_QUEUE` / `IN_PROGRESS` / `RUNNING` / `PENDING` → keep polling.
    - HTTP 200 with `status: "FAILED"` is treated as a failure.
 
-The client prefers `url` and falls back to `data:image/png;base64,...` when
-Storage is unavailable. The pending `{ request_id, couple_id }` is persisted
-in AsyncStorage so reopening the app can re-check the job without resubmitting.
+The client prefers `url` and falls back to
+`data:${mimeType};base64,...` when Storage is unavailable. The pending
+`{ request_id, couple_id }` is persisted in AsyncStorage so reopening the app
+can re-check the job without resubmitting.
 
 ### About "censored" / uncensored models
 

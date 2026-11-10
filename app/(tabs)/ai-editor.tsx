@@ -7,6 +7,7 @@ import { LeafBorder } from '@/components/CannabisLeaf';
 import { MylarPouch } from '@/components/MylarPouch';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { Image as ExpoImage } from 'expo-image';
 
@@ -31,6 +32,24 @@ type PendingJob = {
   coupleId: string;
   createdAt: number;
 };
+
+function mimeFromResultUri(uri: string): string {
+  if (uri.startsWith('data:')) {
+    const m = uri.match(/^data:([^;,]+)[;,]/i);
+    return m?.[1] || 'image/png';
+  }
+  const m = uri.match(/\.(webp|jpe?g|png)(?:[?#]|$)/i);
+  if (!m) return 'image/png';
+  const ext = m[1].toLowerCase();
+  return ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
+}
+
+function extensionForMime(mimeType: string): string {
+  if (mimeType === 'image/jpeg') return 'jpg';
+  if (mimeType === 'image/webp') return 'webp';
+  if (mimeType === 'image/png') return 'png';
+  return 'png';
+}
 
 export default function AIEditorScreen() {
   const font = useAppFont();
@@ -185,12 +204,14 @@ export default function AIEditorScreen() {
     setStatus('Saving to gallery...');
     try {
       const cid = await getCoupleId();
+      const mimeType = mimeFromResultUri(uri);
+      const ext = extensionForMime(mimeType);
       const row = await uploadMedia({
         coupleId: cid,
         kind: 'private',
         localUri: uri,
-        fileName: `ai-edit-${Date.now()}.png`,
-        mimeType: 'image/png',
+        fileName: `ai-edit-${Date.now()}.${ext}`,
+        mimeType,
         byteSize: 0,
         uploadedBy: currentUser,
         dailyDate: null,
@@ -219,21 +240,30 @@ export default function AIEditorScreen() {
         await saveToCovers();
         return;
       }
-      let fileUri = uri;
+      let source = uri;
+      const FS = await import('expo-file-system/legacy');
       if (uri.startsWith('data:')) {
-        // saveToLibraryAsync needs a real file URI — write the data URL to disk first.
-        const FS = await import('expo-file-system/legacy');
-        const filePath = `${FS.documentDirectory}ai-edit-${Date.now()}.png`;
-        await FS.writeAsStringAsync(filePath, uri.split(',')[1] || '', { encoding: FS.EncodingType.Base64 });
-        fileUri = filePath;
+        // Write the data URL to disk using its real extension first.
+        const mimeType = mimeFromResultUri(uri);
+        const ext = extensionForMime(mimeType);
+        const dataPath = `${FS.documentDirectory}ai-edit-${Date.now()}.${ext}`;
+        await FS.writeAsStringAsync(dataPath, uri.split(',')[1] || '', { encoding: FS.EncodingType.Base64 });
+        source = dataPath;
       } else if (/^https?:\/\//i.test(uri)) {
         // Storage results come back as signed URLs — download before saving.
-        const FS = await import('expo-file-system/legacy');
-        const filePath = `${FS.documentDirectory}ai-edit-${Date.now()}.png`;
-        await FS.downloadAsync(uri, filePath);
-        fileUri = filePath;
+        const mimeType = mimeFromResultUri(uri);
+        const ext = extensionForMime(mimeType);
+        const dataPath = `${FS.documentDirectory}ai-edit-${Date.now()}.${ext}`;
+        await FS.downloadAsync(uri, dataPath);
+        source = dataPath;
       }
-      await MediaLibrary.saveToLibraryAsync(fileUri);
+
+      // iOS Photos handles JPEG most reliably; convert WebP/PNG first.
+      const converted = await ImageManipulator.manipulateAsync(source, [], {
+        compress: 0.92,
+        format: ImageManipulator.SaveFormat.JPEG,
+      });
+      await MediaLibrary.saveToLibraryAsync(converted.uri);
       setStatus('Saved to your photo library 💾');
     } catch (e) {
       const msg = e instanceof Error ? e.message : JSON.stringify(e);

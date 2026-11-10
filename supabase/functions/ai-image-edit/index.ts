@@ -142,7 +142,9 @@ function imageInfoFromBytes(bytes: Uint8Array): ImageInfo | null {
 }
 
 /** Validates the source image before any paid RunPod request is made. */
-function validateInputImage(imageBase64: string): { ok: true; raw: string } | { ok: false; error: string } {
+function validateInputImage(
+  imageBase64: string
+): { ok: true; raw: string; mimeType: string } | { ok: false; error: string } {
   // Accept both a raw base64 string and a data:image/...;base64 URL.
   const raw = stripDataUrl(imageBase64);
   if (!raw) return { ok: false, error: 'Missing image data.' };
@@ -180,7 +182,8 @@ function validateInputImage(imageBase64: string): { ok: true; raw: string } | { 
     };
   }
 
-  return { ok: true, raw };
+  const mimeType = info.format === 'jpeg' ? 'image/jpeg' : `image/${info.format}`;
+  return { ok: true, raw, mimeType };
 }
 
 async function makeSignedResultUrl(
@@ -239,6 +242,49 @@ function extractImageB64(output: unknown, depth = 0): string | null {
   return null;
 }
 
+type ResultImage = {
+  b64: string;
+  mimeType: string;
+};
+
+/** FLUX.2 klein result shape: output.images[0].b64 + mime_type. */
+function extractResultImage(output: unknown): ResultImage | null {
+  const obj = output as Record<string, unknown> | null;
+  if (obj && Array.isArray(obj.images)) {
+    for (const item of obj.images) {
+      if (item && typeof item === 'object') {
+        const rec = item as Record<string, unknown>;
+        const b64 = rec.b64;
+        if (typeof b64 === 'string' && b64) {
+          const mimeType = typeof rec.mime_type === 'string' && rec.mime_type
+            ? rec.mime_type
+            : 'image/webp';
+          return { b64: stripDataUrl(b64), mimeType };
+        }
+      }
+    }
+  }
+
+  // Backward compatibility with the old vLLM shape.
+  const old = extractImageB64(output);
+  if (old) return { b64: old, mimeType: 'image/png' };
+  return null;
+}
+
+function mimeFromPath(path: string | null): string {
+  if (!path) return 'image/webp';
+  if (/\.png$/i.test(path)) return 'image/png';
+  if (/\.jpe?g$/i.test(path)) return 'image/jpeg';
+  return 'image/webp';
+}
+
+function extensionForMime(mimeType: string): string {
+  if (mimeType === 'image/jpeg') return 'jpg';
+  if (mimeType === 'image/png') return 'png';
+  if (mimeType === 'image/webp') return 'webp';
+  return 'png';
+}
+
 function runpodErrorMessage(job: RunpodJob): string | null {
   if (typeof job.error === 'string' && job.error) return job.error;
   if (typeof job.detail === 'string' && job.detail) return job.detail;
@@ -293,7 +339,7 @@ async function publicJobWithResult(
   if (normalizeStatus(row.status) === 'COMPLETED' && row.result_path) {
     const url = await makeSignedResultUrl(db, row.result_path);
     if (url) {
-      return { ...base, url, path: row.result_path, mimeType: 'image/png' };
+      return { ...base, url, path: row.result_path, mimeType: mimeFromPath(row.result_path) };
     }
   }
   return base;
@@ -401,9 +447,11 @@ serve(async (req) => {
       }
 
       if (status === 'COMPLETED') {
-        const b64 = extractImageB64(job.output);
+        const result = extractResultImage(job.output);
+        const b64 = result?.b64 ?? '';
+        const mimeType = result?.mimeType || 'image/webp';
         if (!b64) {
-          const error = runpodErrorMessage(job) || 'RunPod completed but returned no image (expected output.data[0].b64_json).';
+          const error = runpodErrorMessage(job) || 'RunPod completed but returned no image (expected output.images[0].b64).';
           await db
             .from('ai_image_jobs')
             .update({ status: 'FAILED', error, updated_at: new Date().toISOString() })
@@ -411,7 +459,7 @@ serve(async (req) => {
           return json(200, { requestId, jobId: row.job_id, status: 'FAILED', error });
         }
 
-        // Preferred path: store the PNG once, return a short signed URL.
+        // Preferred path: store the image once, return a short signed URL.
         // result_path means later polls reuse the same object instead of
         // re-uploading (and avoid returning base64 over and over).
         let resultPath = row.result_path;
@@ -423,11 +471,12 @@ serve(async (req) => {
           const targetCouple = row.couple_id || coupleId;
           const bytes = base64ToBytes(b64);
           if (targetCouple && bytes) {
-            const path = `${targetCouple}/ai-edits/${requestId}.png`;
+            const ext = extensionForMime(mimeType);
+            const path = `${targetCouple}/ai-edits/${requestId}.${ext}`;
             const { error: uploadError } = await db.storage
               .from(STORAGE_BUCKET)
-              .upload(path, new Blob([bytes], { type: 'image/png' }), {
-                contentType: 'image/png',
+              .upload(path, new Blob([bytes], { type: mimeType }), {
+                contentType: mimeType,
                 upsert: true,
               });
             if (!uploadError) {
@@ -457,13 +506,13 @@ serve(async (req) => {
             status: 'COMPLETED',
             url: signedUrl,
             path: resultPath,
-            mimeType: 'image/png',
+            mimeType,
             ...(includeB64 ? { b64 } : {}),
           });
         }
 
-        // Fallback when Storage is unavailable: keep the old base64 contract.
-        return json(200, { requestId, jobId: row.job_id, status: 'COMPLETED', b64 });
+        // Fallback when Storage is unavailable: keep the base64 contract.
+        return json(200, { requestId, jobId: row.job_id, status: 'COMPLETED', b64, mimeType });
       }
 
       await db
@@ -587,13 +636,16 @@ serve(async (req) => {
       headers,
       body: JSON.stringify({
         input: {
-          task: 'image_edit',
           prompt:
             `${jobFinalPrompt}. Maintain the exact facial features, likenesses, and structural head placement of all subjects visible in the base photo 100% identical as an unchangeable blueprint.`,
-          image_b64: rawImageBase64,
+          images: [`data:${imageCheck.mimeType};base64,${rawImageBase64}`],
+          width: 1024,
+          height: 1024,
           n: 1,
-          response_format: 'b64_json',
-          output_format: 'png',
+          steps: 20,
+          guidance: 5.0,
+          output_format: 'webp',
+          quality: 90,
         },
       }),
     });

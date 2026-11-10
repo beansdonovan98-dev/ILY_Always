@@ -35,6 +35,7 @@ export type AIJobCheck = {
   jobId?: string | null;
   url?: string;
   b64?: string;
+  mimeType?: string;
   error?: string;
 };
 
@@ -89,6 +90,7 @@ export async function checkAIJob(requestId: string, coupleId?: string): Promise<
     jobId: typeof current.jobId === 'string' ? current.jobId : null,
     url: typeof current.url === 'string' ? current.url : undefined,
     b64: typeof current.b64 === 'string' ? current.b64 : undefined,
+    mimeType: typeof current.mimeType === 'string' ? current.mimeType : undefined,
     error: typeof current.error === 'string' ? current.error : undefined,
   };
 }
@@ -166,7 +168,8 @@ export async function editImageWithAI(
       if (imageUrl) return imageUrl;
       const b64 = typeof current.b64 === 'string' ? current.b64 : '';
       if (!b64) throw new AIEditError('The AI came back without an edited image. Try a different prompt.', false);
-      return `data:image/png;base64,${b64}`;
+      const mimeType = typeof current.mimeType === 'string' ? current.mimeType : 'image/webp';
+      return `data:${mimeType};base64,${b64}`;
     }
     if (status === 'FAILED' || status === 'CANCELLED' || status === 'TIMED_OUT') {
       throw new AIEditError(String(current.error || 'The AI editor failed.'), false);
