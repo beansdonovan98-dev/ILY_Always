@@ -1,5 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View, Alert } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+  Alert,
+  Modal,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import { AppText as Text } from '@/components/AppText';
@@ -14,7 +25,8 @@ import { Image as ExpoImage } from 'expo-image';
 import { useTabLabel } from '@/hooks/useTabLabel';
 import { JointBurnTimer, bongHaptic } from '@/components/CannabisFeatures';
 import { getCoupleId } from '@/lib/couple';
-import { AIEditError, checkAIJob, createAIRequestId, editImageWithAI } from '@/lib/aiImage';
+import { checkAIJob, editImageWithStyle } from '@/lib/aiImage';
+import { AI_STYLE_KEYS, styleLabel } from '@/lib/aiStyles';
 import { uploadMedia, getSignedUrl, deleteMedia, MediaRow } from '@/lib/media';
 import { getItem, setItem } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
@@ -68,11 +80,24 @@ export default function AIEditorScreen() {
   const [editBurn, setEditBurn] = useState(1);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
-  // Reuse the same request id if the user retries after a timeout/network drop,
-  // so the server returns the existing RunPod job instead of paying twice.
-  const requestRef = useRef<{ signature: string; id: string } | null>(null);
+  const [selectedStyle, setSelectedStyle] = useState('tarot-card');
+  const [stylePickerOpen, setStylePickerOpen] = useState(false);
+  const [styleSearch, setStyleSearch] = useState('');
   // Hard click lock: state updates are async, so two quick taps can both fire.
   const busyRef = useRef(false);
+
+  const filteredStyles = useMemo(() => {
+    const q = styleSearch.trim().toLowerCase();
+    if (!q) return AI_STYLE_KEYS;
+    return AI_STYLE_KEYS.filter(
+      (key) => key.toLowerCase().includes(q) || styleLabel(key).toLowerCase().includes(q)
+    );
+  }, [styleSearch]);
+
+  const closeStylePicker = useCallback(() => {
+    setStylePickerOpen(false);
+    setStyleSearch('');
+  }, []);
 
   useEffect(() => {
     if (!loading) return;
@@ -151,41 +176,14 @@ export default function AIEditorScreen() {
     if (busyRef.current) return; // ignore accidental double-taps
     busyRef.current = true;
 
-    // Same photo + prompt = same user action. If the last attempt timed out,
-    // reuse its request id so we poll the existing job instead of submitting
-    // (and paying for) a duplicate.
-    const signature = `${sourceUri}\n${trimmed}`;
-    const requestId =
-      requestRef.current?.signature === signature
-        ? requestRef.current.id
-        : createAIRequestId();
-    requestRef.current = { signature, id: requestId };
-
     setLoading(true);
     setEditBurn(1);
-    setStatus('Editing with AI...');
+    setStatus(`Applying ${styleLabel(selectedStyle)}...`);
     try {
-      const coupleId = await getCoupleId();
-      // Persist before submitting, so force-quitting and reopening can resume.
-      await setItem<PendingJob>(PENDING_JOB_KEY, {
-        requestId,
-        signature,
-        coupleId,
-        createdAt: Date.now(),
-      });
-
-      const edited = await editImageWithAI(sourceUri, trimmed, requestId, coupleId);
+      const edited = await editImageWithStyle(sourceUri, selectedStyle, trimmed);
       setResultUri(edited);
-      requestRef.current = null;
-      await setItem(PENDING_JOB_KEY, null);
       setStatus('Done! Tap Save to keep it 💞');
     } catch (e) {
-      // A definitive job failure should get a fresh id next tap. Timeouts and
-      // network errors keep the id so the retry continues the same job.
-      if (!(e instanceof AIEditError) || !e.retryable) {
-        requestRef.current = null;
-        await setItem(PENDING_JOB_KEY, null);
-      }
       const msg = e instanceof Error ? e.message : JSON.stringify(e);
       setStatus(`Error: ${msg}`);
     } finally {
@@ -194,9 +192,9 @@ export default function AIEditorScreen() {
       setEditBurn(0);
       void bongHaptic();
     }
-  }, [sourceUri, prompt]);
+  }, [sourceUri, prompt, selectedStyle]);
 
-  /** Saves the edited photo to the couple's shared covers (Supabase storage). */
+  /** Saves the edited photo to the editor's private creations gallery. */
   const saveToCovers = useCallback(async () => {
     const uri = resultUri || sourceUri;
     if (!uri) return;
@@ -219,7 +217,7 @@ export default function AIEditorScreen() {
       await getSignedUrl(row);
       void markActivity('ai-editor', currentUser, cid);
       await loadSaved(); // reload so the Saved Creations gallery shows it immediately
-      setStatus('Saved to the gallery below! 💞');
+      setStatus('Saved to your creations below! 💞');
     } catch (e) {
       const msg = e instanceof Error ? e.message : JSON.stringify(e);
       setStatus(`Save failed: ${msg}`);
@@ -287,7 +285,26 @@ export default function AIEditorScreen() {
         setStatus('Photo library permission not granted — save was cancelled.');
         return;
       }
-      await MediaLibrary.saveToLibraryAsync(url);
+
+      // saveToLibraryAsync needs a local file, not a signed Storage URL.
+      const FS = await import('expo-file-system/legacy');
+      const mimeType = mimeFromResultUri(url);
+      const ext = extensionForMime(mimeType);
+      const localPath = `${FS.documentDirectory}ai-gallery-${photo.id}.${ext}`;
+      await FS.downloadAsync(url, localPath);
+
+      let saveUri = localPath;
+      try {
+        const converted = await ImageManipulator.manipulateAsync(localPath, [], {
+          compress: 0.92,
+          format: ImageManipulator.SaveFormat.JPEG,
+        });
+        saveUri = converted.uri;
+      } catch {
+        // Fall back to the downloaded file if conversion isn't available.
+      }
+
+      await MediaLibrary.saveToLibraryAsync(saveUri);
       setStatus('Saved to your photo library 💾');
       void loadSaved(); // refresh gallery state after save
     } catch (e) {
@@ -374,6 +391,19 @@ export default function AIEditorScreen() {
           </View>
         ) : null}
 
+        <View style={styles.styleHeader}>
+          <Text style={styles.label}>Style</Text>
+          <Text style={styles.styleHint}>Tap to change</Text>
+        </View>
+        <Pressable
+          onPress={() => setStylePickerOpen(true)}
+          style={[styles.styleSelect, { borderColor: appTheme.borderColor, backgroundColor: appTheme.accentSoft }]}>
+          <Text style={[styles.styleSelectText, { fontFamily: font, color: appTheme.textColor }]}>
+            {styleLabel(selectedStyle)}
+          </Text>
+          <Text style={[styles.styleSelectChevron, { color: appTheme.textColor }]}>⌄</Text>
+        </Pressable>
+
         <Text style={styles.label}>Describe the edit</Text>
         <TextInput
           value={prompt}
@@ -401,7 +431,7 @@ export default function AIEditorScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.pill}>
-            <Text style={styles.pillText}>{saving ? 'Saving...' : 'Save to Gallery 💞'}</Text>
+            <Text style={styles.pillText}>{saving ? 'Saving...' : 'Save to Creations 💞'}</Text>
           </LinearGradient>
         </Pressable>
 
@@ -424,7 +454,7 @@ export default function AIEditorScreen() {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.pill}>
-              <Text style={styles.pillText}>{saving ? 'Saving...' : 'Save to Gallery 💞'}</Text>
+              <Text style={styles.pillText}>{saving ? 'Saving...' : 'Save to Creations 💞'}</Text>
             </LinearGradient>
           </Pressable>
 
@@ -485,32 +515,91 @@ export default function AIEditorScreen() {
                   <Pressable
                     style={styles.thumbPress}
                     onPress={() => { setPreviewUri(url || null); setPreviewId(photo.id); }}
-                    onLongPress={() => confirmSaveGalleryPhoto(photo)}
-                    accessibilityLabel={`Preview ${photo.file_name}. Long-press to save.`}
+                    accessibilityLabel={`Preview ${photo.file_name}`}
                   >
                     <ExpoImage source={{ uri: url || '' }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                  </Pressable>
-                  <Pressable
-                    onPress={() => confirmSaveGalleryPhoto(photo)}
-                    style={[styles.tileSaveBtn, { borderColor: appTheme.borderColor }]}
-                    accessibilityLabel={`Save ${photo.file_name} to photos`}
-                  >
-                    <Text style={styles.tileSaveText}>Save 💾</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => confirmDeleteSavedPhoto(photo)}
-                    style={[styles.tileDeleteBtn, { borderColor: appTheme.borderColor }]}
-                    accessibilityLabel={`Delete ${photo.file_name}`}
-                  >
-                    <Text style={styles.tileDeleteText}>Delete 🗑️</Text>
                   </Pressable>
                 </View>
               );
             })}
           </ScrollView>
         )}
-        {savedPhotos.length > 0 && <Text style={styles.muted}>Tap a tile to preview · Long-press or tap Save to keep it in your photos 💾</Text>}
+        {savedPhotos.length > 0 && <Text style={styles.muted}>Tap a tile to preview · Save or delete from the preview 💾</Text>}
       </MylarPouch>
+
+      <Modal
+        visible={stylePickerOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={closeStylePicker}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.styleModalRoot}>
+          <Pressable style={styles.styleBackdrop} onPress={closeStylePicker} />
+          <View style={[styles.styleSheet, { borderColor: appTheme.borderColor }]}>
+            <View style={styles.styleSheetHeader}>
+              <View>
+                <Text style={[styles.styleSheetTitle, { fontFamily: font }]}>Choose a style</Text>
+                <Text style={styles.styleSheetSub}>Pick the look, then describe the scene</Text>
+              </View>
+              <Pressable onPress={closeStylePicker} style={[styles.styleClose, { borderColor: appTheme.borderColor }]}>
+                <Text style={styles.styleCloseText}>✕</Text>
+              </Pressable>
+            </View>
+
+            <TextInput
+              value={styleSearch}
+              onChangeText={setStyleSearch}
+              placeholder="Search styles..."
+              placeholderTextColor="rgba(58,42,46,0.45)"
+              style={[styles.styleSearch, { borderColor: appTheme.borderColor, color: appTheme.textColor }]}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            <FlatList
+              data={filteredStyles}
+              keyExtractor={(item) => item}
+              numColumns={2}
+              columnWrapperStyle={styles.styleRow}
+              contentContainerStyle={styles.styleListContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              style={styles.styleList}
+              renderItem={({ item }) => {
+                const active = item === selectedStyle;
+                return (
+                  <Pressable
+                    onPress={() => {
+                      setSelectedStyle(item);
+                      closeStylePicker();
+                    }}
+                    style={[
+                      styles.styleChip,
+                      {
+                        borderColor: active ? appTheme.accentColor : appTheme.borderColor,
+                        backgroundColor: active ? appTheme.accentSoft : 'rgba(255,255,255,0.7)',
+                      },
+                    ]}>
+                    <Text
+                      style={[
+                        styles.styleChipText,
+                        {
+                          fontFamily: font,
+                          color: appTheme.textColor,
+                          opacity: active ? 1 : 0.8,
+                        },
+                      ]}>
+                      {styleLabel(item)}
+                    </Text>
+                    {active ? <Text style={[styles.styleChipCheck, { color: appTheme.accentColor }]}>✓</Text> : null}
+                  </Pressable>
+                );
+              }}
+            />
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </ScrollView>
   );
 }
@@ -542,6 +631,86 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     fontSize: 15,
   },
+  styleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+  },
+  styleHint: { fontSize: 11, opacity: 0.5, fontWeight: '600' },
+  styleSelect: {
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingVertical: 13,
+    paddingHorizontal: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
+  },
+  styleSelectText: { fontSize: 15, fontWeight: '700' },
+  styleSelectChevron: { fontSize: 20, fontWeight: '700', marginTop: -2 },
+  styleModalRoot: { flex: 1, justifyContent: 'flex-end' },
+  styleBackdrop: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(20,10,15,0.55)',
+  },
+  styleSheet: {
+    height: '84%',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 34,
+    backgroundColor: '#FFF8F4',
+  },
+  styleSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  styleSheetTitle: { fontSize: 24, fontWeight: '800' },
+  styleSheetSub: { fontSize: 12, opacity: 0.55, marginTop: 2 },
+  styleClose: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  styleCloseText: { fontSize: 14, fontWeight: '800' },
+  styleSearch: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    backgroundColor: 'rgba(255,255,255,0.75)',
+    marginBottom: 12,
+  },
+  styleList: { flex: 1 },
+  styleListContent: { paddingBottom: 10, gap: 8 },
+  styleRow: { gap: 8, marginBottom: 8 },
+  styleChip: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderRadius: 16,
+    paddingVertical: 13,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  styleChipText: { fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  styleChipCheck: { fontSize: 13, fontWeight: '800' },
   pillPress: { alignSelf: 'flex-start', marginTop: 8, marginBottom: 4 },
   pill: { paddingVertical: 13, paddingHorizontal: 26, borderRadius: 50 },
   pillText: { fontWeight: '800', fontSize: 15, color: '#FFFFFF' },
@@ -564,8 +733,6 @@ const styles = StyleSheet.create({
   thumbPress: { flex: 1, borderRadius: 14, overflow: 'hidden' },
   thumbWrap: { width: '31%', aspectRatio: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.35)' },
   thumb: { width: '100%', height: '100%' },
-  tileSaveBtn: { position: 'absolute', bottom: 6, left: 6, right: 6, alignItems: 'center', paddingVertical: 5, borderRadius: 999, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.85)' },
-  tileSaveText: { fontWeight: '800', fontSize: 11 },
   tileDeleteBtn: { position: 'absolute', top: 6, right: 6, alignItems: 'center', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 999, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.85)' },
   tileDeleteText: { fontWeight: '800', fontSize: 11, color: '#DC2626' },
   previewDeleteBtn: { position: 'relative', top: 0, right: 0, paddingVertical: 10, paddingHorizontal: 14 },

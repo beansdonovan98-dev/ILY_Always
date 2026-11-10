@@ -259,7 +259,9 @@ export default function DaysOfOldScreen() {
         .lt('created_at', end.toISOString());
       for (const r of ((byCreated || []) as MediaRow[])) seen.set(r.id, r);
     } catch {}
-    const rows = [...seen.values()].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const rows = [...seen.values()]
+      .filter((r) => !(r.file_name || '').startsWith('ai-edit-'))
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     setMedia(rows);
     const u: Record<string, string> = {};
     await Promise.all(rows.map(async (r) => { try { u[r.id] = await getSignedUrl(r); } catch {} }));

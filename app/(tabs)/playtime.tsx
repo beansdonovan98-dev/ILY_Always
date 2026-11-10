@@ -101,7 +101,7 @@ export default function PlaytimeScreen() {
         .eq('daily_date', today)
         .order('created_at', { ascending: false });
       if (!error) {
-        const rows = (data || []) as MediaRow[];
+        const rows = ((data || []) as MediaRow[]).filter((r) => !(r.file_name || '').startsWith('ai-edit-'));
         setMedia(rows);
         const urls: Record<string, string> = {};
         await Promise.all(
@@ -126,7 +126,7 @@ export default function PlaytimeScreen() {
       .eq('daily_date', today)
       .order('created_at', { ascending: false });
     if (error) return;
-    const rows = (data || []) as MediaRow[];
+    const rows = ((data || []) as MediaRow[]).filter((r) => !(r.file_name || '').startsWith('ai-edit-'));
     setMedia(rows);
     const urls: Record<string, string> = {};
     await Promise.all(

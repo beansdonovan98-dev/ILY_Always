@@ -95,12 +95,7 @@ export async function checkAIJob(requestId: string, coupleId?: string): Promise<
   };
 }
 
-export async function editImageWithAI(
-  imageUrl: string,
-  prompt: string,
-  existingRequestId?: string,
-  coupleId?: string
-): Promise<string> {
+async function prepareImageBase64(imageUrl: string): Promise<string> {
   // The RunPod worker only reliably decodes PNG/JPEG. iPhones shoot HEIC by
   // default -> convert to JPEG first so the AI never sees an unsupported file.
   // Also cap the long edge: full-resolution phone photos can crash the worker.
@@ -131,6 +126,41 @@ export async function editImageWithAI(
     throw new AIEditError('Could not read the picked photo. Try picking it again.');
   }
   if (!imageBase64) throw new AIEditError('The picked photo came back empty.');
+  return imageBase64;
+}
+
+/** A1111 style-preset flow: returns a data URL. */
+export async function editImageWithStyle(
+  imageUrl: string,
+  styleMode: string,
+  userPrompt: string
+): Promise<string> {
+  const imageBase64 = await prepareImageBase64(imageUrl);
+
+  const result = await callAI({
+    imageBase64,
+    styleMode,
+    userPrompt,
+  });
+
+  const image = typeof result.image === 'string' ? result.image : '';
+  if (image) return image;
+
+  const b64 = typeof result.b64 === 'string' ? result.b64 : '';
+  if (!b64) {
+    throw new AIEditError('The AI came back without an edited image. Try a different style.', false);
+  }
+  const mimeType = typeof result.mimeType === 'string' ? result.mimeType : 'image/png';
+  return `data:${mimeType};base64,${b64}`;
+}
+
+export async function editImageWithAI(
+  imageUrl: string,
+  prompt: string,
+  existingRequestId?: string,
+  coupleId?: string
+): Promise<string> {
+  const imageBase64 = await prepareImageBase64(imageUrl);
 
   const requestId = existingRequestId || createAIRequestId();
 
