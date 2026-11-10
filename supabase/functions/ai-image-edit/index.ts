@@ -9,7 +9,8 @@ const corsHeaders = {
 
 const RUNPOD_BASE = 'https://api.runpod.ai/v2';
 const DEFAULT_ENDPOINT = '7ckfcko9p6h503';
-const STYLE_ENDPOINT = 'https://api.runpod.ai/v2/9piw839ax2kghq/runsync';
+const STYLE_ENDPOINT_BASE = 'https://api.runpod.ai/v2/9piw839ax2kghq';
+const STYLE_ENDPOINT = `${STYLE_ENDPOINT_BASE}/runsync`;
 
 // Reject blank/1x1/truncated uploads before they reach RunPod and burn GPU time.
 const MIN_IMAGE_BASE64_CHARS = 20_000;
@@ -544,6 +545,20 @@ serve(async (req) => {
       if (!healthKey) return json(500, { error: 'RUNPOD_API_KEY is not set.' });
       const healthRes = await fetch(`${RUNPOD_BASE}/${endpoint}/health`, {
         headers: { Authorization: `Bearer ${healthKey}` },
+      });
+      const healthText = await healthRes.text();
+      return new Response(healthText, {
+        status: healthRes.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Diagnostics: A1111 style endpoint health, no job created.
+    if (action === 'style_health') {
+      const styleKey = Deno.env.get('RUNPOD_STYLE_API_KEY') || Deno.env.get('RUNPOD_API_KEY');
+      if (!styleKey) return json(500, { error: 'RUNPOD_STYLE_API_KEY / RUNPOD_API_KEY is not set.' });
+      const healthRes = await fetch(`${STYLE_ENDPOINT_BASE}/health`, {
+        headers: { Authorization: `Bearer ${styleKey}` },
       });
       const healthText = await healthRes.text();
       return new Response(healthText, {
