@@ -425,7 +425,7 @@ async function handleStyleEdit(
   styleMode: string,
   userPrompt: string
 ): Promise<Response> {
-  const runpodKey = Deno.env.get('RUNPOD_API_KEY');
+  const runpodKey = Deno.env.get('RUNPOD_STYLE_API_KEY') || Deno.env.get('RUNPOD_API_KEY');
   if (!runpodKey) {
     return json(500, {
       error: 'RUNPOD_API_KEY is not set on the Supabase project. Run: supabase secrets set RUNPOD_API_KEY=rpa_...',
