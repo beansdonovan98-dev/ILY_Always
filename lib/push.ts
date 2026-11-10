@@ -8,6 +8,24 @@ export type PushEventKind = 'login' | 'cover' | 'playtime' | 'dose' | 'joint';
 
 const TOKEN_KEY = (coupleId: string, user: HealthUser) => `pushToken:${coupleId}:${user}`;
 
+let foregroundHandlerReady = false;
+
+/** Show partner push notifications even when the app is open. */
+async function ensureForegroundHandler(
+  Notifications: Awaited<ReturnType<typeof loadNotifications>>
+): Promise<void> {
+  if (!Notifications || foregroundHandlerReady) return;
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+  foregroundHandlerReady = true;
+}
+
 async function loadNotifications() {
   if (Platform.OS === 'web') return null;
   try {
@@ -25,6 +43,8 @@ async function loadNotifications() {
 export async function registerPushToken(coupleId: string, user: HealthUser): Promise<void> {
   const Notifications = await loadNotifications();
   if (!Notifications) return;
+
+  await ensureForegroundHandler(Notifications);
 
   try {
     const current = await Notifications.getPermissionsAsync();
