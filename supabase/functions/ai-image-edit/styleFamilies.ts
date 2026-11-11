@@ -156,7 +156,7 @@ export const FAMILY_CONFIG: Record<StyleFamily, StyleFamilyConfig> = {
     // Animagine + pose + blurred depth. Lower strength preserves anatomy;
     // the largest-face composite restores the real face separately.
     checkpoint: 'anime',
-    denoise: 0.48,
+    denoise: 0.50,
     faceIdWeight: 0.8,
     controlNet: true,
     faceSwap: false,

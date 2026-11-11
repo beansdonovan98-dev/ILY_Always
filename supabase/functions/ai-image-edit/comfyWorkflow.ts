@@ -15,6 +15,8 @@ export type ComfyWorkflowOptions = {
   useFaceId?: boolean;
   /** Anime styles use OpenPose ControlNet to hold body shape and pose. */
   useControlNet?: boolean;
+  /** Optional depth ControlNet strength for tuning. */
+  depthStrength?: number;
   /** Anime styles run ReActor to put the original face back on the styled image. */
   useFaceSwap?: boolean;
   /** Anime styles re-render detected faces at high resolution. */
@@ -60,6 +62,7 @@ export function buildComfyWorkflow(options: ComfyWorkflowOptions): Record<string
   const faceIdProvider = options.faceIdProvider || 'CPU';
   const faceIdWeight = options.faceIdWeight ?? 0.65;
   const useFaceId = options.useFaceId !== false;
+  const depthStrength = Number.isFinite(options.depthStrength) ? (options.depthStrength as number) : 0.35;
 
   const workflow: Record<string, unknown> = {
     '72': {
@@ -190,7 +193,7 @@ export function buildComfyWorkflow(options: ComfyWorkflowOptions): Record<string
         negative: ['104', 1],
         control_net: ['109', 0],
         image: ['112', 0],
-        strength: 0.55,
+        strength: depthStrength,
         start_percent: 0,
         end_percent: 1,
       },
@@ -336,7 +339,7 @@ export function buildComfyWorkflow(options: ComfyWorkflowOptions): Record<string
         cfg: 5.0,
         sampler_name: 'dpmpp_2m',
         scheduler: 'karras',
-        denoise: 0.12,
+        denoise: 0.08,
         model: ['72', 0],
         positive: ['73', 0],
         negative: ['74', 0],

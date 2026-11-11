@@ -16,13 +16,13 @@ const STYLE_FACE_TAGS =
   'natural eye size, symmetrical eyes, realistic face proportions, natural lips, relaxed closed mouth, symmetrical lips, realistic mouth, open eyes, exact same face, exact same body shape, exact same pose, exact same camera angle, natural anatomy, two arms, two legs, two feet, sharp facial details, sharp eyes, same glasses, realistic skin texture';
 
 const ANIME_FACE_TAGS =
-  'same face, same glasses, detailed eyes, expressive eyes, anime face, natural anatomy, same body shape, same pose, same camera angle, two arms, two legs, two feet, curvy figure, wide hips, thick thighs, soft stomach, natural belly, natural body proportions';
+  'same face, same glasses, detailed eyes, expressive eyes, anime face, natural anatomy, same body shape, same pose, same camera angle, two arms, two legs, two feet, curvy figure, wide hips, thick thighs, soft stomach, natural belly, natural body proportions, detailed nipples, areola, natural nipples, topless, nude, explicit anatomy';
 const BASE_NEGATIVE =
   'score_6, score_5, score_4, deformed, bad anatomy, bad hands, extra limbs, extra feet, duplicate feet, extra foot, extra legs, duplicate legs, third leg, extra body parts, changed pose, different pose, deformed feet, mutated feet, missing fingers, mutated hands, poorly drawn face, asymmetric eyes, blurry, big eyes, anime eyes, asymmetrical eyes, uneven eyes, cross-eyed, lazy eye, deformed eyes, extra pupils, mismatched eyes, weird lips, deformed lips, crooked mouth, mismatched lips, bad teeth, extra lips, open mouth, ugly mouth, botox style mouth, fake mouth';
 
 /** Animagine-style SDXL models use danbooru tags, not Pony score tags. */
 const ANIME_NEGATIVE =
-  'lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, extra limbs, extra feet, duplicate feet, extra foot, extra legs, third leg, deformed hands, mutated hands, abs, six pack, muscular stomach, defined abs, bad nipples, deformed nipples, extra nipples, fused nipples, mismatched nipples, duplicate nipples';
+  'lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, extra limbs, extra feet, duplicate feet, extra foot, extra legs, third leg, deformed hands, mutated hands, abs, six pack, muscular stomach, defined abs';
 
 /** Background passes must not draw people/limbs into the environment. */
 const BACKGROUND_NEGATIVE = `${BASE_NEGATIVE}, people, person, human, body parts, limbs, hands, feet, text, watermark, logo`;
@@ -1048,7 +1048,8 @@ async function handleStyleStart(
   imageBase64: string,
   styleMode: string,
   userPrompt: string,
-  coupleId: string
+  coupleId: string,
+  overrides?: { denoise?: number; faceIdWeight?: number; depthStrength?: number }
 ): Promise<Response> {
   const db = getDb();
   if (!db) {
@@ -1061,7 +1062,16 @@ async function handleStyleStart(
   const effectivePrompt = userPrompt.trim();
   // Photo/texture styles stay at 0.35; mockup/scene/character styles use their
   // designed strength so the style actually does what its name says.
-  const denoise = styleDenoise(styleMode, preset.denoising);
+  const denoiseOverride = Number(overrides?.denoise);
+  const denoise =
+    Number.isFinite(denoiseOverride) && denoiseOverride > 0
+      ? Math.min(0.9, Math.max(0.2, denoiseOverride))
+      : styleDenoise(styleMode, preset.denoising);
+  const faceIdOverride = Number(overrides?.faceIdWeight);
+  const faceIdWeight =
+    Number.isFinite(faceIdOverride) && faceIdOverride > 0
+      ? Math.min(1, Math.max(0.1, faceIdOverride))
+      : styleFaceIdWeight(styleMode);
 
   const imageCheck = validateInputImage(imageBase64);
   if (!imageCheck.ok) return json(400, { error: imageCheck.error });
@@ -1121,8 +1131,9 @@ async function handleStyleStart(
       filenamePrefix: `ily_${requestId}`,
       checkpoint: checkpointForStyle(styleMode),
       faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',
-      faceIdWeight: styleFaceIdWeight(styleMode),
+      faceIdWeight,
       useControlNet: configForStyle(styleMode).controlNet,
+      depthStrength: overrides?.depthStrength,
       useFaceSwap: configForStyle(styleMode).faceSwap,
       useFaceDetail: false,
       useFaceComposite: configForStyle(styleMode).quality === 'anime',
@@ -1609,7 +1620,11 @@ serve(async (req) => {
       }
       if (!styleMode) return json(400, { error: 'Missing styleMode.' });
       if (!styleImageBase64) return json(400, { error: 'Missing imageBase64.' });
-      return await handleStyleStart(requestId, styleImageBase64, styleMode, userPrompt, coupleId);
+      return await handleStyleStart(requestId, styleImageBase64, styleMode, userPrompt, coupleId, {
+        denoise: Number(body.denoise),
+        faceIdWeight: Number(body.faceIdWeight),
+        depthStrength: Number(body.depthStrength),
+      });
     }
 
     if (actionRaw === 'style_status') {
