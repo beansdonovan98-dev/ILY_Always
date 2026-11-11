@@ -13,6 +13,12 @@ export type ComfyWorkflowOptions = {
   faceIdWeight?: number;
   /** Set false to skip the FaceID branch for images where no face is present. */
   useFaceId?: boolean;
+  /** Anime styles use OpenPose ControlNet to hold body shape and pose. */
+  useControlNet?: boolean;
+  /** Anime styles run ReActor to put the original face back on the styled image. */
+  useFaceSwap?: boolean;
+  /** Anime styles re-render detected faces at high resolution. */
+  useFaceDetail?: boolean;
 };
 
 /**
@@ -137,6 +143,129 @@ export function buildComfyWorkflow(options: ComfyWorkflowOptions): Record<string
       },
     };
     (workflow['77'] as { inputs: Record<string, unknown> }).inputs.model = ['86', 0];
+  }
+
+  if (options.useControlNet) {
+    workflow['102'] = {
+      class_type: 'OpenposePreprocessor',
+      inputs: { image: ['80', 0] },
+    };
+    workflow['103'] = {
+      class_type: 'ControlNetLoader',
+      inputs: { control_net_name: 'thibaud_xl_openpose.safetensors' },
+    };
+    workflow['104'] = {
+      class_type: 'ControlNetApplyAdvanced',
+      inputs: {
+        positive: ['73', 0],
+        negative: ['74', 0],
+        control_net: ['103', 0],
+        image: ['102', 0],
+        strength: 0.95,
+        start_percent: 0,
+        end_percent: 1,
+      },
+    };
+    // Depth holds body volume/weight (curves, stomach) that OpenPose alone
+    // cannot. Kept moderate so the anime style still reads.
+    workflow['108'] = {
+      class_type: 'Zoe-DepthMapPreprocessor',
+      inputs: { image: ['80', 0] },
+    };
+    // Smooth the depth map so belly folds/creases are not redrawn as abs.
+    workflow['112'] = {
+      class_type: 'ImageBlur',
+      inputs: { image: ['108', 0], blur_radius: 10, sigma: 5 },
+    };
+    workflow['109'] = {
+      class_type: 'ControlNetLoader',
+      inputs: { control_net_name: 'SDXL/depth-zoe-xl-v1.0-controlnet.safetensors' },
+    };
+    workflow['110'] = {
+      class_type: 'ControlNetApplyAdvanced',
+      inputs: {
+        positive: ['104', 0],
+        negative: ['104', 1],
+        control_net: ['109', 0],
+        image: ['112', 0],
+        strength: 0.55,
+        start_percent: 0,
+        end_percent: 1,
+      },
+    };
+    (workflow['77'] as { inputs: Record<string, unknown> }).inputs.positive = ['110', 0];
+    (workflow['77'] as { inputs: Record<string, unknown> }).inputs.negative = ['110', 1];
+  }
+
+  if (options.useFaceSwap) {
+    workflow['111'] = {
+      class_type: 'ReActorFaceSwap',
+      inputs: {
+        enabled: true,
+        input_image: ['78', 0],
+        source_image: ['75', 0],
+        swap_model: 'inswapper_128.onnx',
+        facedetection: 'retinaface_resnet50',
+        face_restore_model: 'codeformer-v0.1.0.pth',
+        face_restore_visibility: 0.75,
+        codeformer_weight: 0.35,
+        detect_gender_input: 'no',
+        detect_gender_source: 'no',
+        input_faces_index: '0',
+        source_faces_index: '0',
+        console_log_level: 1,
+      },
+    };
+    (workflow['79'] as { inputs: Record<string, unknown> }).inputs.images = ['111', 0];
+  }
+
+  if (options.useFaceDetail) {
+    workflow['113'] = {
+      class_type: 'MediaPipeFaceMeshToSEGS',
+      inputs: {
+        image: ['78', 0],
+        crop_factor: 3.0,
+        bbox_fill: false,
+        crop_min_size: 50,
+        drop_size: 1,
+        dilation: 0,
+        face: true,
+        mouth: false,
+        left_eyebrow: false,
+        left_eye: false,
+        left_pupil: false,
+        right_eyebrow: false,
+        right_eye: false,
+        right_pupil: false,
+      },
+    };
+    workflow['114'] = {
+      class_type: 'DetailerForEach',
+      inputs: {
+        image: ['78', 0],
+        segs: ['113', 0],
+        model: options.useFaceId ? ['86', 0] : ['72', 0],
+        clip: ['81', 0],
+        vae: ['72', 2],
+        guide_size: 512,
+        guide_size_for: true,
+        max_size: 1024,
+        seed: options.seed + 2,
+        steps: 24,
+        cfg: 5.0,
+        sampler_name: 'dpmpp_2m',
+        scheduler: 'karras',
+        positive: ['73', 0],
+        negative: ['74', 0],
+        denoise: 0.4,
+        feather: 5,
+        noise_mask: true,
+        force_inpaint: true,
+        wildcard: '',
+        cycle: 1,
+      },
+    };
+    (workflow['79'] as { inputs: Record<string, unknown> }).inputs.images = ['114', 0];
   }
 
   return workflow;

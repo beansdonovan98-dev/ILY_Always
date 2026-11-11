@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'npm:@supabase/supabase-js';
 import { STYLE_PRESETS } from './stylePresets.ts';
+import { configForStyle } from './styleFamilies.ts';
 import { buildComfyWorkflow, buildInpaintWorkflow, InpaintMaskSource } from './comfyWorkflow.ts';
 import { buildBrushMaskPng } from './maskPng.ts';
 
@@ -13,8 +14,18 @@ const RUNPOD_BASE = 'https://api.runpod.ai/v2';
 const DEFAULT_ENDPOINT = '7ckfcko9p6h503';
 const STYLE_FACE_TAGS =
   'natural eye size, symmetrical eyes, realistic face proportions, natural lips, relaxed closed mouth, symmetrical lips, realistic mouth, open eyes, exact same face, exact same body shape, exact same pose, exact same camera angle, natural anatomy, two arms, two legs, two feet, sharp facial details, sharp eyes, same glasses, realistic skin texture';
+
+const ANIME_FACE_TAGS =
+  'same face, same glasses, detailed eyes, expressive eyes, anime face, natural anatomy, same body shape, same pose, same camera angle, two arms, two legs, two feet, curvy figure, wide hips, thick thighs, soft stomach, natural belly, natural body proportions';
 const BASE_NEGATIVE =
   'score_6, score_5, score_4, deformed, bad anatomy, bad hands, extra limbs, extra feet, duplicate feet, extra foot, extra legs, duplicate legs, third leg, extra body parts, changed pose, different pose, deformed feet, mutated feet, missing fingers, mutated hands, poorly drawn face, asymmetric eyes, blurry, big eyes, anime eyes, asymmetrical eyes, uneven eyes, cross-eyed, lazy eye, deformed eyes, extra pupils, mismatched eyes, weird lips, deformed lips, crooked mouth, mismatched lips, bad teeth, extra lips, open mouth, ugly mouth, botox style mouth, fake mouth';
+
+/** Animagine-style SDXL models use danbooru tags, not Pony score tags. */
+const ANIME_NEGATIVE =
+  'lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, extra limbs, extra feet, duplicate feet, extra foot, extra legs, third leg, deformed hands, mutated hands, abs, six pack, muscular stomach, defined abs';
+
+/** Background passes must not draw people/limbs into the environment. */
+const BACKGROUND_NEGATIVE = `${BASE_NEGATIVE}, people, person, human, body parts, limbs, hands, feet, text, watermark, logo`;
 
 /**
  * NSFW negative used by item/body edits. The base negative bans "open mouth",
@@ -26,6 +37,7 @@ const EDIT_NEGATIVE =
 
 /** Every prompt the model sees starts with Pony's score tags. */
 const PONY_QUALITY = 'score_9, score_8_up, score_7_up';
+const ANIME_QUALITY = 'masterpiece, best quality, very aesthetic, absurdres';
 
 type EditTarget = 'background' | 'hair' | 'body' | 'item';
 
@@ -41,9 +53,9 @@ const EDIT_TARGETS: Record<EditTarget, EditTargetConfig> = {
   background: {
     label: 'Background',
     suffix: 'detailed background, scenery, environment',
-    // Subject-protection composite below lets this be strong without
-    // repainting (or duplicating) the legs and feet.
-    denoise: 0.82,
+    // Subject-protection + harmonization let the background be fully rewritten
+    // from the prompt without repainting the legs/feet.
+    denoise: 0.90,
   },
   hair: {
     label: 'Hair',
@@ -195,29 +207,31 @@ const SCENE_STYLES = new Set<string>([
 const INSIDE_OBJECT_STYLES = new Set<string>(['snowglobe', 'perc-in-bong']);
 
 /** Style passes that need to recompose get a little extra push and stronger FaceID. */
-function styleDenoise(styleMode: string, presetDenoise: number): number {
-  // Character/illustration styles need real strength or they look like a
-  // painted photo. Photographic/scene styles stay low so the face survives.
-  // Pony only reads as anime above ~0.55; below that it stays a painted photo.
-  if (ANIME_STYLES.has(styleMode)) return Math.min(0.60, presetDenoise + 0.12);
-  if (ILLUSTRATION_STYLES.has(styleMode)) return Math.min(0.55, presetDenoise);
-  if (PHOTO_TEXTURE_STYLES.has(styleMode)) return Math.min(STYLE_DENOISE_CAP, presetDenoise);
-  if (MOCKUP_STYLES.has(styleMode) || SCENE_STYLES.has(styleMode)) {
-    return Math.min(0.40, presetDenoise + 0.04);
-  }
-  return Math.min(STYLE_DENOISE_CAP, presetDenoise);
+function styleDenoise(styleMode: string, _presetDenoise: number): number {
+  return configForStyle(styleMode).denoise;
 }
 
 function styleFaceIdWeight(styleMode: string): number {
-  // Anime needs room to stylize; photo styles keep a stronger likeness lock.
-  return ANIME_STYLES.has(styleMode) ? 0.68 : 0.80;
+  return configForStyle(styleMode).faceIdWeight;
+}
+
+function checkpointForStyle(styleMode: string): string | undefined {
+  if (configForStyle(styleMode).checkpoint === 'anime') {
+    return Deno.env.get('COMFY_ANIME_CHECKPOINT') || 'SDXL/sd_xl_base_1.0.safetensors';
+  }
+  return Deno.env.get('COMFY_CHECKPOINT') || undefined;
+}
+
+function negativeForStyle(styleMode: string): string {
+  return configForStyle(styleMode).negative === 'anime' ? ANIME_NEGATIVE : BASE_NEGATIVE;
 }
 
 function stylePromptSuffix(styleMode: string): string {
-  if (ANIME_STYLES.has(styleMode)) {
+  const cfg = configForStyle(styleMode);
+  if (cfg.quality === 'anime') {
     return ', 2d anime illustration, anime screencap, cel shaded, flat colors, clean lineart';
   }
-  if (MOCKUP_STYLES.has(styleMode) && !INSIDE_OBJECT_STYLES.has(styleMode)) {
+  if (cfg.mockup && styleMode !== 'rip-shirt' && !INSIDE_OBJECT_STYLES.has(styleMode)) {
     return ', her photo printed on the object as the graphic, recognizable face';
   }
   return '';
@@ -607,9 +621,13 @@ function extractA1111Image(output: unknown): string | null {
   return extractImageB64(output);
 }
 
-function buildStylePrompt(prefix: string, userPrompt: string): string {
+function buildStylePrompt(prefix: string, userPrompt: string, styleMode?: string): string {
   // Style pass: the preset leads. Per-region text belongs to the inpaint passes.
   let prompt = prefix.trim();
+  if (styleMode && configForStyle(styleMode).quality === 'anime') {
+    prompt = prompt.replace(/^score_9,\s*score_8_up,\s*score_7_up,\s*/i, '');
+    prompt += ', masterpiece, best quality, very aesthetic, absurdres';
+  }
   const extra = userPrompt.trim();
   if (extra) prompt += `, ${extra}`;
   // The presets already include these, but keep the guarantee for custom styles.
@@ -632,13 +650,20 @@ function normalizeEditTarget(value: string): EditTarget | null {
 function styleTagsForEdit(styleMode: string): string {
   const preset = STYLE_PRESETS[styleMode];
   if (!preset) return '';
-  return preset.prefix
+  let tags = preset.prefix
     .replace(/score_9,\s*score_8_up,\s*score_7_up,\s*/i, '')
     .replace(/rating_explicit,?/gi, '')
     .replace(/explicit anatomical details,?/gi, '')
     .replace(/\s*,\s*,+/g, ', ')
     .replace(/^[\s,]+|[\s,]+$/g, '')
     .trim();
+  if (configForStyle(styleMode).quality === 'anime') tags += ', anime style, cel shaded, clean lineart';
+  return tags;
+}
+
+function buildBackgroundPrompt(userPrompt: string): string {
+  // Background edits need scene-level wording, not just a noun.
+  return `${userPrompt.trim()}, wide establishing shot, full environment, immersive scene, detailed scenery, atmospheric depth, realistic perspective, cinematic lighting, high detail`;
 }
 
 function nsfwTagsForEdit(target: EditTarget, userPrompt: string): string {
@@ -657,18 +682,26 @@ function buildEditPrompt(target: EditTarget, userPrompt: string, styleMode: stri
   const config = EDIT_TARGETS[target];
   const style = styleTagsForEdit(styleMode);
   // NSFW tags go early so a long style prefix can never push them past CLIP's
-  // 77-token cutoff. User text stays near the front because Pony weights early
-  // tokens heavily; the style tags follow so the repaint matches the photo.
-  const parts = [PONY_QUALITY, nsfwTagsForEdit(target, userPrompt), userPrompt.trim()];
+  // 77-token cutoff. User text stays near the front because the model weights
+  // early tokens heavily; the style tags follow so the repaint matches the photo.
+  const quality = configForStyle(styleMode).quality === 'anime' ? ANIME_QUALITY : PONY_QUALITY;
+  const promptText = target === 'background' ? buildBackgroundPrompt(userPrompt) : userPrompt.trim();
+  const parts = [quality, nsfwTagsForEdit(target, userPrompt), promptText];
   if (style) parts.push(style);
   parts.push(config.suffix);
   return parts.join(', ');
 }
 
-function negativeForEdit(target: EditTarget, userPrompt: string): string {
+function negativeForEdit(target: EditTarget, userPrompt: string, styleMode?: string): string {
   // Mouth edits must not be told "no open mouth".
   const mouthEdit = /\b(mouth|lips|face|throat|cock|dick|penis|blunt|joint|bong|strapon)\b/i.test(userPrompt);
-  return target === 'item' || mouthEdit ? EDIT_NEGATIVE : BASE_NEGATIVE;
+  const base =
+    styleMode && configForStyle(styleMode).negative === 'anime'
+      ? ANIME_NEGATIVE
+      : target === 'item' || mouthEdit
+        ? EDIT_NEGATIVE
+        : BASE_NEGATIVE;
+  return target === 'background' ? `${base}, people, person, human, body parts, limbs, hands, feet, text, watermark` : base;
 }
 
 function clampEditDenoise(value: unknown, fallback: number): number {
@@ -1079,14 +1112,19 @@ async function handleStyleStart(
 
     const workflow = buildComfyWorkflow({
       imageName,
-      positive: `${buildStylePrompt(preset.prefix, effectivePrompt)}${stylePromptSuffix(styleMode)}, ${STYLE_FACE_TAGS}`,
-      negative: BASE_NEGATIVE,
+      positive: `${buildStylePrompt(preset.prefix, effectivePrompt, styleMode)}${stylePromptSuffix(styleMode)}, ${
+        configForStyle(styleMode).quality === 'anime' ? ANIME_FACE_TAGS : STYLE_FACE_TAGS
+      }`,
+      negative: negativeForStyle(styleMode),
       denoise,
       seed: Math.floor(Math.random() * 2_147_483_647),
       filenamePrefix: `ily_${requestId}`,
-      checkpoint: Deno.env.get('COMFY_CHECKPOINT') || undefined,
+      checkpoint: checkpointForStyle(styleMode),
       faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',
       faceIdWeight: styleFaceIdWeight(styleMode),
+      useControlNet: configForStyle(styleMode).controlNet,
+      useFaceSwap: configForStyle(styleMode).faceSwap,
+      useFaceDetail: configForStyle(styleMode).quality === 'anime',
     });
 
     const promptRes = await fetch(`${await comfyBaseUrl()}/prompt`, {
@@ -1343,18 +1381,19 @@ async function handleInpaintStart(
       throw new Error('The source image is too small for an inpaint pass.');
     }
 
+    const styleMode = String(body.styleMode ?? '').trim();
     const config = editTargetConfig(target);
     const workflow = buildInpaintWorkflow({
       imageName,
       mask,
-      positive: buildEditPrompt(target, userPrompt, String(body.styleMode ?? '').trim()),
-      negative: negativeForEdit(target, userPrompt),
+      positive: buildEditPrompt(target, userPrompt, styleMode),
+      negative: negativeForEdit(target, userPrompt, styleMode),
       denoise: clampEditDenoise(body.denoise, config.denoise),
       seed: Math.floor(Math.random() * 2_147_483_647),
       filenamePrefix: `ily_${target}_${requestId.slice(-8)}`,
-      checkpoint: Deno.env.get('COMFY_CHECKPOINT') || undefined,
+      checkpoint: checkpointForStyle(styleMode),
       faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',
-      faceIdWeight: Number(Deno.env.get('COMFY_FACEID_WEIGHT') || 0.6),
+      faceIdWeight: configForStyle(styleMode).faceIdWeight,
       // Background and hair masks never cover the face, so FaceID is not needed
       // and would fail outright on a photo with no detectable face.
       useFaceId: target === 'body' || target === 'item',
