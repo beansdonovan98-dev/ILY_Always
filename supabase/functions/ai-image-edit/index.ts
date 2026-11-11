@@ -1,7 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'npm:@supabase/supabase-js';
 import { STYLE_PRESETS } from './stylePresets.ts';
-import { buildComfyWorkflow } from './comfyWorkflow.ts';
+import { buildComfyWorkflow, buildInpaintWorkflow, InpaintMaskSource } from './comfyWorkflow.ts';
+import { buildBrushMaskPng } from './maskPng.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,6 +15,59 @@ const STYLE_FACE_TAGS =
   'natural eye size, symmetrical eyes, realistic face proportions, natural lips, relaxed closed mouth, symmetrical lips, realistic mouth, open eyes';
 const BASE_NEGATIVE =
   'score_6, score_5, score_4, deformed, bad anatomy, bad hands, extra limbs, missing fingers, mutated hands, poorly drawn face, asymmetric eyes, blurry, big eyes, anime eyes, asymmetrical eyes, uneven eyes, cross-eyed, lazy eye, deformed eyes, extra pupils, mismatched eyes, weird lips, deformed lips, crooked mouth, mismatched lips, bad teeth, extra lips, open mouth, ugly mouth, botox style mouth, fake mouth';
+
+/**
+ * NSFW negative used by item/body edits. The base negative bans "open mouth",
+ * which directly fights prompts like "cock in her mouth". Keep anatomy hygiene,
+ * drop the mouth bans.
+ */
+const EDIT_NEGATIVE =
+  'score_6, score_5, score_4, deformed, bad anatomy, bad hands, extra limbs, missing fingers, mutated hands, poorly drawn face, asymmetric eyes, blurry, big eyes, anime eyes, asymmetrical eyes, uneven eyes, cross-eyed, lazy eye, deformed eyes, extra pupils, mismatched eyes, weird lips, deformed lips, bad teeth';
+
+const NSFW_TAGS = 'rating_explicit, explicit anatomical details';
+
+/** Every prompt the model sees is explicit and starts with Pony's score tags. */
+const PONY_QUALITY = 'score_9, score_8_up, score_7_up';
+
+type EditTarget = 'background' | 'hair' | 'body' | 'item';
+
+type EditTargetConfig = {
+  label: string;
+  /** Appended after the user's text so the model knows what it is editing. */
+  suffix: string;
+  /** SetLatentNoiseMask denoise. Higher = more replacement. */
+  denoise: number;
+};
+
+const EDIT_TARGETS: Record<EditTarget, EditTargetConfig> = {
+  background: {
+    label: 'Background',
+    suffix: 'detailed background, scenery, environment',
+    denoise: 0.85,
+  },
+  hair: {
+    label: 'Hair',
+    suffix: 'detailed hair, hair texture, hairstyle',
+    denoise: 0.68,
+  },
+  body: {
+    label: 'Body',
+    suffix: 'detailed skin, body detail',
+    denoise: 0.72,
+  },
+  item: {
+    label: 'Item',
+    suffix: 'held object, detailed object',
+    denoise: 0.82,
+  },
+};
+
+const EDIT_DENOISE_MIN = 0.3;
+const EDIT_DENOISE_MAX = 0.95;
+
+// The style pass must stay a style pass: enough to restyle, not enough to
+// redraw her face or body into Pony's cartoon bias.
+const STYLE_DENOISE_CAP = 0.35;
 
 // Reject blank/1x1/truncated uploads before they reach RunPod and burn GPU time.
 const MIN_IMAGE_BASE64_CHARS = 20_000;
@@ -385,20 +439,45 @@ function extractA1111Image(output: unknown): string | null {
 }
 
 function buildStylePrompt(prefix: string, userPrompt: string): string {
-  // User request first: Pony weights early tokens more heavily.
-  let prompt = userPrompt.trim();
-  if (prompt) prompt += ', ';
-  prompt += prefix.trim();
+  // Style pass: the preset leads. Per-region text belongs to the inpaint passes.
+  let prompt = prefix.trim();
+  const extra = userPrompt.trim();
+  if (extra) prompt += `, ${extra}`;
   // The presets already include these, but keep the guarantee for custom styles.
   if (!/rating_explicit/i.test(prompt)) prompt += ', rating_explicit';
   if (!/explicit anatomical details/i.test(prompt)) prompt += ', explicit anatomical details';
   return prompt;
 }
 
-function looksLikeSceneChange(prompt: string): boolean {
-  return /\b(background|scene|setting|behind|in front of|on a|sitting on|lying on|standing on|surrounded by)\b/i.test(
-    prompt
-  );
+function normalizeEditTarget(value: string): EditTarget | null {
+  const target = value.trim().toLowerCase();
+  return target === 'background' || target === 'hair' || target === 'body' || target === 'item'
+    ? target
+    : null;
+}
+
+function buildEditPrompt(target: EditTarget, userPrompt: string): string {
+  const config = EDIT_TARGETS[target];
+  // User text first: Pony weights early tokens most heavily.
+  let prompt = `${PONY_QUALITY}, ${userPrompt.trim()}, ${config.suffix}, ${NSFW_TAGS}`;
+  if (!/rating_explicit/i.test(prompt)) prompt += ', rating_explicit';
+  return prompt;
+}
+
+function negativeForEdit(target: EditTarget, userPrompt: string): string {
+  // Mouth edits must not be told "no open mouth".
+  const mouthEdit = /\b(mouth|lips|face|throat|cock|dick|penis|blunt|joint|bong|strapon)\b/i.test(userPrompt);
+  return target === 'item' || mouthEdit ? EDIT_NEGATIVE : BASE_NEGATIVE;
+}
+
+function clampEditDenoise(value: unknown, fallback: number): number {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.min(EDIT_DENOISE_MAX, Math.max(EDIT_DENOISE_MIN, num));
+}
+
+function editTargetConfig(target: EditTarget): EditTargetConfig {
+  return EDIT_TARGETS[target];
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
@@ -421,18 +500,15 @@ function comfyBaseUrl(): string {
   return url;
 }
 
-/** Upload the source photo to ComfyUI and return the filename its LoadImage node expects. */
-async function uploadImageToComfy(imageBase64: string): Promise<string> {
-  const imageCheck = validateInputImage(imageBase64);
-  if (!imageCheck.ok) throw new Error(imageCheck.error);
-
-  const bytes = base64ToBytes(imageCheck.raw);
-  if (!bytes) throw new Error('Could not decode the image.');
-
+async function uploadBytesToComfy(
+  bytes: Uint8Array,
+  mimeType: string,
+  prefix: string
+): Promise<string> {
   const ext =
-    imageCheck.mimeType === 'image/png' ? 'png' : imageCheck.mimeType === 'image/webp' ? 'webp' : 'jpg';
+    mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
   const form = new FormData();
-  form.append('image', new Blob([bytes], { type: imageCheck.mimeType }), `upload-${Date.now()}.${ext}`);
+  form.append('image', new Blob([bytes as unknown as BlobPart], { type: mimeType }), `${prefix}-${Date.now()}.${ext}`);
   form.append('overwrite', 'true');
 
   const res = await fetch(`${comfyBaseUrl()}/upload/image`, { method: 'POST', body: form });
@@ -449,6 +525,17 @@ async function uploadImageToComfy(imageBase64: string): Promise<string> {
   }
   if (!data.name) throw new Error('ComfyUI upload returned no filename.');
   return data.subfolder ? `${data.subfolder}/${data.name}` : data.name;
+}
+
+/** Upload the source photo to ComfyUI and return the filename its LoadImage node expects. */
+async function uploadImageToComfy(imageBase64: string): Promise<string> {
+  const imageCheck = validateInputImage(imageBase64);
+  if (!imageCheck.ok) throw new Error(imageCheck.error);
+
+  const bytes = base64ToBytes(imageCheck.raw);
+  if (!bytes) throw new Error('Could not decode the image.');
+
+  return uploadBytesToComfy(bytes, imageCheck.mimeType, 'upload');
 }
 
 type ComfyImage = { filename: string; subfolder?: string; type?: string };
@@ -481,11 +568,9 @@ async function handleStyleStart(
   }
 
   const preset = STYLE_PRESETS[styleMode] || STYLE_PRESETS['tarot-card'];
-  const effectivePrompt = userPrompt || 'surrounded by cannabis plants and neon green smoke';
-  // Scene/background requests need more freedom than a pure style transfer.
-  const denoise = looksLikeSceneChange(effectivePrompt)
-    ? Math.min(0.60, preset.denoising + 0.12)
-    : preset.denoising;
+  const effectivePrompt = userPrompt.trim();
+  // Never let a preset's high denoise redraw her. 0.35 is the ceiling.
+  const denoise = Math.min(STYLE_DENOISE_CAP, preset.denoising);
 
   const imageCheck = validateInputImage(imageBase64);
   if (!imageCheck.ok) return json(400, { error: imageCheck.error });
@@ -577,6 +662,244 @@ async function handleStyleStart(
       .eq('request_id', requestId);
 
     return json(200, { requestId, jobId: promptData.prompt_id, status: 'IN_PROGRESS' });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    await db
+      .from('ai_image_jobs')
+      .update({ status: 'FAILED', error: message, updated_at: new Date().toISOString() })
+      .eq('request_id', requestId);
+    return json(502, { requestId, status: 'FAILED', error: message });
+  }
+}
+
+type ResolvedImage = { bytes: Uint8Array; mimeType: string; width?: number; height?: number };
+
+function validateImageBytes(bytes: Uint8Array): { ok: true; mimeType: string } | { ok: false; error: string } {
+  if (bytes.length < 24) return { ok: false, error: 'The source image is empty or truncated.' };
+  const info = imageInfoFromBytes(bytes);
+  if (!info) return { ok: false, error: 'The source image is not a valid JPEG, PNG, or WebP.' };
+  if (
+    info.width !== undefined &&
+    info.height !== undefined &&
+    (info.width < MIN_IMAGE_DIMENSION || info.height < MIN_IMAGE_DIMENSION)
+  ) {
+    return {
+      ok: false,
+      error: `The source image is too small (${info.width}\u00d7${info.height}).`,
+    };
+  }
+  return { ok: true, mimeType: info.format === 'jpeg' ? 'image/jpeg' : `image/${info.format}` };
+}
+
+/** Accepts either uploaded base64 or the signed URL of a previous pass. */
+async function resolveSourceImage(body: Record<string, unknown>): Promise<ResolvedImage> {
+  const rawBase64 = String(body.imageBase64 ?? body.image_base64 ?? '').trim();
+
+  if (rawBase64) {
+    const check = validateInputImage(rawBase64);
+    if (!check.ok) throw new Error(check.error);
+    const bytes = base64ToBytes(check.raw);
+    if (!bytes) throw new Error('Could not decode the image.');
+    const info = imageInfoFromBytes(bytes);
+    return { bytes, mimeType: check.mimeType, width: info?.width, height: info?.height };
+  }
+
+  const url = String(body.imageUrl ?? body.image_url ?? '').trim();
+  if (!url) throw new Error('Missing imageUrl or imageBase64.');
+
+  let bytes: Uint8Array;
+  let mimeType = 'image/png';
+
+  if (url.startsWith('data:')) {
+    const match = url.match(/^data:([^;,]+)[;,]/i);
+    mimeType = match?.[1] || 'image/png';
+    const decoded = base64ToBytes(stripDataUrl(url));
+    if (!decoded) throw new Error('Could not decode the image data URL.');
+    bytes = decoded;
+  } else if (/^https?:\/\//i.test(url)) {
+    let res: Response;
+    try {
+      res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+    } catch (e) {
+      throw new Error(`Could not download the previous pass: ${String(e)}`);
+    }
+    if (!res.ok) throw new Error(`Could not download the previous pass (HTTP ${res.status}).`);
+    bytes = new Uint8Array(await res.arrayBuffer());
+    mimeType = (res.headers.get('content-type') || 'image/png').split(';')[0].trim();
+  } else {
+    throw new Error('imageUrl must be an http(s) or data: URL.');
+  }
+
+  const check = validateImageBytes(bytes);
+  if (!check.ok) throw new Error(check.error);
+  const info = imageInfoFromBytes(bytes);
+  return { bytes, mimeType, width: info?.width, height: info?.height };
+}
+
+async function submitComfyWorkflow(
+  db: NonNullable<ReturnType<typeof getDb>>,
+  requestId: string,
+  workflow: Record<string, unknown>
+): Promise<string> {
+  const promptRes = await fetch(`${comfyBaseUrl()}/prompt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: workflow, client_id: crypto.randomUUID() }),
+  });
+  const promptText = await promptRes.text();
+
+  if (!promptRes.ok) {
+    throw new Error(`ComfyUI rejected the workflow (HTTP ${promptRes.status}): ${promptText.slice(0, 1000)}`);
+  }
+
+  let promptData: { prompt_id?: string } = {};
+  try {
+    promptData = JSON.parse(promptText);
+  } catch {
+    promptData = {};
+  }
+  if (!promptData.prompt_id) {
+    throw new Error(`ComfyUI returned no prompt_id: ${promptText.slice(0, 1000)}`);
+  }
+
+  await db
+    .from('ai_image_jobs')
+    .update({
+      job_id: promptData.prompt_id,
+      status: 'IN_PROGRESS',
+      error: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('request_id', requestId);
+
+  return promptData.prompt_id;
+}
+
+async function handleInpaintStart(
+  requestId: string,
+  body: Record<string, unknown>,
+  coupleId: string
+): Promise<Response> {
+  const db = getDb();
+  if (!db) {
+    return json(500, {
+      error: 'SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not available to the Edge Function.',
+    });
+  }
+
+  const targetRaw = String(body.target ?? '').trim();
+  const target = normalizeEditTarget(targetRaw);
+  if (!target) {
+    return json(400, { error: 'target must be background, hair, body, or item.' });
+  }
+
+  const userPrompt = String(body.prompt ?? '').trim();
+  if (!userPrompt) return json(400, { error: 'Missing prompt for this edit.' });
+
+  let source: ResolvedImage;
+  try {
+    source = await resolveSourceImage(body);
+  } catch (e) {
+    return json(400, { error: e instanceof Error ? e.message : String(e) });
+  }
+
+  const imageCheck = validateImageBytes(source.bytes);
+  if (!imageCheck.ok) return json(400, { error: imageCheck.error });
+
+  const { data: inserted, error: insertError } = await db
+    .from('ai_image_jobs')
+    .insert({ request_id: requestId, status: 'PENDING', couple_id: coupleId || null })
+    .select('*')
+    .maybeSingle();
+
+  let row = (inserted as JobRow | null) ?? null;
+
+  if (insertError && insertError.code !== '23505') {
+    return json(500, { error: `Could not create AI job: ${insertError.message}` });
+  }
+
+  if (!row) {
+    row = await getJobRow(db, requestId);
+    if (!row) return json(500, { error: 'AI job disappeared while being created.' });
+
+    if (row.job_id || row.status === 'COMPLETED' || isFailedStatus(row.status)) {
+      if (isFailedStatus(row.status)) {
+        return json(200, {
+          requestId,
+          jobId: row.job_id,
+          status: 'FAILED',
+          error: row.error || 'ComfyUI job failed.',
+        });
+      }
+      return json(200, { requestId, jobId: row.job_id, status: row.status });
+    }
+
+    const updatedAt = Date.parse(row.updated_at || row.created_at);
+    const stale = !Number.isFinite(updatedAt) || Date.now() - updatedAt > STALE_PENDING_MS;
+    if (!stale) {
+      return json(200, { requestId, jobId: null, status: 'PENDING' });
+    }
+
+    await db
+      .from('ai_image_jobs')
+      .update({ status: 'PENDING', error: null, updated_at: new Date().toISOString() })
+      .eq('request_id', requestId);
+  }
+
+  try {
+    const imageName = await uploadBytesToComfy(source.bytes, source.mimeType, 'inpaint');
+    const imageScale = source.width && source.height
+      ? Math.min(source.width, source.height)
+      : 0;
+
+    const strokes = body.strokes;
+    let mask: InpaintMaskSource;
+
+    if (Array.isArray(strokes) && strokes.length > 0) {
+      if (!source.width || !source.height) {
+        throw new Error('Could not read the image size to build the brush mask. Try a JPEG or PNG.');
+      }
+      const maskPng = await buildBrushMaskPng(source.width, source.height, strokes);
+      if (!maskPng) {
+        throw new Error('The painted area was empty. Paint over the spot you want to change.');
+      }
+      const maskName = await uploadBytesToComfy(maskPng, 'image/png', `mask-${requestId.slice(-8)}`);
+      mask = { kind: 'brush', maskImage: maskName };
+    } else if (target === 'background') {
+      mask = {
+        kind: 'background',
+        node: Deno.env.get('COMFY_BG_MASK_NODE') || 'RMBG',
+        model: Deno.env.get('COMFY_RMBG_MODEL') || 'RMBG-2.0',
+      };
+    } else if (target === 'hair') {
+      mask = {
+        kind: 'hair',
+        node: Deno.env.get('COMFY_HAIR_MASK_NODE') || 'HumanParts',
+      };
+    } else {
+      throw new Error('Paint the area you want to change for Body and Item edits.');
+    }
+
+    if (imageScale && imageScale < 256) {
+      throw new Error('The source image is too small for an inpaint pass.');
+    }
+
+    const config = editTargetConfig(target);
+    const workflow = buildInpaintWorkflow({
+      imageName,
+      mask,
+      positive: buildEditPrompt(target, userPrompt),
+      negative: negativeForEdit(target, userPrompt),
+      denoise: clampEditDenoise(body.denoise, config.denoise),
+      seed: Math.floor(Math.random() * 2_147_483_647),
+      filenamePrefix: `ily_${target}_${requestId.slice(-8)}`,
+      checkpoint: Deno.env.get('COMFY_CHECKPOINT') || undefined,
+      faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',
+      faceIdWeight: Number(Deno.env.get('COMFY_FACEID_WEIGHT') || 0.6),
+    });
+
+    const jobId = await submitComfyWorkflow(db, requestId, workflow);
+    return json(200, { requestId, jobId, status: 'IN_PROGRESS', target });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     await db
@@ -759,6 +1082,55 @@ serve(async (req) => {
       } catch (e) {
         return json(502, { error: String(e) });
       }
+    }
+
+    // Localized edit pass: auto-segmented background/hair or a brush mask.
+    if (actionRaw === 'inpaint_start') {
+      if (!requestId || requestId.length > 160) {
+        return json(400, { error: 'Missing or invalid request_id.' });
+      }
+      return await handleInpaintStart(requestId, body, coupleId);
+    }
+
+    if (actionRaw === 'inpaint_status') {
+      if (!requestId || requestId.length > 160) {
+        return json(400, { error: 'Missing or invalid request_id.' });
+      }
+      return await handleStyleStatus(requestId);
+    }
+
+    // Diagnose which segmentation nodes the pod actually exposes. No job created.
+    if (actionRaw === 'mask_health') {
+      const nodes = [
+        Deno.env.get('COMFY_BG_MASK_NODE') || 'RMBG',
+        Deno.env.get('COMFY_HAIR_MASK_NODE') || 'HumanParts',
+      ];
+      const results: Record<string, unknown> = {};
+      for (const node of nodes) {
+        try {
+          const res = await fetch(`${comfyBaseUrl()}/object_info/${encodeURIComponent(node)}`);
+          const text = await res.text();
+          let parsed: Record<string, unknown> = {};
+          try {
+            parsed = JSON.parse(text);
+          } catch {
+            parsed = {};
+          }
+          const info = parsed[node] as
+            | { input?: { required?: Record<string, unknown>; optional?: Record<string, unknown> } }
+            | undefined;
+          results[node] = info
+            ? {
+                ok: true,
+                required: Object.keys(info.input?.required ?? {}),
+                optional: Object.keys(info.input?.optional ?? {}),
+              }
+            : { ok: false, http: res.status, body: text.slice(0, 300) };
+        } catch (e) {
+          results[node] = { ok: false, error: String(e) };
+        }
+      }
+      return json(200, { comfyUrl: comfyBaseUrl(), nodes: results });
     }
 
     // Backward-compatible call shape: { imageBase64, styleMode, userPrompt }.

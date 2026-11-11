@@ -30,6 +30,24 @@ export class AIEditError extends Error {
 
 type AIEdgeReply = Record<string, unknown>;
 
+export type BrushStroke = {
+  /** Normalized [x, y] pairs (0..1) relative to the photo. */
+  points: Array<[number, number]>;
+  /** Normalized radius relative to the photo width. */
+  r: number;
+};
+
+export type EditTarget = 'background' | 'hair' | 'body' | 'item';
+
+export type AIEdit = {
+  target: EditTarget;
+  prompt: string;
+  /** Present for Brush targets (Body/Item). Background/Hair fall back to auto masks. */
+  strokes?: BrushStroke[];
+};
+
+export type AIEditProgress = (message: string) => void;
+
 export type AIJobCheck = {
   status: string;
   jobId?: string | null;
@@ -129,29 +147,24 @@ async function prepareImageBase64(imageUrl: string): Promise<string> {
   return imageBase64;
 }
 
-/** ComfyUI style-preset flow: start, poll, return the result URL/data URL. */
-export async function editImageWithStyle(
-  imageUrl: string,
-  styleMode: string,
-  userPrompt: string,
-  coupleId?: string
+/**
+ * Starts one ComfyUI pass and polls it to completion.
+ * Every pass is its own request_id, so a retry can never double-submit.
+ */
+async function runComfyJob(
+  startBody: Record<string, unknown>,
+  statusAction: 'style_status' | 'inpaint_status',
+  requestId: string
 ): Promise<string> {
-  const imageBase64 = await prepareImageBase64(imageUrl);
-  const requestId = createAIRequestId();
-
-  const started = await callAI({
-    action: 'style_start',
-    request_id: requestId,
-    couple_id: coupleId,
-    imageBase64,
-    styleMode,
-    userPrompt,
-  });
+  const started = await callAI(startBody);
 
   const startStatus = String(started.status ?? '').toUpperCase();
   if (startStatus === 'FAILED' || startStatus === 'CANCELLED' || startStatus === 'TIMED_OUT') {
     throw new AIEditError(String(started.error || 'The AI provider failed to start the job.'), false);
   }
+
+  const firstUrl = typeof started.url === 'string' ? started.url : '';
+  if (startStatus === 'COMPLETED' && firstUrl) return firstUrl;
 
   const deadline = Date.now() + 10 * 60_000;
   let waitMs = 2000;
@@ -162,7 +175,7 @@ export async function editImageWithStyle(
 
     let current: Record<string, unknown>;
     try {
-      current = await callAI({ action: 'style_status', request_id: requestId });
+      current = await callAI({ action: statusAction, request_id: requestId });
     } catch {
       // Network blip: keep polling the same request_id.
       continue;
@@ -192,9 +205,70 @@ export async function editImageWithStyle(
   }
 
   throw new AIEditError(
-    'The AI is still working after 10 minutes. Tap AI Edit again to keep waiting on the same job — you will not be charged twice.',
+    'The AI is still working after 10 minutes. Run the edit again — the backend keeps the finished passes.',
     true
   );
+}
+
+/**
+ * Style pass (denoise capped at 0.35, FaceID on) followed by one masked
+ * inpaint pass per edit, in order: background -> hair -> body -> item.
+ */
+export async function editImageWithStyle(
+  imageUrl: string,
+  styleMode: string,
+  edits: AIEdit[],
+  coupleId?: string,
+  onProgress?: AIEditProgress,
+  options?: { skipStyle?: boolean }
+): Promise<string> {
+  const active = edits.filter((edit) => edit.prompt.trim().length > 0);
+
+  let current = imageUrl;
+
+  if (!options?.skipStyle) {
+    const imageBase64 = await prepareImageBase64(imageUrl);
+    const styleRequestId = createAIRequestId();
+
+    onProgress?.('Applying style...');
+    current = await runComfyJob(
+      {
+        action: 'style_start',
+        request_id: styleRequestId,
+        couple_id: coupleId,
+        imageBase64,
+        styleMode,
+      },
+      'style_status',
+      styleRequestId
+    );
+  }
+
+  for (const edit of active) {
+    const label = edit.target.charAt(0).toUpperCase() + edit.target.slice(1);
+    onProgress?.(`Editing ${label.toLowerCase()}...`);
+
+    const requestId = createAIRequestId();
+    const body: Record<string, unknown> = {
+      action: 'inpaint_start',
+      request_id: requestId,
+      couple_id: coupleId,
+      target: edit.target,
+      prompt: edit.prompt.trim(),
+    };
+
+    if (edit.strokes && edit.strokes.length > 0) body.strokes = edit.strokes;
+
+    if (current.startsWith('data:')) {
+      body.imageBase64 = current.replace(/^data:[^;,]+[;,]/, '');
+    } else {
+      body.imageUrl = current;
+    }
+
+    current = await runComfyJob(body, 'inpaint_status', requestId);
+  }
+
+  return current;
 }
 
 export async function editImageWithAI(

@@ -25,7 +25,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { useTabLabel } from '@/hooks/useTabLabel';
 import { JointBurnTimer, bongHaptic } from '@/components/CannabisFeatures';
 import { getCoupleId } from '@/lib/couple';
-import { checkAIJob, editImageWithStyle } from '@/lib/aiImage';
+import { BrushStroke, EditTarget, checkAIJob, editImageWithStyle } from '@/lib/aiImage';
 import { AI_STYLE_KEYS, styleLabel } from '@/lib/aiStyles';
 import { uploadMedia, getSignedUrl, deleteMedia, MediaRow } from '@/lib/media';
 import { getItem, setItem } from '@/lib/storage';
@@ -33,10 +33,58 @@ import { supabase } from '@/lib/supabase';
 import { localDateKey } from '@/lib/days';
 import { useUsage } from '@/contexts/UsageContext';
 import { markActivity } from '@/lib/activity';
+import BrushMaskEditor from '@/components/BrushMaskEditor';
 
 import { useAppFont } from '@/hooks/useAppFont';
 
 const PENDING_JOB_KEY = 'ai-editor:pending-job';
+
+type EditRow = {
+  target: EditTarget;
+  label: string;
+  placeholder: string;
+  /** Body/Item need a painted mask; Background/Hair default to auto masks. */
+  brush: boolean;
+  hint: string;
+};
+
+const EDIT_ROWS: EditRow[] = [
+  {
+    target: 'background',
+    label: 'Background',
+    placeholder: 'e.g. weed grow room, neon green smoke',
+    brush: false,
+    hint: 'Auto-masked',
+  },
+  {
+    target: 'hair',
+    label: 'Hair',
+    placeholder: 'e.g. long red hair, wet look',
+    brush: false,
+    hint: 'Auto-masked',
+  },
+  {
+    target: 'body',
+    label: 'Body',
+    placeholder: 'e.g. snake tattoo across her ribs',
+    brush: true,
+    hint: 'Paint the area',
+  },
+  {
+    target: 'item',
+    label: 'Item',
+    placeholder: 'e.g. holding a joint, strapon',
+    brush: true,
+    hint: 'Paint the area',
+  },
+];
+
+const EMPTY_STROKES: Record<EditTarget, BrushStroke[]> = {
+  background: [],
+  hair: [],
+  body: [],
+  item: [],
+};
 
 type PendingJob = {
   requestId: string;
@@ -68,7 +116,15 @@ export default function AIEditorScreen() {
   const appTheme = useAppTheme();
   const { currentUser } = useUsage();
   const aiTitle = useTabLabel('ai-editor', 'Dirty Darkroom 🔥');
-  const [prompt, setPrompt] = useState('');
+  const [editPrompts, setEditPrompts] = useState<Record<EditTarget, string>>({
+    background: '',
+    hair: '',
+    body: '',
+    item: '',
+  });
+  const [editStrokes, setEditStrokes] = useState<Record<EditTarget, BrushStroke[]>>(EMPTY_STROKES);
+  const [brushTarget, setBrushTarget] = useState<EditTarget | null>(null);
+  const [brushOpen, setBrushOpen] = useState(false);
   const [sourceUri, setSourceUri] = useState('');
   const [resultUri, setResultUri] = useState('');
   const [loading, setLoading] = useState(false);
@@ -168,22 +224,49 @@ export default function AIEditorScreen() {
     setSourceUri(result.assets[0].uri);
     setResultUri('');
     setStatus('');
+    setEditStrokes(EMPTY_STROKES);
   }, []);
 
   const runEdit = useCallback(async () => {
-    const trimmed = prompt.trim();
-    if (!sourceUri || !trimmed) return;
+    if (!sourceUri) return;
     if (busyRef.current) return; // ignore accidental double-taps
+
+    const activeEdits = EDIT_ROWS.map((row) => ({
+      target: row.target,
+      prompt: (editPrompts[row.target] || '').trim(),
+      strokes: editStrokes[row.target] || [],
+    })).filter((edit) => edit.prompt.length > 0);
+
+    const missingMask = activeEdits.find(
+      (edit) => (edit.target === 'body' || edit.target === 'item') && edit.strokes.length === 0
+    );
+    if (missingMask) {
+      setStatus(`Paint the ${missingMask.target} area first, then run it again 🖌️`);
+      return;
+    }
+
     busyRef.current = true;
 
     setLoading(true);
     setEditBurn(1);
-    setStatus(`Applying ${styleLabel(selectedStyle)}...`);
+    setStatus(resultUri ? 'Applying edits...' : `Applying ${styleLabel(selectedStyle)}...`);
     try {
       const coupleId = await getCoupleId();
-      const edited = await editImageWithStyle(sourceUri, selectedStyle, trimmed, coupleId);
+      const baseUri = resultUri || sourceUri;
+      const edited = await editImageWithStyle(
+        baseUri,
+        selectedStyle,
+        activeEdits,
+        coupleId,
+        (message) => setStatus(message),
+        { skipStyle: Boolean(resultUri) }
+      );
       setResultUri(edited);
-      setStatus('Done! Tap Save to keep it 💞');
+      setStatus(
+        activeEdits.length > 0
+          ? 'Done! Tap Save to keep it 💞'
+          : 'Style applied! Tap Save to keep it 💞'
+      );
     } catch (e) {
       const msg = e instanceof Error ? e.message : JSON.stringify(e);
       setStatus(`Error: ${msg}`);
@@ -193,7 +276,26 @@ export default function AIEditorScreen() {
       setEditBurn(0);
       void bongHaptic();
     }
-  }, [sourceUri, prompt, selectedStyle]);
+  }, [sourceUri, resultUri, editPrompts, editStrokes, selectedStyle]);
+
+  const openBrush = useCallback((target: EditTarget) => {
+    setBrushTarget(target);
+    setBrushOpen(true);
+  }, []);
+
+  const clearBrush = useCallback((target: EditTarget) => {
+    setEditStrokes((prev) => ({ ...prev, [target]: [] }));
+  }, []);
+
+  const saveBrush = useCallback(
+    (strokes: BrushStroke[]) => {
+      if (brushTarget) {
+        setEditStrokes((prev) => ({ ...prev, [brushTarget]: strokes }));
+      }
+      setBrushOpen(false);
+    },
+    [brushTarget]
+  );
 
   /** Saves the edited photo to the editor's private creations gallery. */
   const saveToCovers = useCallback(async () => {
@@ -372,9 +474,9 @@ export default function AIEditorScreen() {
         Developing our dirtiest fantasies in the dark — snapshots, but make them sinful 🔞📷
       </Text>
 
-      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>New Edit ✨</Text>} hint="Describe your dirtiest fantasy and watch it come alive 😏🔥" defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>New Edit ✨</Text>} hint="Pick a style, add edits, and let the darkroom do the dirty work 😏🔥" defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
         <LeafBorder color={appTheme.leafColor} />
-        <Text style={styles.cardHint}>Pick a photo, describe the edit, and let the AI do the dirty work 😏</Text>
+        <Text style={styles.cardHint}>Pick a photo and a style, then add only the edits you want 😏</Text>
 
         <Pressable onPress={pickSource} style={styles.pillPress}>
           <LinearGradient
@@ -405,15 +507,83 @@ export default function AIEditorScreen() {
           <Text style={[styles.styleSelectChevron, { color: appTheme.textColor }]}>⌄</Text>
         </Pressable>
 
-        <Text style={styles.label}>Describe the edit</Text>
-        <TextInput
-          value={prompt}
-          onChangeText={setPrompt}
-          placeholder="e.g. make it watercolor, dreamy neon..."
-          placeholderTextColor="rgba(58,42,46,0.45)"
-          style={[styles.input, { borderColor: appTheme.borderColor, color: appTheme.textColor }]}
-          multiline
-        />
+        <View style={styles.styleHeader}>
+          <Text style={styles.label}>Edits</Text>
+          <Text style={styles.styleHint}>Runs in order</Text>
+        </View>
+        <Text style={[styles.editIntro, { color: appTheme.subtitleColor }]}>
+          Optional. Add only what you want changed — each edit gets its own mask so her face and body stay put.
+        </Text>
+
+        {EDIT_ROWS.map((row) => {
+          const painted = (editStrokes[row.target] || []).length > 0;
+          return (
+            <View key={row.target} style={[styles.editRow, { borderColor: appTheme.borderColor }]}>
+              <View style={styles.editRowHeader}>
+                <Text style={[styles.editRowTitle, { fontFamily: font, color: appTheme.textColor }]}>
+                  {row.label}
+                </Text>
+                <Text style={[styles.editRowHint, { color: appTheme.textColor }]}>
+                  {painted ? 'Painted mask ✓' : row.hint}
+                </Text>
+              </View>
+
+              <TextInput
+                value={editPrompts[row.target]}
+                onChangeText={(value) => setEditPrompts((prev) => ({ ...prev, [row.target]: value }))}
+                placeholder={row.placeholder}
+                placeholderTextColor="rgba(58,42,46,0.45)"
+                style={[styles.editInput, { borderColor: appTheme.borderColor, color: appTheme.textColor }]}
+                multiline
+              />
+
+              <View style={styles.editRowActions}>
+                <Pressable
+                  onPress={() => openBrush(row.target)}
+                  disabled={!sourceUri}
+                  style={[
+                    styles.miniPill,
+                    {
+                      borderColor: appTheme.borderColor,
+                      opacity: sourceUri ? 1 : 0.4,
+                    },
+                  ]}>
+                  <Text style={[styles.miniPillText, { fontFamily: font, color: appTheme.textColor }]}>
+                    {painted ? 'Edit mask 🖌️' : 'Paint mask 🖌️'}
+                  </Text>
+                </Pressable>
+
+                {painted ? (
+                  <Pressable onPress={() => clearBrush(row.target)} style={styles.clearMask}>
+                    <Text style={[styles.clearMaskText, { fontFamily: font }]}>Clear mask</Text>
+                  </Pressable>
+                ) : null}
+
+                {row.brush && !painted ? (
+                  <Text style={[styles.requiredHint, { fontFamily: font }]}>Mask required</Text>
+                ) : null}
+              </View>
+            </View>
+          );
+        })}
+
+        <Text style={styles.hint}>
+          Background and Hair mask themselves. Body and Item need you to paint the spot. Every prompt is sent as explicit.
+        </Text>
+
+        {resultUri ? (
+          <Pressable
+            onPress={() => {
+              setResultUri('');
+              setEditStrokes(EMPTY_STROKES);
+              setStatus('Back to the original photo — pick a style and run it again.');
+            }}
+            style={[styles.ghostPill, { borderColor: appTheme.borderColor }]}>
+            <Text style={[styles.ghostPillText, { fontFamily: font, color: appTheme.textColor }]}>
+              Start over from original
+            </Text>
+          </Pressable>
+        ) : null}
 
         {loading && <JointBurnTimer ratio={editBurn} />}
         <Pressable onPress={runEdit} disabled={loading} style={styles.pillPress}>
@@ -541,7 +711,7 @@ export default function AIEditorScreen() {
             <View style={styles.styleSheetHeader}>
               <View>
                 <Text style={[styles.styleSheetTitle, { fontFamily: font }]}>Choose a style</Text>
-                <Text style={styles.styleSheetSub}>Pick the look, then describe the scene</Text>
+                <Text style={styles.styleSheetSub}>Pick the look, then add edits below</Text>
               </View>
               <Pressable onPress={closeStylePicker} style={[styles.styleClose, { borderColor: appTheme.borderColor }]}>
                 <Text style={styles.styleCloseText}>✕</Text>
@@ -601,6 +771,15 @@ export default function AIEditorScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <BrushMaskEditor
+        visible={brushOpen && Boolean(brushTarget) && Boolean(resultUri || sourceUri)}
+        imageUri={resultUri || sourceUri}
+        targetLabel={EDIT_ROWS.find((row) => row.target === brushTarget)?.label || 'area'}
+        initialStrokes={brushTarget ? editStrokes[brushTarget] || [] : []}
+        onCancel={() => setBrushOpen(false)}
+        onSave={saveBrush}
+      />
     </ScrollView>
   );
 }
@@ -632,6 +811,38 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     fontSize: 15,
   },
+  editIntro: { fontSize: 12, fontStyle: 'italic', lineHeight: 17, marginTop: 2, marginBottom: 4 },
+  editRow: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 10,
+    marginTop: 10,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+    gap: 7,
+  },
+  editRowHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  editRowTitle: { fontSize: 15, fontWeight: '800' },
+  editRowHint: { fontSize: 11, opacity: 0.55, fontWeight: '600' },
+  editInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 9,
+    minHeight: 46,
+    backgroundColor: 'rgba(255,255,255,0.55)',
+    fontSize: 14,
+  },
+  editRowActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  miniPill: {
+    borderWidth: 1,
+    borderRadius: 50,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+  },
+  miniPillText: { fontSize: 12, fontWeight: '700' },
+  clearMask: { paddingVertical: 6, paddingHorizontal: 2 },
+  clearMaskText: { fontSize: 12, fontWeight: '700', opacity: 0.7 },
+  requiredHint: { fontSize: 11, fontWeight: '700', opacity: 0.5, marginLeft: 'auto' },
   styleHeader: {
     flexDirection: 'row',
     alignItems: 'center',
