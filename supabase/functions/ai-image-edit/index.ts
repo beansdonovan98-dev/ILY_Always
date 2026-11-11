@@ -643,20 +643,22 @@ function bytesToBase64(bytes: Uint8Array): string {
 
 let comfyUrlCache: { url: string; at: number } | null = null;
 
-/**
- * A restarted Runpod Pod gets a new id and therefore a new proxy hostname.
- * Listing the account's running pods keeps the editor working without editing
- * a secret after every restart. Set RUNPOD_COMFY_URL to a URL to pin one.
- */
-async function discoverComfyUrl(): Promise<string> {
-  // Prefer a key that has pods:read. The serverless key often does not, which
-  // is why auto-discovery is a separate secret instead of reusing RUNPOD_API_KEY.
-  const key = Deno.env.get('RUNPOD_DISCOVERY_KEY') || Deno.env.get('RUNPOD_API_KEY');
+/** Prefer a key that can read pods, then any available Runpod key. */
+function podApiKey(): string {
+  const key =
+    Deno.env.get('RUNPOD_CONTROL_KEY') ||
+    Deno.env.get('RUNPOD_DISCOVERY_KEY') ||
+    Deno.env.get('RUNPOD_API_KEY');
   if (!key) {
     throw new Error(
-      'No Runpod key is available for pod discovery. Set RUNPOD_DISCOVERY_KEY (needs pods:read) or RUNPOD_COMFY_URL.'
+      'No Runpod key is available for pod control. Set RUNPOD_DISCOVERY_KEY (pods:read) or RUNPOD_CONTROL_KEY (pods:write).'
     );
   }
+  return key;
+}
+
+async function listRunpodPods(): Promise<Array<Record<string, unknown>>> {
+  const key = podApiKey();
 
   const listPods = async (url: string): Promise<Array<Record<string, unknown>>> => {
     const res = await fetch(url, { headers: { Authorization: `Bearer ${key}` } });
@@ -666,14 +668,13 @@ async function discoverComfyUrl(): Promise<string> {
     return Array.isArray(parsed) ? parsed : parsed.pods || [];
   };
 
-  let pods: Array<Record<string, unknown>>;
   try {
-    pods = await listPods('https://api.runpod.io/v2/pods?limit=100');
+    return await listPods('https://api.runpod.io/v2/pods?limit=100');
   } catch (v2Error) {
     // Some keys are scoped to serverless only on v2; the legacy v1 list often
     // still returns the account's pods.
     try {
-      pods = await listPods('https://rest.runpod.io/v1/pods');
+      return await listPods('https://rest.runpod.io/v1/pods');
     } catch (v1Error) {
       // Last resort: the GraphQL API uses the same key but a different scope
       // check, and older full-access keys still work there.
@@ -692,8 +693,9 @@ async function discoverComfyUrl(): Promise<string> {
           errors?: Array<{ message?: string }>;
         };
         if (gql.errors?.length) throw new Error(gql.errors.map((e) => e.message).join('; '));
-        pods = gql.data?.myself?.pods || [];
+        const pods = gql.data?.myself?.pods || [];
         if (pods.length === 0) throw new Error('GraphQL returned no pods.');
+        return pods;
       } catch (gqlError) {
         throw new Error(
           `Could not list Runpod pods. Set RUNPOD_DISCOVERY_KEY to a Runpod key with pods:read, or set RUNPOD_COMFY_URL to the current pod URL. (v2 ${
@@ -705,21 +707,146 @@ async function discoverComfyUrl(): Promise<string> {
       }
     }
   }
-  const exposes8188 = (pod: Record<string, unknown>) =>
-    (Array.isArray(pod.ports) ? pod.ports : []).some((port) => String(port).startsWith('8188/'));
+}
 
-  const running = pods.filter(
-    (pod) => String(pod.status ?? pod.desiredStatus ?? '').toUpperCase() === 'RUNNING'
-  );
-  const imageOf = (pod: Record<string, unknown>) => String(pod.image ?? pod.imageName ?? '');
+function podExposes8188(pod: Record<string, unknown>): boolean {
+  return (Array.isArray(pod.ports) ? pod.ports : []).some((port) => String(port).startsWith('8188/'));
+}
+
+function podImage(pod: Record<string, unknown>): string {
+  return String(pod.image ?? pod.imageName ?? '');
+}
+
+function podStatus(pod: Record<string, unknown>): string {
+  return String(pod.status ?? pod.desiredStatus ?? '').toUpperCase();
+}
+
+function podUrl(pod: Record<string, unknown>): string {
+  return `https://${String(pod.id)}-8188.proxy.runpod.net`;
+}
+
+/**
+ * A restarted Runpod Pod gets a new id and therefore a new proxy hostname.
+ * Listing the account's running pods keeps the editor working without editing
+ * a secret after every restart. Set RUNPOD_COMFY_URL to a URL to pin one.
+ */
+async function discoverComfyUrl(): Promise<string> {
+  const pods = await listRunpodPods();
+  const running = pods.filter((pod) => podStatus(pod) === 'RUNNING');
   const comfy =
-    running.find((pod) => /comfyui/i.test(imageOf(pod)) && exposes8188(pod)) ||
-    running.find(exposes8188);
+    running.find((pod) => /comfyui/i.test(podImage(pod)) && podExposes8188(pod)) ||
+    running.find(podExposes8188);
 
   if (!comfy) {
     throw new Error('No running ComfyUI pod found. Start the ComfyUI pod, then try again.');
   }
-  return `https://${String(comfy.id)}-8188.proxy.runpod.net`;
+  return podUrl(comfy);
+}
+
+async function runpodPodAction(
+  id: string,
+  action: 'start' | 'stop'
+): Promise<Record<string, unknown>> {
+  const key = podApiKey();
+  const res = await fetch(`https://api.runpod.io/v2/pods/${encodeURIComponent(id)}/action`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action }),
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`Runpod ${action} failed (HTTP ${res.status}): ${text.slice(0, 300)}`);
+  }
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+/** Status / stop / start for the ComfyUI pod, used by the in-app kill switch. */
+async function handleComfyPod(body: Record<string, unknown>): Promise<Response> {
+  const command = String(body.command ?? 'status').trim().toLowerCase();
+  if (command === 'stop' || command === 'start') {
+    if (String(body.confirm ?? '') !== command) {
+      return json(400, { error: `Send confirm: "${command}" to ${command} the pod.` });
+    }
+  }
+
+  const pods = await listRunpodPods();
+  const comfyPods = pods.filter((pod) => /comfyui/i.test(podImage(pod)) || podExposes8188(pod));
+  const summary = comfyPods.map((pod) => ({
+    id: String(pod.id ?? ''),
+    name: String(pod.name ?? ''),
+    status: podStatus(pod),
+    url: podExposes8188(pod) ? podUrl(pod) : null,
+    createdAt: pod.createdAt ?? null,
+  }));
+
+  if (command === 'status') {
+    const running = summary.filter((pod) => pod.status === 'RUNNING');
+    return json(200, { running: running.length > 0, pods: summary });
+  }
+
+  if (command === 'probe') {
+    // Harmless permission check: stop on an EXITED pod is rejected with 409
+    // when the key has pods:write, and 403 when it does not.
+    const target = comfyPods[0];
+    if (!target) return json(200, { ok: false, error: 'No ComfyUI pod found.' });
+    try {
+      await runpodPodAction(String(target.id), 'stop');
+      return json(200, { ok: true, note: 'Stop action accepted.' });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      return json(200, {
+        ok: /HTTP 409/.test(message),
+        error: message,
+        note: /HTTP 409/.test(message) ? 'Key can write pods (409 = already stopped).' : 'Check pods:write on the key.',
+      });
+    }
+  }
+
+  if (command === 'stop') {
+    const running = comfyPods.filter((pod) => podStatus(pod) === 'RUNNING');
+    if (running.length === 0) {
+      return json(200, { status: 'EXITED', message: 'No running ComfyUI pod.', pods: summary });
+    }
+    const target = running[0];
+    const updated = await runpodPodAction(String(target.id), 'stop');
+    comfyUrlCache = null;
+    return json(200, {
+      status: String(updated.status ?? 'EXITED'),
+      podId: target.id,
+      pods: summary,
+    });
+  }
+
+  if (command === 'start') {
+    const stopped = comfyPods
+      .filter((pod) => ['EXITED', 'ERROR'].includes(podStatus(pod)))
+      .sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')));
+    if (stopped.length === 0) {
+      return json(200, { status: 'NONE', message: 'No stopped ComfyUI pod to start.', pods: summary });
+    }
+    const target = stopped[0];
+    try {
+      const updated = await runpodPodAction(String(target.id), 'start');
+      comfyUrlCache = null;
+      return json(200, {
+        status: String(updated.status ?? 'STARTING'),
+        podId: target.id,
+        pods: summary,
+      });
+    } catch (e) {
+      return json(502, {
+        error: e instanceof Error ? e.message : String(e),
+        status: podStatus(target),
+        podId: target.id,
+      });
+    }
+  }
+
+  return json(400, { error: 'command must be status, stop, or start.' });
 }
 
 async function comfyBaseUrl(): Promise<string> {
@@ -1429,6 +1556,15 @@ serve(async (req) => {
         return json(400, { error: 'Missing or invalid request_id.' });
       }
       return await handleStyleStatus(requestId);
+    }
+
+    // In-app pod kill switch: status / stop / start. No image job is created.
+    if (actionRaw === 'comfy_pod') {
+      try {
+        return await handleComfyPod(body);
+      } catch (e) {
+        return json(502, { error: e instanceof Error ? e.message : String(e) });
+      }
     }
 
     // Show which ComfyUI URL auto-discovery resolves right now. No job created.

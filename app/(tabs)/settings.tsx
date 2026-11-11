@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
-import { Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
 import { MylarPouch } from '@/components/MylarPouch';
@@ -18,6 +18,7 @@ import { FONT_OPTIONS } from '@/lib/fonts';
 import { Sentry } from '@/lib/sentry';
 import { getItem, setItem } from '@/lib/storage';
 import { EVENT_COLORS } from '@/lib/log';
+import { ComfyPodState, getComfyPodStatus, startComfyPod, stopComfyPod } from '@/lib/aiImage';
 
 const DEFAULT_TABS = [
   { id: 'home', label: 'Home 🏠', order: 0 },
@@ -65,6 +66,8 @@ export default function SettingsScreen() {
   const [periodRevealed, setPeriodRevealed] = useState(false);
   const [status, setStatus] = useState('');
   const [taps, setTaps] = useState(0);
+  const [podState, setPodState] = useState<ComfyPodState | null>(null);
+  const [podBusy, setPodBusy] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -83,6 +86,76 @@ export default function SettingsScreen() {
       }
     })();
   }, []);
+
+  const refreshPod = useCallback(async () => {
+    try {
+      setPodState(await getComfyPodStatus());
+    } catch (e) {
+      setPodState(null);
+      setStatus(e instanceof Error ? e.message : 'Could not read the ComfyUI pod status.');
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshPod();
+  }, [refreshPod]);
+
+  const handleStopPod = useCallback(() => {
+    Alert.alert(
+      'Stop ComfyUI pod?',
+      'The Darkroom goes offline until you start it again. This stops GPU billing.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Stop Pod',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              setPodBusy(true);
+              try {
+                const r = await stopComfyPod();
+                setStatus(`Pod ${r.status.toLowerCase()}.`);
+                await refreshPod();
+              } catch (e) {
+                setStatus(e instanceof Error ? e.message : 'Stop failed.');
+              } finally {
+                setPodBusy(false);
+              }
+            })();
+          },
+        },
+      ]
+    );
+  }, [refreshPod]);
+
+  const handleStartPod = useCallback(() => {
+    Alert.alert(
+      'Start ComfyUI pod?',
+      'This resumes GPU billing. Boot usually takes 1–3 minutes.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Start Pod',
+          onPress: () => {
+            void (async () => {
+              setPodBusy(true);
+              try {
+                const r = await startComfyPod();
+                setStatus(`Pod ${r.status.toLowerCase()}.`);
+                await refreshPod();
+              } catch (e) {
+                setStatus(e instanceof Error ? e.message : 'Start failed.');
+              } finally {
+                setPodBusy(false);
+              }
+            })();
+          },
+        },
+      ]
+    );
+  }, [refreshPod]);
+
+  const runningPod = podState?.pods.find((pod) => pod.status === 'RUNNING') || null;
 
   const saveSettings = useCallback(async (patch: Partial<CoupleSettings>) => {
     // Applies to every screen immediately; Supabase syncs in the background.
@@ -312,6 +385,39 @@ export default function SettingsScreen() {
           <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={clearLockBackground}>
             <Text style={styles.btnText}>Remove</Text>
           </Pressable>
+        </View>
+      </MylarPouch>
+
+      <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>ComfyUI Pod 🔌</Text>} hint="Kill the GPU when the Darkroom is closed — no idle billing, baby 💸" defaultStrain="WEDDING CAKE" stampRight="THC: 25.5%">
+        <LeafBorder color={appTheme.leafColor} />
+        <Text style={styles.smallHint}>
+          {podState
+            ? runningPod
+              ? `Running${runningPod.id ? ` (${runningPod.id})` : ''} — GPU is billing.`
+              : 'Stopped — no GPU billing.'
+            : 'Checking pod status...'}
+        </Text>
+        {podState && podState.pods.length > 1 ? (
+          <Text style={styles.muted}>
+            {podState.pods.length} ComfyUI pods · {podState.pods.filter((p) => p.status === 'RUNNING').length} running
+          </Text>
+        ) : null}
+        <View style={styles.row}>
+          <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={() => void refreshPod()} disabled={podBusy}>
+            <Text style={styles.btnText}>{podBusy ? 'Working...' : 'Refresh'}</Text>
+          </Pressable>
+          {runningPod ? (
+            <Pressable
+              style={[styles.btn, appTheme.buttonStyle, { backgroundColor: '#DC2626' }]}
+              onPress={handleStopPod}
+              disabled={podBusy}>
+              <Text style={styles.btnText}>Stop Pod 🔌</Text>
+            </Pressable>
+          ) : (
+            <Pressable style={[styles.btn, appTheme.buttonStyle]} onPress={handleStartPod} disabled={podBusy}>
+              <Text style={styles.btnText}>Start Pod ▶️</Text>
+            </Pressable>
+          )}
         </View>
       </MylarPouch>
 

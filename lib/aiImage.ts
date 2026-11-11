@@ -124,6 +124,43 @@ export async function checkAIJob(requestId: string, coupleId?: string): Promise<
   };
 }
 
+export type ComfyPod = {
+  id: string;
+  name: string;
+  status: string;
+  url: string | null;
+};
+
+export type ComfyPodState = {
+  running: boolean;
+  pods: ComfyPod[];
+};
+
+/** Reads the ComfyUI pod state without touching a running job. */
+export async function getComfyPodStatus(): Promise<ComfyPodState> {
+  const reply = await callAI({ action: 'comfy_pod', command: 'status' });
+  const pods = Array.isArray(reply.pods) ? (reply.pods as ComfyPod[]) : [];
+  return { running: Boolean(reply.running), pods };
+}
+
+/** Stops the running ComfyUI pod so it stops billing. */
+export async function stopComfyPod(): Promise<{ status: string; podId?: string }> {
+  const reply = await callAI({ action: 'comfy_pod', command: 'stop', confirm: 'stop' });
+  return {
+    status: String(reply.status ?? 'EXITED'),
+    podId: typeof reply.podId === 'string' ? reply.podId : undefined,
+  };
+}
+
+/** Starts the most recently created stopped ComfyUI pod. */
+export async function startComfyPod(): Promise<{ status: string; podId?: string }> {
+  const reply = await callAI({ action: 'comfy_pod', command: 'start', confirm: 'start' });
+  return {
+    status: String(reply.status ?? 'STARTING'),
+    podId: typeof reply.podId === 'string' ? reply.podId : undefined,
+  };
+}
+
 async function prepareImageBase64(imageUrl: string): Promise<string> {
   // The RunPod worker only reliably decodes PNG/JPEG. iPhones shoot HEIC by
   // default -> convert to JPEG first so the AI never sees an unsupported file.
