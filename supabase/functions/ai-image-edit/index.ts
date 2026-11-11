@@ -1124,7 +1124,8 @@ async function handleStyleStart(
       faceIdWeight: styleFaceIdWeight(styleMode),
       useControlNet: configForStyle(styleMode).controlNet,
       useFaceSwap: configForStyle(styleMode).faceSwap,
-      useFaceDetail: configForStyle(styleMode).quality === 'anime',
+      useFaceDetail: false,
+      useFaceComposite: false,
     });
 
     const promptRes = await fetch(`${await comfyBaseUrl()}/prompt`, {

@@ -153,10 +153,11 @@ export const FAMILY_CONFIG: Record<StyleFamily, StyleFamilyConfig> = {
     negative: 'base',
   },
   anime: {
-    // Best balance so far: Animagine + OpenPose + blurred depth, no ReActor.
+    // The version the user preferred: Animagine + pose + blurred depth,
+    // no ReActor and no face detailer. Soft face, big glasses, body held.
     checkpoint: 'anime',
-    denoise: 0.52,
-    faceIdWeight: 0.85,
+    denoise: 0.60,
+    faceIdWeight: 0.78,
     controlNet: true,
     faceSwap: false,
     quality: 'anime',

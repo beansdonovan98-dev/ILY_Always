@@ -19,6 +19,8 @@ export type ComfyWorkflowOptions = {
   useFaceSwap?: boolean;
   /** Anime styles re-render detected faces at high resolution. */
   useFaceDetail?: boolean;
+  /** Anime styles paste the original face back for exact likeness. */
+  useFaceComposite?: boolean;
 };
 
 /**
@@ -266,6 +268,75 @@ export function buildComfyWorkflow(options: ComfyWorkflowOptions): Record<string
       },
     };
     (workflow['79'] as { inputs: Record<string, unknown> }).inputs.images = ['114', 0];
+  }
+
+  if (options.useFaceComposite) {
+    // Detect the face on the ORIGINAL image and paste those exact pixels over
+    // the anime result. This is the only path that preserves real features
+    // without ReActor's black-frame failure.
+    workflow['115'] = {
+      class_type: 'MediaPipeFaceMeshToSEGS',
+      inputs: {
+        image: ['75', 0],
+        crop_factor: 3.0,
+        bbox_fill: false,
+        crop_min_size: 50,
+        drop_size: 1,
+        dilation: 0,
+        face: true,
+        mouth: false,
+        left_eyebrow: false,
+        left_eye: false,
+        left_pupil: false,
+        right_eyebrow: false,
+        right_eye: false,
+        right_pupil: false,
+      },
+    };
+    workflow['116'] = {
+      class_type: 'SegsToCombinedMask',
+      inputs: { segs: ['115', 0] },
+    };
+    workflow['117'] = {
+      class_type: 'GrowMask',
+      inputs: { mask: ['116', 0], expand: 24, tapered_corners: true },
+    };
+    workflow['118'] = {
+      class_type: 'ImageCompositeMasked',
+      inputs: {
+        destination: ['78', 0],
+        source: ['75', 0],
+        x: 0,
+        y: 0,
+        resize_source: false,
+        mask: ['117', 0],
+      },
+    };
+    // Very low denoise: blend lighting/colour without changing her features.
+    workflow['119'] = {
+      class_type: 'VAEEncode',
+      inputs: { pixels: ['118', 0], vae: ['72', 2] },
+    };
+    workflow['120'] = {
+      class_type: 'KSampler',
+      inputs: {
+        seed: options.seed + 3,
+        steps: 20,
+        cfg: 5.0,
+        sampler_name: 'dpmpp_2m',
+        scheduler: 'karras',
+        denoise: 0.12,
+        model: ['72', 0],
+        positive: ['73', 0],
+        negative: ['74', 0],
+        latent_image: ['119', 0],
+      },
+    };
+    workflow['121'] = {
+      class_type: 'VAEDecode',
+      inputs: { samples: ['120', 0], vae: ['72', 2] },
+    };
+    (workflow['79'] as { inputs: Record<string, unknown> }).inputs.images = ['121', 0];
   }
 
   return workflow;
