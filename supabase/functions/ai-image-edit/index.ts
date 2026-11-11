@@ -1244,6 +1244,21 @@ serve(async (req) => {
         Deno.env.get('COMFY_BG_MASK_NODE') || 'RMBG',
         Deno.env.get('COMFY_HAIR_MASK_NODE') || 'HumanParts',
       ];
+
+      // Show combo values (e.g. the RMBG model list) so we can pick a valid one.
+      const describe = (spec: unknown): unknown => {
+        if (Array.isArray(spec)) {
+          if (Array.isArray(spec[0])) return (spec[0] as unknown[]).slice(0, 80);
+          return spec[0];
+        }
+        return typeof spec;
+      };
+      const summarize = (inputs?: Record<string, unknown>): Record<string, unknown> => {
+        const out: Record<string, unknown> = {};
+        for (const [key, spec] of Object.entries(inputs ?? {})) out[key] = describe(spec);
+        return out;
+      };
+
       const results: Record<string, unknown> = {};
       for (const node of nodes) {
         try {
@@ -1261,8 +1276,8 @@ serve(async (req) => {
           results[node] = info
             ? {
                 ok: true,
-                required: Object.keys(info.input?.required ?? {}),
-                optional: Object.keys(info.input?.optional ?? {}),
+                required: summarize(info.input?.required),
+                optional: summarize(info.input?.optional),
               }
             : { ok: false, http: res.status, body: text.slice(0, 300) };
         } catch (e) {
