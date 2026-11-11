@@ -255,6 +255,7 @@ export async function editImageWithStyle(
       couple_id: coupleId,
       target: edit.target,
       prompt: edit.prompt.trim(),
+      styleMode,
     };
 
     if (edit.strokes && edit.strokes.length > 0) body.strokes = edit.strokes;

@@ -454,6 +454,22 @@ function normalizeEditTarget(value: string): EditTarget | null {
     : null;
 }
 
+/**
+ * The style prefix without Pony's boilerplate tags, so inpaint passes can
+ * reuse it without duplicating score/NSFW tags.
+ */
+function styleTagsForEdit(styleMode: string): string {
+  const preset = STYLE_PRESETS[styleMode];
+  if (!preset) return '';
+  return preset.prefix
+    .replace(/score_9,\s*score_8_up,\s*score_7_up,\s*/i, '')
+    .replace(/rating_explicit,?/gi, '')
+    .replace(/explicit anatomical details,?/gi, '')
+    .replace(/\s*,\s*,+/g, ', ')
+    .replace(/^[\s,]+|[\s,]+$/g, '')
+    .trim();
+}
+
 function nsfwTagsForEdit(target: EditTarget, userPrompt: string): string {
   // Every pass is explicit. Anatomical detail is only needed when the edit
   // actually touches the body or adds something explicit.
@@ -466,10 +482,15 @@ function nsfwTagsForEdit(target: EditTarget, userPrompt: string): string {
   return tags;
 }
 
-function buildEditPrompt(target: EditTarget, userPrompt: string): string {
+function buildEditPrompt(target: EditTarget, userPrompt: string, styleMode: string): string {
   const config = EDIT_TARGETS[target];
-  // User text first: Pony weights early tokens most heavily.
-  return `${PONY_QUALITY}, ${userPrompt.trim()}, ${config.suffix}, ${nsfwTagsForEdit(target, userPrompt)}`;
+  const style = styleTagsForEdit(styleMode);
+  // User text first so the edit actually happens, then the same style tags the
+  // style pass used so the repainted region matches the rest of the image.
+  const parts = [PONY_QUALITY, userPrompt.trim()];
+  if (style) parts.push(style);
+  parts.push(config.suffix, nsfwTagsForEdit(target, userPrompt));
+  return parts.join(', ');
 }
 
 function negativeForEdit(target: EditTarget, userPrompt: string): string {
@@ -896,7 +917,7 @@ async function handleInpaintStart(
     const workflow = buildInpaintWorkflow({
       imageName,
       mask,
-      positive: buildEditPrompt(target, userPrompt),
+      positive: buildEditPrompt(target, userPrompt, String(body.styleMode ?? '').trim()),
       negative: negativeForEdit(target, userPrompt),
       denoise: clampEditDenoise(body.denoise, config.denoise),
       seed: Math.floor(Math.random() * 2_147_483_647),
