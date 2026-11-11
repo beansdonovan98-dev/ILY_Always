@@ -1,3 +1,6 @@
+const HARMONIZE_POSITIVE =
+  'score_9, score_8_up, score_7_up, cinematic lighting, unified color grade, matching shadows, cohesive composition, film grain, detailed';
+
 export type ComfyWorkflowOptions = {
   imageName: string;
   positive: string;
@@ -98,7 +101,7 @@ export function buildComfyWorkflow(options: ComfyWorkflowOptions): Record<string
       class_type: 'ImageScaleToMaxDimension',
       inputs: {
         upscale_method: 'area',
-        largest_size: 1216,
+        largest_size: 1536,
         image: ['75', 0],
       },
     },
@@ -161,7 +164,7 @@ export function buildInpaintWorkflow(options: InpaintWorkflowOptions): Record<st
     options.mask.kind === 'brush'
       ? ['83', 0]
       : options.mask.kind === 'background'
-        ? ['84', 1]
+        ? ['96', 0]
         : ['84', 0];
 
   const workflow: Record<string, unknown> = {
@@ -189,7 +192,7 @@ export function buildInpaintWorkflow(options: InpaintWorkflowOptions): Record<st
       class_type: 'ImageScaleToMaxDimension',
       inputs: {
         upscale_method: 'area',
-        largest_size: 1216,
+        largest_size: 1536,
         image: ['75', 0],
       },
     },
@@ -293,6 +296,65 @@ export function buildInpaintWorkflow(options: InpaintWorkflowOptions): Record<st
         background_color: '#222222',
       },
     };
+
+    // Protect the subject: invert the RMBG background mask to get the
+    // foreground, grow it so the whole silhouette is covered, then invert it
+    // again for the actual background inpaint mask.
+    workflow['94'] = {
+      class_type: 'InvertMask',
+      inputs: { mask: ['84', 1] },
+    };
+    workflow['95'] = {
+      class_type: 'GrowMask',
+      inputs: { mask: ['94', 0], expand: 16, tapered_corners: true },
+    };
+    workflow['96'] = {
+      class_type: 'InvertMask',
+      inputs: { mask: ['95', 0] },
+    };
+    // Paste the untouched original subject back over the repainted scene.
+    // This is what stops high-denoise background passes inventing feet/hands.
+    workflow['97'] = {
+      class_type: 'ImageCompositeMasked',
+      inputs: {
+        destination: ['90', 0],
+        source: ['75', 0],
+        x: 0,
+        y: 0,
+        resize_source: false,
+        mask: ['95', 0],
+      },
+    };
+    // Final cohesion pass: low denoise over the whole image so the pasted
+    // subject and the new background share lighting, colour, grain, and edges.
+    workflow['98'] = {
+      class_type: 'VAEEncode',
+      inputs: { pixels: ['97', 0], vae: ['72', 2] },
+    };
+    workflow['101'] = {
+      class_type: 'CLIPTextEncode',
+      inputs: { text: HARMONIZE_POSITIVE, clip: ['81', 0] },
+    };
+    workflow['99'] = {
+      class_type: 'KSampler',
+      inputs: {
+        seed: options.seed + 1,
+        steps: 20,
+        cfg: 5.0,
+        sampler_name: 'dpmpp_2m',
+        scheduler: 'karras',
+        denoise: 0.18,
+        model: useFaceId ? ['86', 0] : ['72', 0],
+        positive: ['101', 0],
+        negative: ['74', 0],
+        latent_image: ['98', 0],
+      },
+    };
+    workflow['100'] = {
+      class_type: 'VAEDecode',
+      inputs: { samples: ['99', 0], vae: ['72', 2] },
+    };
+    (workflow['79'] as { inputs: Record<string, unknown> }).inputs.images = ['100', 0];
   } else {
     // ComfyUI_Human_Parts: one node, boolean class switches, single MASK out.
     workflow['84'] = {

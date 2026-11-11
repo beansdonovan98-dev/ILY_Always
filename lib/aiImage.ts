@@ -20,7 +20,7 @@ function isComfyOffline(detail: string): boolean {
   );
 }
 
-const MAX_AI_INPUT_WIDTH = 1280;
+const MAX_AI_INPUT_WIDTH = 1600;
 
 /** A new id per user action. Reuse it on retries so the server can dedupe. */
 export function createAIRequestId(): string {

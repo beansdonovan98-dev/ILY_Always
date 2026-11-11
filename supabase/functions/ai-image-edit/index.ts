@@ -12,7 +12,7 @@ const corsHeaders = {
 const RUNPOD_BASE = 'https://api.runpod.ai/v2';
 const DEFAULT_ENDPOINT = '7ckfcko9p6h503';
 const STYLE_FACE_TAGS =
-  'natural eye size, symmetrical eyes, realistic face proportions, natural lips, relaxed closed mouth, symmetrical lips, realistic mouth, open eyes, exact same face, exact same body shape, exact same pose, exact same camera angle, natural anatomy, two arms, two legs, two feet';
+  'natural eye size, symmetrical eyes, realistic face proportions, natural lips, relaxed closed mouth, symmetrical lips, realistic mouth, open eyes, exact same face, exact same body shape, exact same pose, exact same camera angle, natural anatomy, two arms, two legs, two feet, sharp facial details, sharp eyes, same glasses, realistic skin texture';
 const BASE_NEGATIVE =
   'score_6, score_5, score_4, deformed, bad anatomy, bad hands, extra limbs, extra feet, duplicate feet, extra foot, extra legs, duplicate legs, third leg, extra body parts, changed pose, different pose, deformed feet, mutated feet, missing fingers, mutated hands, poorly drawn face, asymmetric eyes, blurry, big eyes, anime eyes, asymmetrical eyes, uneven eyes, cross-eyed, lazy eye, deformed eyes, extra pupils, mismatched eyes, weird lips, deformed lips, crooked mouth, mismatched lips, bad teeth, extra lips, open mouth, ugly mouth, botox style mouth, fake mouth';
 
@@ -41,9 +41,9 @@ const EDIT_TARGETS: Record<EditTarget, EditTargetConfig> = {
   background: {
     label: 'Background',
     suffix: 'detailed background, scenery, environment',
-    // The style pass already recolors the scene. A strong background repaint
-    // invents limbs when RMBG misses a bent leg, so keep it gentle.
-    denoise: 0.45,
+    // Subject-protection composite below lets this be strong without
+    // repainting (or duplicating) the legs and feet.
+    denoise: 0.82,
   },
   hair: {
     label: 'Hair',
@@ -57,8 +57,8 @@ const EDIT_TARGETS: Record<EditTarget, EditTargetConfig> = {
   },
   item: {
     label: 'Item',
-    suffix: 'held object, detailed object, visible hand holding it, natural fingers, preserve the original hand',
-    denoise: 0.68,
+    suffix: 'replace the existing held object with the described object, detailed object, visible hand holding it, natural fingers, preserve the original hand',
+    denoise: 0.86,
   },
 };
 
@@ -74,6 +74,50 @@ const STYLE_DENOISE_CAP = 0.35;
  * These keep the 0.35 cap so a real photo doesn't drift into Pony's cartoon
  * bias. Art mediums and composition styles use their preset strength instead.
  */
+/** Illustration/anime styles get enough strength to actually look drawn. */
+const ANIME_STYLES = new Set<string>([
+  'anime',
+  'adult-anime',
+  '90s-anime',
+  'cartoon',
+  'comic-book',
+  'manga-memoir',
+  'powerpuff-girls',
+  'south-park',
+  'adventure-time',
+  'atla',
+  '16-bit-arcade',
+  'pokemon-card',
+  'yugioh-card',
+]);
+
+const ILLUSTRATION_STYLES = new Set<string>([
+  ...ANIME_STYLES,
+  'lego',
+  'figurine',
+  'sticker-pack',
+  'pixel-art',
+  'ink-illustration',
+  'pixar',
+  'coloring-book',
+  'gameboy',
+  'claymation',
+  'plush doll',
+  'kawaii-collector',
+  'bobblehead',
+  'minecraft',
+  'mini-me',
+  'sketch',
+  'paper-people',
+  '3d-avatar',
+  'drawn-to life',
+  'stained-glass',
+  'posterize',
+  'comic-dot',
+  'pop-garden',
+  'superhero',
+]);
+
 const PHOTO_TEXTURE_STYLES = new Set<string>([
   'realistic',
   'black-and-white',
@@ -151,17 +195,28 @@ const SCENE_STYLES = new Set<string>([
 const INSIDE_OBJECT_STYLES = new Set<string>(['snowglobe', 'perc-in-bong']);
 
 /** Style passes that need to recompose get a little extra push and stronger FaceID. */
-function styleDenoise(_styleMode: string, presetDenoise: number): number {
-  // Every style is capped: Pony redraws faces/bodies into its cartoon bias
-  // above this strength, no matter how tasteful the preset is.
+function styleDenoise(styleMode: string, presetDenoise: number): number {
+  // Character/illustration styles need real strength or they look like a
+  // painted photo. Photographic/scene styles stay low so the face survives.
+  // Pony only reads as anime above ~0.55; below that it stays a painted photo.
+  if (ANIME_STYLES.has(styleMode)) return Math.min(0.60, presetDenoise + 0.12);
+  if (ILLUSTRATION_STYLES.has(styleMode)) return Math.min(0.55, presetDenoise);
+  if (PHOTO_TEXTURE_STYLES.has(styleMode)) return Math.min(STYLE_DENOISE_CAP, presetDenoise);
+  if (MOCKUP_STYLES.has(styleMode) || SCENE_STYLES.has(styleMode)) {
+    return Math.min(0.40, presetDenoise + 0.04);
+  }
   return Math.min(STYLE_DENOISE_CAP, presetDenoise);
 }
 
 function styleFaceIdWeight(styleMode: string): number {
-  return MOCKUP_STYLES.has(styleMode) || SCENE_STYLES.has(styleMode) ? 0.75 : 0.65;
+  // Anime needs room to stylize; photo styles keep a stronger likeness lock.
+  return ANIME_STYLES.has(styleMode) ? 0.68 : 0.80;
 }
 
 function stylePromptSuffix(styleMode: string): string {
+  if (ANIME_STYLES.has(styleMode)) {
+    return ', 2d anime illustration, anime screencap, cel shaded, flat colors, clean lineart';
+  }
   if (MOCKUP_STYLES.has(styleMode) && !INSIDE_OBJECT_STYLES.has(styleMode)) {
     return ', her photo printed on the object as the graphic, recognizable face';
   }
