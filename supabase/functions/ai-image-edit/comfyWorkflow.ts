@@ -280,7 +280,9 @@ export function buildComfyWorkflow(options: ComfyWorkflowOptions): Record<string
     workflow['115'] = {
       class_type: 'MediaPipeFaceMeshToSEGS',
       inputs: {
-        image: ['75', 0],
+        // Detect the face on the STYLED image so the paste lands where the
+        // anime face actually is, not where the original face was.
+        image: ['78', 0],
         crop_factor: 3.0,
         bbox_fill: false,
         crop_min_size: 50,
@@ -326,31 +328,9 @@ export function buildComfyWorkflow(options: ComfyWorkflowOptions): Record<string
         mask: ['117', 0],
       },
     };
-    // Very low denoise: blend lighting/colour without changing her features.
-    workflow['119'] = {
-      class_type: 'VAEEncode',
-      inputs: { pixels: ['118', 0], vae: ['72', 2] },
-    };
-    workflow['120'] = {
-      class_type: 'KSampler',
-      inputs: {
-        seed: options.seed + 3,
-        steps: 20,
-        cfg: 5.0,
-        sampler_name: 'dpmpp_2m',
-        scheduler: 'karras',
-        denoise: 0.08,
-        model: ['72', 0],
-        positive: ['73', 0],
-        negative: ['74', 0],
-        latent_image: ['119', 0],
-      },
-    };
-    workflow['121'] = {
-      class_type: 'VAEDecode',
-      inputs: { samples: ['120', 0], vae: ['72', 2] },
-    };
-    (workflow['79'] as { inputs: Record<string, unknown> }).inputs.images = ['121', 0];
+    // Paste last: no diffusion on the face, so the model cannot redraw the
+    // eyes/mouth. GrowMask's tapered edge provides the blend.
+    (workflow['79'] as { inputs: Record<string, unknown> }).inputs.images = ['118', 0];
   }
 
   return workflow;
