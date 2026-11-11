@@ -694,6 +694,8 @@ type ComfyImage = { filename: string; subfolder?: string; type?: string };
 type ComfyHistoryEntry = {
   outputs?: Record<string, { images?: ComfyImage[] }>;
   status?: { status_str?: string; messages?: unknown[]; completed?: boolean };
+  /** ComfyUI stores [number, apiPrompt, extraData, outputsToExecute] here. */
+  prompt?: unknown;
 };
 
 function findComfyOutputImage(outputs: ComfyHistoryEntry['outputs']): ComfyImage | null {
@@ -703,6 +705,37 @@ function findComfyOutputImage(outputs: ComfyHistoryEntry['outputs']): ComfyImage
     if (image) return image;
   }
   return null;
+}
+
+/** FaceID hard-fails when InsightFace cannot find a face. That is recoverable. */
+function isNoFaceError(text: string): boolean {
+  return /no\s*face\s*detected|insightface[^"]*face|face[^"]*not\s*detected/i.test(text);
+}
+
+/**
+ * Remove the FaceID branch (nodes 85/86) and feed the checkpoint model straight
+ * into KSampler. Returns null when the prompt has no FaceID branch to remove.
+ */
+function withoutFaceId(prompt: unknown): Record<string, unknown> | null {
+  const candidate = Array.isArray(prompt) ? prompt[1] : prompt;
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return null;
+
+  const workflow = JSON.parse(JSON.stringify(candidate)) as Record<string, unknown>;
+  let removed = false;
+  for (const nodeId of ['85', '86']) {
+    if (nodeId in workflow) {
+      delete workflow[nodeId];
+      removed = true;
+    }
+  }
+  if (!removed) return null;
+
+  for (const node of Object.values(workflow)) {
+    const inputs = (node as { inputs?: Record<string, unknown> })?.inputs;
+    const model = inputs?.model;
+    if (Array.isArray(model) && model[0] === '86') inputs!.model = ['72', 0];
+  }
+  return workflow;
 }
 
 async function handleStyleStart(
@@ -1050,6 +1083,9 @@ async function handleInpaintStart(
       checkpoint: Deno.env.get('COMFY_CHECKPOINT') || undefined,
       faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',
       faceIdWeight: Number(Deno.env.get('COMFY_FACEID_WEIGHT') || 0.6),
+      // Background and hair masks never cover the face, so FaceID is not needed
+      // and would fail outright on a photo with no detectable face.
+      useFaceId: target === 'body' || target === 'item',
     });
 
     const jobId = await submitComfyWorkflow(db, requestId, workflow);
@@ -1124,6 +1160,52 @@ async function handleStyleStatus(requestId: string): Promise<Response> {
 
   if (entry.status?.status_str === 'error') {
     const error = JSON.stringify(entry.status?.messages ?? entry.status ?? {}).slice(0, 1500);
+
+    // FaceID is optional: if InsightFace cannot find a face, resubmit the same
+    // workflow once with the FaceID branch removed instead of failing the edit.
+    if (isNoFaceError(error) && row.job_id) {
+      const fallback = withoutFaceId(entry.prompt);
+      if (fallback) {
+        // Claim the retry by clearing job_id only if it is still this failed job,
+        // so two concurrent polls cannot submit the fallback twice.
+        const { data: claimed } = await db
+          .from('ai_image_jobs')
+          .update({
+            status: 'IN_PROGRESS',
+            job_id: null,
+            error: 'No face detected — retrying without FaceID.',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('request_id', requestId)
+          .eq('job_id', row.job_id)
+          .select('request_id')
+          .maybeSingle();
+
+        if (claimed) {
+          try {
+            const newJobId = await submitComfyWorkflow(db, requestId, fallback);
+            return json(200, {
+              requestId,
+              jobId: newJobId,
+              status: 'IN_PROGRESS',
+              note: 'No face detected; retried without FaceID.',
+            });
+          } catch (e) {
+            const retryError = `No face detected and the FaceID-free retry could not start: ${
+              e instanceof Error ? e.message : String(e)
+            }`;
+            await db
+              .from('ai_image_jobs')
+              .update({ status: 'FAILED', error: retryError, updated_at: new Date().toISOString() })
+              .eq('request_id', requestId);
+            return json(200, { requestId, status: 'FAILED', error: retryError });
+          }
+        }
+
+        return json(200, { requestId, status: 'IN_PROGRESS' });
+      }
+    }
+
     await db
       .from('ai_image_jobs')
       .update({ status: 'FAILED', error, updated_at: new Date().toISOString() })

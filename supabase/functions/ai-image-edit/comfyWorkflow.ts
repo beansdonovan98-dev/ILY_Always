@@ -8,6 +8,8 @@ export type ComfyWorkflowOptions = {
   checkpoint?: string;
   faceIdProvider?: string;
   faceIdWeight?: number;
+  /** Set false to skip the FaceID branch for images where no face is present. */
+  useFaceId?: boolean;
 };
 
 /**
@@ -32,6 +34,8 @@ export type InpaintWorkflowOptions = {
   checkpoint?: string;
   faceIdProvider?: string;
   faceIdWeight?: number;
+  /** Set false to skip the FaceID branch for images where no face is present. */
+  useFaceId?: boolean;
   /** Pixels to expand the mask so the repaint blends past its edge. */
   growMaskBy?: number;
 };
@@ -44,8 +48,9 @@ export function buildComfyWorkflow(options: ComfyWorkflowOptions): Record<string
   const checkpoint = options.checkpoint || 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors';
   const faceIdProvider = options.faceIdProvider || 'CPU';
   const faceIdWeight = options.faceIdWeight ?? 0.65;
+  const useFaceId = options.useFaceId !== false;
 
-  return {
+  const workflow: Record<string, unknown> = {
     '72': {
       class_type: 'CheckpointLoaderSimple',
       inputs: { ckpt_name: checkpoint },
@@ -75,7 +80,7 @@ export function buildComfyWorkflow(options: ComfyWorkflowOptions): Record<string
         sampler_name: 'dpmpp_2m',
         scheduler: 'karras',
         denoise: options.denoise,
-        model: ['86', 0],
+        model: ['72', 0],
         positive: ['73', 0],
         negative: ['74', 0],
         latent_image: ['76', 0],
@@ -101,7 +106,10 @@ export function buildComfyWorkflow(options: ComfyWorkflowOptions): Record<string
       class_type: 'CLIPSetLastLayer',
       inputs: { stop_at_clip_layer: -2, clip: ['72', 1] },
     },
-    '85': {
+  };
+
+  if (useFaceId) {
+    workflow['85'] = {
       class_type: 'IPAdapterUnifiedLoaderFaceID',
       inputs: {
         preset: 'FACEID',
@@ -109,8 +117,8 @@ export function buildComfyWorkflow(options: ComfyWorkflowOptions): Record<string
         provider: faceIdProvider,
         model: ['72', 0],
       },
-    },
-    '86': {
+    };
+    workflow['86'] = {
       class_type: 'IPAdapterFaceID',
       inputs: {
         weight: faceIdWeight,
@@ -124,8 +132,11 @@ export function buildComfyWorkflow(options: ComfyWorkflowOptions): Record<string
         ipadapter: ['85', 1],
         image: ['80', 0],
       },
-    },
-  };
+    };
+    (workflow['77'] as { inputs: Record<string, unknown> }).inputs.model = ['86', 0];
+  }
+
+  return workflow;
 }
 
 /**
@@ -140,6 +151,7 @@ export function buildInpaintWorkflow(options: InpaintWorkflowOptions): Record<st
   const faceIdProvider = options.faceIdProvider || 'CPU';
   const faceIdWeight = options.faceIdWeight ?? 0.6;
   const growMaskBy = options.growMaskBy ?? 10;
+  const useFaceId = options.useFaceId !== false;
 
   // RMBG outputs: IMAGE(0), MASK(1), MASK_IMAGE(2).
   // Brush and HumanParts expose the mask on output 0.
@@ -179,30 +191,6 @@ export function buildInpaintWorkflow(options: InpaintWorkflowOptions): Record<st
         image: ['75', 0],
       },
     },
-    '85': {
-      class_type: 'IPAdapterUnifiedLoaderFaceID',
-      inputs: {
-        preset: 'FACEID',
-        lora_strength: 0.5,
-        provider: faceIdProvider,
-        model: ['72', 0],
-      },
-    },
-    '86': {
-      class_type: 'IPAdapterFaceID',
-      inputs: {
-        weight: faceIdWeight,
-        weight_faceidv2: 1,
-        weight_type: 'linear',
-        combine_embeds: 'concat',
-        start_at: 0,
-        end_at: 1,
-        embeds_scaling: 'V only',
-        model: ['85', 0],
-        ipadapter: ['85', 1],
-        image: ['80', 0],
-      },
-    },
     // Regular VAE encode + noise mask gives graded denoise control.
     '76': {
       class_type: 'VAEEncode',
@@ -225,7 +213,7 @@ export function buildInpaintWorkflow(options: InpaintWorkflowOptions): Record<st
         sampler_name: 'dpmpp_2m',
         scheduler: 'karras',
         denoise: options.denoise,
-        model: ['86', 0],
+        model: ['72', 0],
         positive: ['73', 0],
         negative: ['74', 0],
         latent_image: ['89', 0],
@@ -324,6 +312,34 @@ export function buildInpaintWorkflow(options: InpaintWorkflowOptions): Record<st
         bag: false,
       },
     };
+  }
+
+  if (useFaceId) {
+    workflow['85'] = {
+      class_type: 'IPAdapterUnifiedLoaderFaceID',
+      inputs: {
+        preset: 'FACEID',
+        lora_strength: 0.5,
+        provider: faceIdProvider,
+        model: ['72', 0],
+      },
+    };
+    workflow['86'] = {
+      class_type: 'IPAdapterFaceID',
+      inputs: {
+        weight: faceIdWeight,
+        weight_faceidv2: 1,
+        weight_type: 'linear',
+        combine_embeds: 'concat',
+        start_at: 0,
+        end_at: 1,
+        embeds_scaling: 'V only',
+        model: ['85', 0],
+        ipadapter: ['85', 1],
+        image: ['80', 0],
+      },
+    };
+    (workflow['77'] as { inputs: Record<string, unknown> }).inputs.model = ['86', 0];
   }
 
   return workflow;
