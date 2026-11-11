@@ -596,6 +596,12 @@ export default function AIEditorScreen() {
           </LinearGradient>
         </Pressable>
 
+        {loading && status ? (
+          <Text style={[styles.inlineStatus, { fontFamily: font, color: appTheme.textColor }]}>
+            {status}
+          </Text>
+        ) : null}
+
         <Pressable onPress={saveToCovers} disabled={saving || !(resultUri || sourceUri)} style={styles.pillPress}>
           <LinearGradient
             colors={[appTheme.accentColor, '#C86DD7']}
@@ -843,6 +849,7 @@ const styles = StyleSheet.create({
   clearMask: { paddingVertical: 6, paddingHorizontal: 2 },
   clearMaskText: { fontSize: 12, fontWeight: '700', opacity: 0.7 },
   requiredHint: { fontSize: 11, fontWeight: '700', opacity: 0.5, marginLeft: 'auto' },
+  inlineStatus: { fontSize: 13, fontWeight: '700', marginTop: 8, marginBottom: 2 },
   styleHeader: {
     flexDirection: 'row',
     alignItems: 'center',
