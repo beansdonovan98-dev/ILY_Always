@@ -485,11 +485,12 @@ function nsfwTagsForEdit(target: EditTarget, userPrompt: string): string {
 function buildEditPrompt(target: EditTarget, userPrompt: string, styleMode: string): string {
   const config = EDIT_TARGETS[target];
   const style = styleTagsForEdit(styleMode);
-  // User text first so the edit actually happens, then the same style tags the
-  // style pass used so the repainted region matches the rest of the image.
-  const parts = [PONY_QUALITY, userPrompt.trim()];
+  // NSFW tags go early so a long style prefix can never push them past CLIP's
+  // 77-token cutoff. User text stays near the front because Pony weights early
+  // tokens heavily; the style tags follow so the repaint matches the photo.
+  const parts = [PONY_QUALITY, nsfwTagsForEdit(target, userPrompt), userPrompt.trim()];
   if (style) parts.push(style);
-  parts.push(config.suffix, nsfwTagsForEdit(target, userPrompt));
+  parts.push(config.suffix);
   return parts.join(', ');
 }
 
