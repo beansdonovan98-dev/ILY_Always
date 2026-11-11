@@ -713,12 +713,29 @@ function isNoFaceError(text: string): boolean {
 }
 
 /**
+ * ComfyUI history puts the graph inside the `prompt` tuple. Depending on the
+ * version the tuple is [number, graph, ...] or [number, promptId, graph, ...],
+ * so pick the first object that actually looks like a ComfyUI graph.
+ */
+function findWorkflowInPrompt(prompt: unknown): Record<string, unknown> | null {
+  const candidates = Array.isArray(prompt) ? prompt : [prompt];
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) continue;
+    const nodes = Object.values(candidate as Record<string, unknown>);
+    if (nodes.some((node) => node && typeof node === 'object' && 'class_type' in (node as object))) {
+      return candidate as Record<string, unknown>;
+    }
+  }
+  return null;
+}
+
+/**
  * Remove the FaceID branch (nodes 85/86) and feed the checkpoint model straight
  * into KSampler. Returns null when the prompt has no FaceID branch to remove.
  */
 function withoutFaceId(prompt: unknown): Record<string, unknown> | null {
-  const candidate = Array.isArray(prompt) ? prompt[1] : prompt;
-  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return null;
+  const candidate = findWorkflowInPrompt(prompt);
+  if (!candidate) return null;
 
   const workflow = JSON.parse(JSON.stringify(candidate)) as Record<string, unknown>;
   let removed = false;

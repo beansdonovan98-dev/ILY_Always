@@ -10,6 +10,16 @@ const FRIENDLY: Record<number, string> = {
   502: 'The AI provider hit an error — try again in a bit.',
 };
 
+const COMFY_OFFLINE =
+  'Darkroom is offline — the ComfyUI pod is stopped or still booting. Start the pod, wait for ComfyUI to finish loading, then try again.';
+
+/** True when the failure is the pod being down, not a bad prompt/workflow. */
+function isComfyOffline(detail: string): boolean {
+  return /could not upload image to comfyui|comfyui history failed|error sending request|connection refused|econnrefused|dns error|network is unreachable|tcp connect|RUNPOD_COMFY_URL/i.test(
+    detail
+  );
+}
+
 const MAX_AI_INPUT_WIDTH = 1280;
 
 /** A new id per user action. Reuse it on retries so the server can dedupe. */
@@ -94,6 +104,7 @@ async function callAI(body: Record<string, unknown>): Promise<AIEdgeReply> {
         ? parsed.error
         : (parsed?.error as { message?: string } | undefined)?.message ||
           (text && text.length < 300 ? text : null);
+    if (detail && isComfyOffline(detail)) throw new AIEditError(COMFY_OFFLINE);
     throw new AIEditError(detail || FRIENDLY[res.status] || `The AI editor failed (HTTP ${res.status}).`);
   }
 
