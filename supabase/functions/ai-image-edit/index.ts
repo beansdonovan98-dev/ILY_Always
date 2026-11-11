@@ -41,8 +41,9 @@ const EDIT_TARGETS: Record<EditTarget, EditTargetConfig> = {
   background: {
     label: 'Background',
     suffix: 'detailed background, scenery, environment',
-    // High strength lets the model invent limbs at the mask edge.
-    denoise: 0.65,
+    // The style pass already recolors the scene. A strong background repaint
+    // invents limbs when RMBG misses a bent leg, so keep it gentle.
+    denoise: 0.45,
   },
   hair: {
     label: 'Hair',
@@ -56,8 +57,8 @@ const EDIT_TARGETS: Record<EditTarget, EditTargetConfig> = {
   },
   item: {
     label: 'Item',
-    suffix: 'held object, detailed object',
-    denoise: 0.82,
+    suffix: 'held object, detailed object, visible hand holding it, natural fingers, preserve the original hand',
+    denoise: 0.68,
   },
 };
 

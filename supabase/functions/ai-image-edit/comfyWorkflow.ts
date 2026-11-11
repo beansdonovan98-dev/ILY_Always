@@ -151,8 +151,8 @@ export function buildInpaintWorkflow(options: InpaintWorkflowOptions): Record<st
   const faceIdProvider = options.faceIdProvider || 'CPU';
   const faceIdWeight = options.faceIdWeight ?? 0.6;
   // Growing a background mask eats into the subject's silhouette; a large
-  // grow makes hands/feet hallucinate at the edge.
-  const growMaskBy = options.growMaskBy ?? (options.mask.kind === 'background' ? 4 : 10);
+  // grow makes hands/feet hallucinate at the edge. Keep background tight.
+  const growMaskBy = options.growMaskBy ?? (options.mask.kind === 'background' ? 0 : 10);
   const useFaceId = options.useFaceId !== false;
 
   // RMBG outputs: IMAGE(0), MASK(1), MASK_IMAGE(2).
@@ -281,11 +281,13 @@ export function buildInpaintWorkflow(options: InpaintWorkflowOptions): Record<st
         image: ['75', 0],
         model: options.mask.model,
         sensitivity: 1.0,
-        process_res: 1024,
+        process_res: 1536,
         mask_blur: 0,
-        mask_offset: 0,
+        // Negative offset shrinks the background mask so it cannot eat into
+        // the subject's legs/feet and repaint them as a second limb.
+        mask_offset: -8,
         invert_output: true,
-        refine_foreground: false,
+        refine_foreground: true,
         // The node reads this directly even though it is marked optional.
         background: 'Alpha',
         background_color: '#222222',
