@@ -641,14 +641,93 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-function comfyBaseUrl(): string {
-  const raw = Deno.env.get('RUNPOD_COMFY_URL') || '';
-  const url = raw.replace(/\/+$/, '');
-  if (!url) {
+let comfyUrlCache: { url: string; at: number } | null = null;
+
+/**
+ * A restarted Runpod Pod gets a new id and therefore a new proxy hostname.
+ * Listing the account's running pods keeps the editor working without editing
+ * a secret after every restart. Set RUNPOD_COMFY_URL to a URL to pin one.
+ */
+async function discoverComfyUrl(): Promise<string> {
+  // Prefer a key that has pods:read. The serverless key often does not, which
+  // is why auto-discovery is a separate secret instead of reusing RUNPOD_API_KEY.
+  const key = Deno.env.get('RUNPOD_DISCOVERY_KEY') || Deno.env.get('RUNPOD_API_KEY');
+  if (!key) {
     throw new Error(
-      'RUNPOD_COMFY_URL is not set. Run: supabase secrets set RUNPOD_COMFY_URL=https://<pod-id>-8188.proxy.runpod.net'
+      'No Runpod key is available for pod discovery. Set RUNPOD_DISCOVERY_KEY (needs pods:read) or RUNPOD_COMFY_URL.'
     );
   }
+
+  const listPods = async (url: string): Promise<Array<Record<string, unknown>>> => {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${key}` } });
+    const text = await res.text();
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+    const parsed = JSON.parse(text) as { pods?: Array<Record<string, unknown>> } | Array<Record<string, unknown>>;
+    return Array.isArray(parsed) ? parsed : parsed.pods || [];
+  };
+
+  let pods: Array<Record<string, unknown>>;
+  try {
+    pods = await listPods('https://api.runpod.io/v2/pods?limit=100');
+  } catch (v2Error) {
+    // Some keys are scoped to serverless only on v2; the legacy v1 list often
+    // still returns the account's pods.
+    try {
+      pods = await listPods('https://rest.runpod.io/v1/pods');
+    } catch (v1Error) {
+      // Last resort: the GraphQL API uses the same key but a different scope
+      // check, and older full-access keys still work there.
+      try {
+        const gqlRes = await fetch(`https://api.runpod.io/graphql?api_key=${encodeURIComponent(key)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: '{ myself { pods { id name desiredStatus imageName } } }',
+          }),
+        });
+        const gqlText = await gqlRes.text();
+        if (!gqlRes.ok) throw new Error(`HTTP ${gqlRes.status}: ${gqlText.slice(0, 200)}`);
+        const gql = JSON.parse(gqlText) as {
+          data?: { myself?: { pods?: Array<Record<string, unknown>> } };
+          errors?: Array<{ message?: string }>;
+        };
+        if (gql.errors?.length) throw new Error(gql.errors.map((e) => e.message).join('; '));
+        pods = gql.data?.myself?.pods || [];
+        if (pods.length === 0) throw new Error('GraphQL returned no pods.');
+      } catch (gqlError) {
+        throw new Error(
+          `Could not list Runpod pods. Set RUNPOD_DISCOVERY_KEY to a Runpod key with pods:read, or set RUNPOD_COMFY_URL to the current pod URL. (v2 ${
+            v2Error instanceof Error ? v2Error.message : String(v2Error)
+          }; v1 ${v1Error instanceof Error ? v1Error.message : String(v1Error)}; graphql ${
+            gqlError instanceof Error ? gqlError.message : String(gqlError)
+          })`
+        );
+      }
+    }
+  }
+  const exposes8188 = (pod: Record<string, unknown>) =>
+    (Array.isArray(pod.ports) ? pod.ports : []).some((port) => String(port).startsWith('8188/'));
+
+  const running = pods.filter(
+    (pod) => String(pod.status ?? pod.desiredStatus ?? '').toUpperCase() === 'RUNNING'
+  );
+  const imageOf = (pod: Record<string, unknown>) => String(pod.image ?? pod.imageName ?? '');
+  const comfy =
+    running.find((pod) => /comfyui/i.test(imageOf(pod)) && exposes8188(pod)) ||
+    running.find(exposes8188);
+
+  if (!comfy) {
+    throw new Error('No running ComfyUI pod found. Start the ComfyUI pod, then try again.');
+  }
+  return `https://${String(comfy.id)}-8188.proxy.runpod.net`;
+}
+
+async function comfyBaseUrl(): Promise<string> {
+  const raw = (Deno.env.get('RUNPOD_COMFY_URL') || '').trim();
+  if (raw && raw.toLowerCase() !== 'auto') return raw.replace(/\/+$/, '');
+  if (comfyUrlCache && Date.now() - comfyUrlCache.at < 60_000) return comfyUrlCache.url;
+  const url = await discoverComfyUrl();
+  comfyUrlCache = { url, at: Date.now() };
   return url;
 }
 
@@ -663,7 +742,7 @@ async function uploadBytesToComfy(
   form.append('image', new Blob([bytes as unknown as BlobPart], { type: mimeType }), `${prefix}-${Date.now()}.${ext}`);
   form.append('overwrite', 'true');
 
-  const res = await fetch(`${comfyBaseUrl()}/upload/image`, { method: 'POST', body: form });
+  const res = await fetch(`${await comfyBaseUrl()}/upload/image`, { method: 'POST', body: form });
   const text = await res.text();
   if (!res.ok) {
     throw new Error(`ComfyUI upload failed (HTTP ${res.status}): ${text.slice(0, 500)}`);
@@ -834,7 +913,7 @@ async function handleStyleStart(
       faceIdWeight: styleFaceIdWeight(styleMode),
     });
 
-    const promptRes = await fetch(`${comfyBaseUrl()}/prompt`, {
+    const promptRes = await fetch(`${await comfyBaseUrl()}/prompt`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt: workflow, client_id: crypto.randomUUID() }),
@@ -945,7 +1024,7 @@ async function submitComfyWorkflow(
   requestId: string,
   workflow: Record<string, unknown>
 ): Promise<string> {
-  const promptRes = await fetch(`${comfyBaseUrl()}/prompt`, {
+  const promptRes = await fetch(`${await comfyBaseUrl()}/prompt`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt: workflow, client_id: crypto.randomUUID() }),
@@ -1152,7 +1231,7 @@ async function handleStyleStatus(requestId: string): Promise<Response> {
     return json(200, { requestId, status: row.status || 'PENDING' });
   }
 
-  const historyRes = await fetch(`${comfyBaseUrl()}/history/${row.job_id}`);
+  const historyRes = await fetch(`${await comfyBaseUrl()}/history/${row.job_id}`);
   const historyText = await historyRes.text();
 
   if (!historyRes.ok) {
@@ -1235,7 +1314,7 @@ async function handleStyleStatus(requestId: string): Promise<Response> {
     return json(200, { requestId, status: 'IN_PROGRESS' });
   }
 
-  const viewUrl = `${comfyBaseUrl()}/view?filename=${encodeURIComponent(image.filename)}&subfolder=${encodeURIComponent(
+  const viewUrl = `${await comfyBaseUrl()}/view?filename=${encodeURIComponent(image.filename)}&subfolder=${encodeURIComponent(
     image.subfolder || ''
   )}&type=${encodeURIComponent(image.type || 'output')}`;
 
@@ -1326,7 +1405,7 @@ serve(async (req) => {
 
     if (actionRaw === 'style_health') {
       try {
-        const healthRes = await fetch(`${comfyBaseUrl()}/system_stats`);
+        const healthRes = await fetch(`${await comfyBaseUrl()}/system_stats`);
         const healthText = await healthRes.text();
         return new Response(healthText, {
           status: healthRes.status,
@@ -1350,6 +1429,16 @@ serve(async (req) => {
         return json(400, { error: 'Missing or invalid request_id.' });
       }
       return await handleStyleStatus(requestId);
+    }
+
+    // Show which ComfyUI URL auto-discovery resolves right now. No job created.
+    if (actionRaw === 'comfy_discover') {
+      try {
+        const configured = (Deno.env.get('RUNPOD_COMFY_URL') || 'auto').trim() || 'auto';
+        return json(200, { comfyUrl: await comfyBaseUrl(), source: configured });
+      } catch (e) {
+        return json(502, { error: e instanceof Error ? e.message : String(e) });
+      }
     }
 
     // Diagnose which segmentation nodes the pod actually exposes. No job created.
@@ -1376,7 +1465,7 @@ serve(async (req) => {
       const results: Record<string, unknown> = {};
       for (const node of nodes) {
         try {
-          const res = await fetch(`${comfyBaseUrl()}/object_info/${encodeURIComponent(node)}`);
+          const res = await fetch(`${await comfyBaseUrl()}/object_info/${encodeURIComponent(node)}`);
           const text = await res.text();
           let parsed: Record<string, unknown> = {};
           try {
@@ -1398,7 +1487,7 @@ serve(async (req) => {
           results[node] = { ok: false, error: String(e) };
         }
       }
-      return json(200, { comfyUrl: comfyBaseUrl(), nodes: results });
+      return json(200, { comfyUrl: await comfyBaseUrl(), nodes: results });
     }
 
     // Validate an arbitrary set of node classes/inputs. No job created.
@@ -1408,7 +1497,7 @@ serve(async (req) => {
       const results: Record<string, unknown> = {};
       for (const node of nodes.slice(0, 40)) {
         try {
-          const res = await fetch(`${comfyBaseUrl()}/object_info/${encodeURIComponent(node)}`);
+          const res = await fetch(`${await comfyBaseUrl()}/object_info/${encodeURIComponent(node)}`);
           const text = await res.text();
           let parsed: Record<string, unknown> = {};
           try {
@@ -1430,7 +1519,7 @@ serve(async (req) => {
           results[node] = { ok: false, error: String(e) };
         }
       }
-      return json(200, { comfyUrl: comfyBaseUrl(), nodes: results });
+      return json(200, { comfyUrl: await comfyBaseUrl(), nodes: results });
     }
 
     // Backward-compatible call shape: { imageBase64, styleMode, userPrompt }.

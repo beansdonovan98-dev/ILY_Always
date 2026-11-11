@@ -15,7 +15,7 @@ const COMFY_OFFLINE =
 
 /** True when the failure is the pod being down, not a bad prompt/workflow. */
 function isComfyOffline(detail: string): boolean {
-  return /could not upload image to comfyui|comfyui history failed|error sending request|connection refused|econnrefused|dns error|network is unreachable|tcp connect|RUNPOD_COMFY_URL/i.test(
+  return /could not upload image to comfyui|comfyui history failed|no running comfyui pod|could not list runpod pods|error sending request|connection refused|econnrefused|dns error|network is unreachable|tcp connect|RUNPOD_COMFY_URL/i.test(
     detail
   );
 }
