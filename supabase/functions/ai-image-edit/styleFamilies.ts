@@ -153,11 +153,11 @@ export const FAMILY_CONFIG: Record<StyleFamily, StyleFamilyConfig> = {
     negative: 'base',
   },
   anime: {
-    // The version the user preferred: Animagine + pose + blurred depth,
-    // no ReActor and no face detailer. Soft face, big glasses, body held.
+    // Animagine + pose + blurred depth. Lower strength preserves anatomy;
+    // the largest-face composite restores the real face separately.
     checkpoint: 'anime',
-    denoise: 0.60,
-    faceIdWeight: 0.78,
+    denoise: 0.48,
+    faceIdWeight: 0.8,
     controlNet: true,
     faceSwap: false,
     quality: 'anime',

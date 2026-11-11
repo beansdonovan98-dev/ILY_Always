@@ -293,9 +293,20 @@ export function buildComfyWorkflow(options: ComfyWorkflowOptions): Record<string
         right_pupil: false,
       },
     };
+    // Keep only the largest face so background/phone reflections are ignored.
+    workflow['122'] = {
+      class_type: 'ImpactSEGSOrderedFilter',
+      inputs: {
+        segs: ['115', 0],
+        target: 'area(=w*h)',
+        order: true,
+        take_start: 0,
+        take_count: 1,
+      },
+    };
     workflow['116'] = {
       class_type: 'SegsToCombinedMask',
-      inputs: { segs: ['115', 0] },
+      inputs: { segs: ['122', 0] },
     };
     workflow['117'] = {
       class_type: 'GrowMask',

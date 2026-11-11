@@ -22,7 +22,7 @@ const BASE_NEGATIVE =
 
 /** Animagine-style SDXL models use danbooru tags, not Pony score tags. */
 const ANIME_NEGATIVE =
-  'lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, extra limbs, extra feet, duplicate feet, extra foot, extra legs, third leg, deformed hands, mutated hands, abs, six pack, muscular stomach, defined abs';
+  'lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, extra limbs, extra feet, duplicate feet, extra foot, extra legs, third leg, deformed hands, mutated hands, abs, six pack, muscular stomach, defined abs, bad nipples, deformed nipples, extra nipples, fused nipples, mismatched nipples, duplicate nipples';
 
 /** Background passes must not draw people/limbs into the environment. */
 const BACKGROUND_NEGATIVE = `${BASE_NEGATIVE}, people, person, human, body parts, limbs, hands, feet, text, watermark, logo`;
@@ -1125,7 +1125,7 @@ async function handleStyleStart(
       useControlNet: configForStyle(styleMode).controlNet,
       useFaceSwap: configForStyle(styleMode).faceSwap,
       useFaceDetail: false,
-      useFaceComposite: false,
+      useFaceComposite: configForStyle(styleMode).quality === 'anime',
     });
 
     const promptRes = await fetch(`${await comfyBaseUrl()}/prompt`, {
