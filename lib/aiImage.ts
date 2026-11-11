@@ -129,29 +129,72 @@ async function prepareImageBase64(imageUrl: string): Promise<string> {
   return imageBase64;
 }
 
-/** A1111 style-preset flow: returns a data URL. */
+/** ComfyUI style-preset flow: start, poll, return the result URL/data URL. */
 export async function editImageWithStyle(
   imageUrl: string,
   styleMode: string,
-  userPrompt: string
+  userPrompt: string,
+  coupleId?: string
 ): Promise<string> {
   const imageBase64 = await prepareImageBase64(imageUrl);
+  const requestId = createAIRequestId();
 
-  const result = await callAI({
+  const started = await callAI({
+    action: 'style_start',
+    request_id: requestId,
+    couple_id: coupleId,
     imageBase64,
     styleMode,
     userPrompt,
   });
 
-  const image = typeof result.image === 'string' ? result.image : '';
-  if (image) return image;
-
-  const b64 = typeof result.b64 === 'string' ? result.b64 : '';
-  if (!b64) {
-    throw new AIEditError('The AI came back without an edited image. Try a different style.', false);
+  const startStatus = String(started.status ?? '').toUpperCase();
+  if (startStatus === 'FAILED' || startStatus === 'CANCELLED' || startStatus === 'TIMED_OUT') {
+    throw new AIEditError(String(started.error || 'The AI provider failed to start the job.'), false);
   }
-  const mimeType = typeof result.mimeType === 'string' ? result.mimeType : 'image/png';
-  return `data:${mimeType};base64,${b64}`;
+
+  const deadline = Date.now() + 10 * 60_000;
+  let waitMs = 2000;
+
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, waitMs));
+    waitMs = Math.min(waitMs + 1000, 5000);
+
+    let current: Record<string, unknown>;
+    try {
+      current = await callAI({ action: 'style_status', request_id: requestId });
+    } catch {
+      // Network blip: keep polling the same request_id.
+      continue;
+    }
+
+    const status = String(current.status ?? '').toUpperCase();
+
+    if (status === 'COMPLETED') {
+      const url = typeof current.url === 'string' ? current.url : '';
+      if (url) return url;
+
+      const image = typeof current.image === 'string' ? current.image : '';
+      if (image) return image;
+
+      const b64 = typeof current.b64 === 'string' ? current.b64 : '';
+      if (b64) {
+        const mimeType = typeof current.mimeType === 'string' ? current.mimeType : 'image/png';
+        return `data:${mimeType};base64,${b64}`;
+      }
+
+      throw new AIEditError('The AI completed but returned no image.', false);
+    }
+
+    if (status === 'FAILED' || status === 'CANCELLED' || status === 'TIMED_OUT') {
+      throw new AIEditError(String(current.error || 'The AI editor failed.'), false);
+    }
+  }
+
+  throw new AIEditError(
+    'The AI is still working after 10 minutes. Tap AI Edit again to keep waiting on the same job — you will not be charged twice.',
+    true
+  );
 }
 
 export async function editImageWithAI(

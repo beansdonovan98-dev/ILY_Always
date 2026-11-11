@@ -180,7 +180,8 @@ export default function AIEditorScreen() {
     setEditBurn(1);
     setStatus(`Applying ${styleLabel(selectedStyle)}...`);
     try {
-      const edited = await editImageWithStyle(sourceUri, selectedStyle, trimmed);
+      const coupleId = await getCoupleId();
+      const edited = await editImageWithStyle(sourceUri, selectedStyle, trimmed, coupleId);
       setResultUri(edited);
       setStatus('Done! Tap Save to keep it 💞');
     } catch (e) {

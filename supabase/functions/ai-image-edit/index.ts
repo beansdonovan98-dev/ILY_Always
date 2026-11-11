@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'npm:@supabase/supabase-js';
 import { STYLE_PRESETS } from './stylePresets.ts';
+import { buildComfyWorkflow } from './comfyWorkflow.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,9 +10,10 @@ const corsHeaders = {
 
 const RUNPOD_BASE = 'https://api.runpod.ai/v2';
 const DEFAULT_ENDPOINT = '7ckfcko9p6h503';
-const STYLE_ENDPOINT_ID = Deno.env.get('RUNPOD_STYLE_ENDPOINT_ID') || '9piw839ax2kghq';
-const STYLE_ENDPOINT_BASE = `${RUNPOD_BASE}/${STYLE_ENDPOINT_ID}`;
-const STYLE_ENDPOINT = `${STYLE_ENDPOINT_BASE}/runsync`;
+const STYLE_FACE_TAGS =
+  'natural eye size, symmetrical eyes, realistic face proportions, natural lips, relaxed closed mouth, symmetrical lips, realistic mouth, open eyes';
+const BASE_NEGATIVE =
+  'score_6, score_5, score_4, deformed, bad anatomy, bad hands, extra limbs, missing fingers, mutated hands, poorly drawn face, asymmetric eyes, blurry, big eyes, anime eyes, asymmetrical eyes, uneven eyes, cross-eyed, lazy eye, deformed eyes, extra pupils, mismatched eyes, weird lips, deformed lips, crooked mouth, mismatched lips, bad teeth, extra lips, open mouth, ugly mouth, botox style mouth, fake mouth';
 
 // Reject blank/1x1/truncated uploads before they reach RunPod and burn GPU time.
 const MIN_IMAGE_BASE64_CHARS = 20_000;
@@ -390,15 +392,82 @@ function buildStylePrompt(prefix: string, userPrompt: string): string {
   return prompt;
 }
 
-async function handleStyleEdit(
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+function comfyBaseUrl(): string {
+  const raw = Deno.env.get('RUNPOD_COMFY_URL') || '';
+  const url = raw.replace(/\/+$/, '');
+  if (!url) {
+    throw new Error(
+      'RUNPOD_COMFY_URL is not set. Run: supabase secrets set RUNPOD_COMFY_URL=https://<pod-id>-8188.proxy.runpod.net'
+    );
+  }
+  return url;
+}
+
+/** Upload the source photo to ComfyUI and return the filename its LoadImage node expects. */
+async function uploadImageToComfy(imageBase64: string): Promise<string> {
+  const imageCheck = validateInputImage(imageBase64);
+  if (!imageCheck.ok) throw new Error(imageCheck.error);
+
+  const bytes = base64ToBytes(imageCheck.raw);
+  if (!bytes) throw new Error('Could not decode the image.');
+
+  const ext =
+    imageCheck.mimeType === 'image/png' ? 'png' : imageCheck.mimeType === 'image/webp' ? 'webp' : 'jpg';
+  const form = new FormData();
+  form.append('image', new Blob([bytes], { type: imageCheck.mimeType }), `upload-${Date.now()}.${ext}`);
+  form.append('overwrite', 'true');
+
+  const res = await fetch(`${comfyBaseUrl()}/upload/image`, { method: 'POST', body: form });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`ComfyUI upload failed (HTTP ${res.status}): ${text.slice(0, 500)}`);
+  }
+
+  let data: { name?: string; subfolder?: string } = {};
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = {};
+  }
+  if (!data.name) throw new Error('ComfyUI upload returned no filename.');
+  return data.subfolder ? `${data.subfolder}/${data.name}` : data.name;
+}
+
+type ComfyImage = { filename: string; subfolder?: string; type?: string };
+type ComfyHistoryEntry = {
+  outputs?: Record<string, { images?: ComfyImage[] }>;
+  status?: { status_str?: string; messages?: unknown[]; completed?: boolean };
+};
+
+function findComfyOutputImage(outputs: ComfyHistoryEntry['outputs']): ComfyImage | null {
+  if (!outputs) return null;
+  for (const node of Object.values(outputs)) {
+    const image = node?.images?.find((item) => Boolean(item?.filename));
+    if (image) return image;
+  }
+  return null;
+}
+
+async function handleStyleStart(
+  requestId: string,
   imageBase64: string,
   styleMode: string,
-  userPrompt: string
+  userPrompt: string,
+  coupleId: string
 ): Promise<Response> {
-  const runpodKey = Deno.env.get('RUNPOD_STYLE_API_KEY') || Deno.env.get('RUNPOD_API_KEY');
-  if (!runpodKey) {
+  const db = getDb();
+  if (!db) {
     return json(500, {
-      error: 'RUNPOD_API_KEY is not set on the Supabase project. Run: supabase secrets set RUNPOD_API_KEY=rpa_...',
+      error: 'SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not available to the Edge Function.',
     });
   }
 
@@ -406,67 +475,227 @@ async function handleStyleEdit(
   const effectivePrompt = userPrompt || 'surrounded by cannabis plants and neon green smoke';
 
   const imageCheck = validateInputImage(imageBase64);
-  if (!imageCheck.ok) {
-    return json(400, { error: imageCheck.error });
+  if (!imageCheck.ok) return json(400, { error: imageCheck.error });
+
+  // Primary-key dedupe: a retry with the same request_id must not submit twice.
+  const { data: inserted, error: insertError } = await db
+    .from('ai_image_jobs')
+    .insert({ request_id: requestId, status: 'PENDING', couple_id: coupleId || null })
+    .select('*')
+    .maybeSingle();
+
+  let row = (inserted as JobRow | null) ?? null;
+
+  if (insertError && insertError.code !== '23505') {
+    return json(500, { error: `Could not create AI job: ${insertError.message}` });
   }
 
-  const prompt = buildStylePrompt(preset.prefix, effectivePrompt);
-  const negativePrompt = 'score_6, score_5, score_4, deformed, bad anatomy, blurry';
+  if (!row) {
+    row = await getJobRow(db, requestId);
+    if (!row) return json(500, { error: 'AI job disappeared while being created.' });
 
-  // This worker has no ControlNet/IP-Adapter extension, so use plain txt2img.
-  const payload = {
-    input: {
-      prompt,
-      negative_prompt: negativePrompt,
-      steps: 28,
-      width: 512,
-      height: 768,
-    },
-  };
+    if (row.job_id || row.status === 'COMPLETED' || isFailedStatus(row.status)) {
+      if (isFailedStatus(row.status)) {
+        return json(200, {
+          requestId,
+          jobId: row.job_id,
+          status: 'FAILED',
+          error: row.error || 'ComfyUI job failed.',
+        });
+      }
+      return json(200, { requestId, jobId: row.job_id, status: row.status });
+    }
 
-  const runpodRes = await fetch(STYLE_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${runpodKey}`,
-    },
-    body: JSON.stringify(payload),
-  });
+    const updatedAt = Date.parse(row.updated_at || row.created_at);
+    const stale = !Number.isFinite(updatedAt) || Date.now() - updatedAt > STALE_PENDING_MS;
+    if (!stale) {
+      return json(200, { requestId, jobId: null, status: 'PENDING' });
+    }
 
-  const raw = await runpodRes.text().catch(() => '');
-  let job: RunpodJob = {};
+    await db
+      .from('ai_image_jobs')
+      .update({ status: 'PENDING', error: null, updated_at: new Date().toISOString() })
+      .eq('request_id', requestId);
+  }
+
   try {
-    job = JSON.parse(raw) as RunpodJob;
+    const imageName = await uploadImageToComfy(imageCheck.raw);
+
+    const workflow = buildComfyWorkflow({
+      imageName,
+      positive: `${buildStylePrompt(preset.prefix, effectivePrompt)}, ${STYLE_FACE_TAGS}`,
+      negative: BASE_NEGATIVE,
+      denoise: preset.denoising,
+      seed: Math.floor(Math.random() * 2_147_483_647),
+      filenamePrefix: `ily_${requestId}`,
+      checkpoint: Deno.env.get('COMFY_CHECKPOINT') || undefined,
+      faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',
+    });
+
+    const promptRes = await fetch(`${comfyBaseUrl()}/prompt`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: workflow, client_id: crypto.randomUUID() }),
+    });
+    const promptText = await promptRes.text();
+
+    if (!promptRes.ok) {
+      throw new Error(`ComfyUI rejected the workflow (HTTP ${promptRes.status}): ${promptText.slice(0, 1000)}`);
+    }
+
+    let promptData: { prompt_id?: string; error?: unknown; node_errors?: unknown } = {};
+    try {
+      promptData = JSON.parse(promptText);
+    } catch {
+      promptData = {};
+    }
+    if (!promptData.prompt_id) {
+      throw new Error(`ComfyUI returned no prompt_id: ${promptText.slice(0, 1000)}`);
+    }
+
+    await db
+      .from('ai_image_jobs')
+      .update({
+        job_id: promptData.prompt_id,
+        status: 'IN_PROGRESS',
+        error: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('request_id', requestId);
+
+    return json(200, { requestId, jobId: promptData.prompt_id, status: 'IN_PROGRESS' });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    await db
+      .from('ai_image_jobs')
+      .update({ status: 'FAILED', error: message, updated_at: new Date().toISOString() })
+      .eq('request_id', requestId);
+    return json(502, { requestId, status: 'FAILED', error: message });
+  }
+}
+
+async function handleStyleStatus(requestId: string): Promise<Response> {
+  const db = getDb();
+  if (!db) {
+    return json(500, {
+      error: 'SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not available to the Edge Function.',
+    });
+  }
+
+  const row = await getJobRow(db, requestId);
+  if (!row) return json(404, { error: 'Unknown request_id.' });
+
+  if (row.status === 'COMPLETED' && row.result_path) {
+    const url = await makeSignedResultUrl(db, row.result_path);
+    if (url) {
+      return json(200, {
+        requestId,
+        status: 'COMPLETED',
+        url,
+        mimeType: mimeFromPath(row.result_path),
+      });
+    }
+  }
+
+  if (isFailedStatus(row.status)) {
+    return json(200, {
+      requestId,
+      status: 'FAILED',
+      error: row.error || 'ComfyUI job failed.',
+    });
+  }
+
+  if (!row.job_id) {
+    return json(200, { requestId, status: row.status || 'PENDING' });
+  }
+
+  const historyRes = await fetch(`${comfyBaseUrl()}/history/${row.job_id}`);
+  const historyText = await historyRes.text();
+
+  if (!historyRes.ok) {
+    return json(502, {
+      requestId,
+      status: 'ERROR',
+      error: `ComfyUI history failed (HTTP ${historyRes.status}): ${historyText.slice(0, 500)}`,
+    });
+  }
+
+  let history: Record<string, ComfyHistoryEntry> = {};
+  try {
+    history = JSON.parse(historyText);
   } catch {
-    job = {};
+    history = {};
   }
 
-  const status = normalizeStatus(job.status);
-  if (!runpodRes.ok || isFailedStatus(status) || job.error) {
-    const detail = runpodErrorMessage(job) || `RunPod style worker rejected the request (HTTP ${runpodRes.status}).`;
-    const rawHint = raw ? ` | worker: ${raw.slice(0, 1500)}` : '';
+  const entry = history[row.job_id];
+  if (!entry) {
+    return json(200, { requestId, status: 'IN_PROGRESS' });
+  }
+
+  if (entry.status?.status_str === 'error') {
+    const error = JSON.stringify(entry.status?.messages ?? entry.status ?? {}).slice(0, 1500);
+    await db
+      .from('ai_image_jobs')
+      .update({ status: 'FAILED', error, updated_at: new Date().toISOString() })
+      .eq('request_id', requestId);
+    return json(200, { requestId, status: 'FAILED', error });
+  }
+
+  const image = findComfyOutputImage(entry.outputs);
+  if (!image) {
+    return json(200, { requestId, status: 'IN_PROGRESS' });
+  }
+
+  const viewUrl = `${comfyBaseUrl()}/view?filename=${encodeURIComponent(image.filename)}&subfolder=${encodeURIComponent(
+    image.subfolder || ''
+  )}&type=${encodeURIComponent(image.type || 'output')}`;
+
+  const imgRes = await fetch(viewUrl);
+  if (!imgRes.ok) {
     return json(502, {
-      error: `${detail}${rawHint}`,
-      status: 'FAILED',
-      runpod_status: runpodRes.status,
+      requestId,
+      status: 'ERROR',
+      error: `Could not fetch the ComfyUI result (HTTP ${imgRes.status}).`,
     });
   }
 
-  const b64 = extractA1111Image(job.output);
-  if (!b64) {
-    const rawHint = raw ? ` | worker: ${raw.slice(0, 1500)}` : '';
-    return json(502, {
-      error: `${runpodErrorMessage(job) || 'The style worker completed but returned no image.'}${rawHint}`,
-      status: 'FAILED',
-    });
+  const bytes = new Uint8Array(await imgRes.arrayBuffer());
+  const coupleId = row.couple_id || 'default-couple';
+  const path = `${coupleId}/ai-edits/${requestId}.png`;
+
+  let url: string | null = null;
+  try {
+    const { error: uploadError } = await db.storage
+      .from(STORAGE_BUCKET)
+      .upload(path, new Blob([bytes], { type: 'image/png' }), {
+        contentType: 'image/png',
+        upsert: true,
+      });
+    if (!uploadError) url = await makeSignedResultUrl(db, path);
+  } catch {
+    // fall back to base64 below
+  }
+
+  await db
+    .from('ai_image_jobs')
+    .update({
+      status: 'COMPLETED',
+      error: null,
+      result_path: url ? path : row.result_path,
+      couple_id: coupleId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('request_id', requestId);
+
+  if (url) {
+    return json(200, { requestId, status: 'COMPLETED', url, mimeType: 'image/png' });
   }
 
   return json(200, {
-    b64,
-    image: `data:image/png;base64,${b64}`,
+    requestId,
+    status: 'COMPLETED',
+    b64: bytesToBase64(bytes),
     mimeType: 'image/png',
-    styleMode,
-    prompt,
   });
 }
 
@@ -482,52 +711,61 @@ serve(async (req) => {
 
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
-    // New style-preset flow: { imageBase64, styleMode, userPrompt }.
-    // The legacy async flow below still works for the existing app build.
+    const actionRaw = String(body.action ?? '').trim().toLowerCase();
     const styleMode = String(body.styleMode ?? '').trim();
     const userPrompt = String(body.userPrompt ?? '').trim();
     const styleImageBase64 = String(body.imageBase64 ?? body.image_base64 ?? '').trim();
+    const requestId = String(body.request_id ?? body.requestId ?? '').trim();
+    const coupleId = String(body.couple_id ?? body.coupleId ?? '').trim();
+
+    // ComfyUI style flow.
+    if (actionRaw === 'style_start') {
+      if (!requestId || requestId.length > 160) {
+        return json(400, { error: 'Missing or invalid request_id.' });
+      }
+      if (!styleMode) return json(400, { error: 'Missing styleMode.' });
+      if (!styleImageBase64) return json(400, { error: 'Missing imageBase64.' });
+      return await handleStyleStart(requestId, styleImageBase64, styleMode, userPrompt, coupleId);
+    }
+
+    if (actionRaw === 'style_status') {
+      if (!requestId || requestId.length > 160) {
+        return json(400, { error: 'Missing or invalid request_id.' });
+      }
+      return await handleStyleStatus(requestId);
+    }
+
+    if (actionRaw === 'style_health') {
+      try {
+        const healthRes = await fetch(`${comfyBaseUrl()}/system_stats`);
+        const healthText = await healthRes.text();
+        return new Response(healthText, {
+          status: healthRes.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (e) {
+        return json(502, { error: String(e) });
+      }
+    }
+
+    // Backward-compatible call shape: { imageBase64, styleMode, userPrompt }.
     if (styleMode || body.userPrompt !== undefined) {
       if (!styleMode) return json(400, { error: 'Missing styleMode.' });
       if (!styleImageBase64) return json(400, { error: 'Missing imageBase64.' });
-      return await handleStyleEdit(styleImageBase64, styleMode, userPrompt);
+      return await handleStyleStart(
+        requestId || crypto.randomUUID(),
+        styleImageBase64,
+        styleMode,
+        userPrompt,
+        coupleId
+      );
     }
 
-    const action = String(body.action ?? 'start').trim().toLowerCase();
-    const requestId = String(body.request_id ?? body.requestId ?? '').trim();
-    const coupleId = String(body.couple_id ?? body.coupleId ?? '').trim();
+    const action = actionRaw || 'start';
     // Old app builds only understand b64. New builds send include_b64:false and
     // receive the short Storage URL instead. Default true keeps old builds alive.
     const includeB64 = body.include_b64 !== false;
     const endpoint = Deno.env.get('RUNPOD_ENDPOINT_ID') || DEFAULT_ENDPOINT;
-
-    // Diagnostics: worker/queue health for the endpoint, no job created.
-    if (action === 'health') {
-      const healthKey = Deno.env.get('RUNPOD_API_KEY');
-      if (!healthKey) return json(500, { error: 'RUNPOD_API_KEY is not set.' });
-      const healthRes = await fetch(`${RUNPOD_BASE}/${endpoint}/health`, {
-        headers: { Authorization: `Bearer ${healthKey}` },
-      });
-      const healthText = await healthRes.text();
-      return new Response(healthText, {
-        status: healthRes.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Diagnostics: A1111 style endpoint health, no job created.
-    if (action === 'style_health') {
-      const styleKey = Deno.env.get('RUNPOD_STYLE_API_KEY') || Deno.env.get('RUNPOD_API_KEY');
-      if (!styleKey) return json(500, { error: 'RUNPOD_STYLE_API_KEY / RUNPOD_API_KEY is not set.' });
-      const healthRes = await fetch(`${STYLE_ENDPOINT_BASE}/health`, {
-        headers: { Authorization: `Bearer ${styleKey}` },
-      });
-      const healthText = await healthRes.text();
-      return new Response(healthText, {
-        status: healthRes.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
 
     if (!requestId || requestId.length > 160) {
       return json(400, { error: 'Missing or invalid request_id.' });
