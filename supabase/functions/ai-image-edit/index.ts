@@ -12,9 +12,9 @@ const corsHeaders = {
 const RUNPOD_BASE = 'https://api.runpod.ai/v2';
 const DEFAULT_ENDPOINT = '7ckfcko9p6h503';
 const STYLE_FACE_TAGS =
-  'natural eye size, symmetrical eyes, realistic face proportions, natural lips, relaxed closed mouth, symmetrical lips, realistic mouth, open eyes';
+  'natural eye size, symmetrical eyes, realistic face proportions, natural lips, relaxed closed mouth, symmetrical lips, realistic mouth, open eyes, exact same face, exact same body shape, exact same pose, exact same camera angle, natural anatomy, two arms, two legs, two feet';
 const BASE_NEGATIVE =
-  'score_6, score_5, score_4, deformed, bad anatomy, bad hands, extra limbs, missing fingers, mutated hands, poorly drawn face, asymmetric eyes, blurry, big eyes, anime eyes, asymmetrical eyes, uneven eyes, cross-eyed, lazy eye, deformed eyes, extra pupils, mismatched eyes, weird lips, deformed lips, crooked mouth, mismatched lips, bad teeth, extra lips, open mouth, ugly mouth, botox style mouth, fake mouth';
+  'score_6, score_5, score_4, deformed, bad anatomy, bad hands, extra limbs, extra feet, duplicate feet, extra foot, extra legs, duplicate legs, third leg, extra body parts, changed pose, different pose, deformed feet, mutated feet, missing fingers, mutated hands, poorly drawn face, asymmetric eyes, blurry, big eyes, anime eyes, asymmetrical eyes, uneven eyes, cross-eyed, lazy eye, deformed eyes, extra pupils, mismatched eyes, weird lips, deformed lips, crooked mouth, mismatched lips, bad teeth, extra lips, open mouth, ugly mouth, botox style mouth, fake mouth';
 
 /**
  * NSFW negative used by item/body edits. The base negative bans "open mouth",
@@ -22,7 +22,7 @@ const BASE_NEGATIVE =
  * drop the mouth bans.
  */
 const EDIT_NEGATIVE =
-  'score_6, score_5, score_4, deformed, bad anatomy, bad hands, extra limbs, missing fingers, mutated hands, poorly drawn face, asymmetric eyes, blurry, big eyes, anime eyes, asymmetrical eyes, uneven eyes, cross-eyed, lazy eye, deformed eyes, extra pupils, mismatched eyes, weird lips, deformed lips, bad teeth';
+  'score_6, score_5, score_4, deformed, bad anatomy, bad hands, extra limbs, extra feet, duplicate feet, extra foot, extra legs, duplicate legs, third leg, extra body parts, changed pose, different pose, deformed feet, mutated feet, missing fingers, mutated hands, poorly drawn face, asymmetric eyes, blurry, big eyes, anime eyes, asymmetrical eyes, uneven eyes, cross-eyed, lazy eye, deformed eyes, extra pupils, mismatched eyes, weird lips, deformed lips, bad teeth';
 
 /** Every prompt the model sees starts with Pony's score tags. */
 const PONY_QUALITY = 'score_9, score_8_up, score_7_up';
@@ -41,7 +41,8 @@ const EDIT_TARGETS: Record<EditTarget, EditTargetConfig> = {
   background: {
     label: 'Background',
     suffix: 'detailed background, scenery, environment',
-    denoise: 0.85,
+    // High strength lets the model invent limbs at the mask edge.
+    denoise: 0.65,
   },
   hair: {
     label: 'Hair',
@@ -149,18 +150,10 @@ const SCENE_STYLES = new Set<string>([
 const INSIDE_OBJECT_STYLES = new Set<string>(['snowglobe', 'perc-in-bong']);
 
 /** Style passes that need to recompose get a little extra push and stronger FaceID. */
-function styleDenoise(styleMode: string, presetDenoise: number): number {
-  if (PHOTO_TEXTURE_STYLES.has(styleMode)) {
-    return Math.min(STYLE_DENOISE_CAP, presetDenoise);
-  }
-  if (MOCKUP_STYLES.has(styleMode)) {
-    return Math.min(0.60, presetDenoise + 0.06);
-  }
-  if (SCENE_STYLES.has(styleMode)) {
-    return Math.min(0.60, presetDenoise + 0.04);
-  }
-  // Character/art styles: use the value the preset was tuned with.
-  return presetDenoise;
+function styleDenoise(_styleMode: string, presetDenoise: number): number {
+  // Every style is capped: Pony redraws faces/bodies into its cartoon bias
+  // above this strength, no matter how tasteful the preset is.
+  return Math.min(STYLE_DENOISE_CAP, presetDenoise);
 }
 
 function styleFaceIdWeight(styleMode: string): number {

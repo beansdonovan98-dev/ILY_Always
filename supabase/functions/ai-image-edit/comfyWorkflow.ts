@@ -150,7 +150,9 @@ export function buildInpaintWorkflow(options: InpaintWorkflowOptions): Record<st
   const checkpoint = options.checkpoint || 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors';
   const faceIdProvider = options.faceIdProvider || 'CPU';
   const faceIdWeight = options.faceIdWeight ?? 0.6;
-  const growMaskBy = options.growMaskBy ?? 10;
+  // Growing a background mask eats into the subject's silhouette; a large
+  // grow makes hands/feet hallucinate at the edge.
+  const growMaskBy = options.growMaskBy ?? (options.mask.kind === 'background' ? 4 : 10);
   const useFaceId = options.useFaceId !== false;
 
   // RMBG outputs: IMAGE(0), MASK(1), MASK_IMAGE(2).
@@ -223,21 +225,6 @@ export function buildInpaintWorkflow(options: InpaintWorkflowOptions): Record<st
       class_type: 'VAEDecode',
       inputs: { samples: ['77', 0], vae: ['72', 2] },
     },
-    // Blur the mask as an image so each brush stroke gets its own soft edge.
-    // (FeatherMask feathers from the whole mask's bounding box, which can
-    // erase thin strokes.)
-    '91': {
-      class_type: 'MaskToImage',
-      inputs: { mask: ['87', 0] },
-    },
-    '92': {
-      class_type: 'ImageBlur',
-      inputs: { image: ['91', 0], blur_radius: 8, sigma: 4 },
-    },
-    '93': {
-      class_type: 'ImageToMask',
-      inputs: { image: ['92', 0], channel: 'red' },
-    },
     '90': {
       class_type: 'ImageCompositeMasked',
       inputs: {
@@ -246,7 +233,10 @@ export function buildInpaintWorkflow(options: InpaintWorkflowOptions): Record<st
         x: 0,
         y: 0,
         resize_source: false,
-        mask: ['93', 0],
+        // HumanParts returns a byte mask; ComfyUI's ImageBlur crashes on it.
+        // GrowMask's tapered edge is enough for auto masks. Brush strokes keep
+        // the extra blur below.
+        mask: options.mask.kind === 'hair' ? ['87', 0] : ['93', 0],
       },
     },
     '79': {
@@ -254,6 +244,24 @@ export function buildInpaintWorkflow(options: InpaintWorkflowOptions): Record<st
       inputs: { filename_prefix: options.filenamePrefix, images: ['90', 0] },
     },
   };
+
+  if (options.mask.kind !== 'hair') {
+    // Blur the mask as an image so each brush stroke gets its own soft edge.
+    // (FeatherMask feathers from the whole mask's bounding box, which can
+    // erase thin strokes.)
+    workflow['91'] = {
+      class_type: 'MaskToImage',
+      inputs: { mask: ['87', 0] },
+    };
+    workflow['92'] = {
+      class_type: 'ImageBlur',
+      inputs: { image: ['91', 0], blur_radius: 8, sigma: 4 },
+    };
+    workflow['93'] = {
+      class_type: 'ImageToMask',
+      inputs: { image: ['92', 0], channel: 'red' },
+    };
+  }
 
   if (options.mask.kind === 'brush') {
     workflow['82'] = {
