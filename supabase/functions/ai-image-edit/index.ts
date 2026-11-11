@@ -24,9 +24,7 @@ const BASE_NEGATIVE =
 const EDIT_NEGATIVE =
   'score_6, score_5, score_4, deformed, bad anatomy, bad hands, extra limbs, missing fingers, mutated hands, poorly drawn face, asymmetric eyes, blurry, big eyes, anime eyes, asymmetrical eyes, uneven eyes, cross-eyed, lazy eye, deformed eyes, extra pupils, mismatched eyes, weird lips, deformed lips, bad teeth';
 
-const NSFW_TAGS = 'rating_explicit, explicit anatomical details';
-
-/** Every prompt the model sees is explicit and starts with Pony's score tags. */
+/** Every prompt the model sees starts with Pony's score tags. */
 const PONY_QUALITY = 'score_9, score_8_up, score_7_up';
 
 type EditTarget = 'background' | 'hair' | 'body' | 'item';
@@ -456,12 +454,22 @@ function normalizeEditTarget(value: string): EditTarget | null {
     : null;
 }
 
+function nsfwTagsForEdit(target: EditTarget, userPrompt: string): string {
+  // Every pass is explicit. Anatomical detail is only needed when the edit
+  // actually touches the body or adds something explicit.
+  let tags = 'rating_explicit';
+  const touchesAnatomy =
+    target === 'body' ||
+    target === 'item' ||
+    /\b(tattoo|nipple|breast|pussy|ass|cock|dick|penis|nude|naked|anatomy|mouth|throat)\b/i.test(userPrompt);
+  if (touchesAnatomy) tags += ', explicit anatomical details';
+  return tags;
+}
+
 function buildEditPrompt(target: EditTarget, userPrompt: string): string {
   const config = EDIT_TARGETS[target];
   // User text first: Pony weights early tokens most heavily.
-  let prompt = `${PONY_QUALITY}, ${userPrompt.trim()}, ${config.suffix}, ${NSFW_TAGS}`;
-  if (!/rating_explicit/i.test(prompt)) prompt += ', rating_explicit';
-  return prompt;
+  return `${PONY_QUALITY}, ${userPrompt.trim()}, ${config.suffix}, ${nsfwTagsForEdit(target, userPrompt)}`;
 }
 
 function negativeForEdit(target: EditTarget, userPrompt: string): string {
