@@ -141,7 +141,14 @@ export function buildInpaintWorkflow(options: InpaintWorkflowOptions): Record<st
   const faceIdWeight = options.faceIdWeight ?? 0.6;
   const growMaskBy = options.growMaskBy ?? 10;
 
-  const maskNodeId = options.mask.kind === 'brush' ? '83' : '84';
+  // RMBG outputs: IMAGE(0), MASK(1), MASK_IMAGE(2).
+  // Brush and HumanParts expose the mask on output 0.
+  const maskOutput: [string, number] =
+    options.mask.kind === 'brush'
+      ? ['83', 0]
+      : options.mask.kind === 'background'
+        ? ['84', 1]
+        : ['84', 0];
 
   const workflow: Record<string, unknown> = {
     '72': {
@@ -203,7 +210,7 @@ export function buildInpaintWorkflow(options: InpaintWorkflowOptions): Record<st
     },
     '87': {
       class_type: 'GrowMask',
-      inputs: { mask: [maskNodeId, 0], expand: growMaskBy, tapered_corners: true },
+      inputs: { mask: maskOutput, expand: growMaskBy, tapered_corners: true },
     },
     '89': {
       class_type: 'SetLatentNoiseMask',
@@ -283,6 +290,8 @@ export function buildInpaintWorkflow(options: InpaintWorkflowOptions): Record<st
         mask_offset: 0,
         invert_output: true,
         refine_foreground: false,
+        // The node reads this directly even though it is marked optional.
+        background: 'Alpha',
         background_color: '#222222',
       },
     };

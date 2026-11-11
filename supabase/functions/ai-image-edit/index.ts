@@ -470,6 +470,21 @@ function runpodErrorMessage(job: RunpodJob): string | null {
   return null;
 }
 
+/** Compact view of a ComfyUI node's input spec (combo values included). */
+function describeComfyInput(spec: unknown): unknown {
+  if (Array.isArray(spec)) {
+    if (Array.isArray(spec[0])) return (spec[0] as unknown[]).slice(0, 80);
+    return spec[0];
+  }
+  return typeof spec;
+}
+
+function summarizeComfyInputs(inputs?: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, spec] of Object.entries(inputs ?? {})) out[key] = describeComfyInput(spec);
+  return out;
+}
+
 function getDb() {
   const url = Deno.env.get('SUPABASE_URL') ?? '';
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
@@ -1276,10 +1291,42 @@ serve(async (req) => {
           results[node] = info
             ? {
                 ok: true,
-                required: summarize(info.input?.required),
-                optional: summarize(info.input?.optional),
+                required: summarizeComfyInputs(info.input?.required),
+                optional: summarizeComfyInputs(info.input?.optional),
               }
             : { ok: false, http: res.status, body: text.slice(0, 300) };
+        } catch (e) {
+          results[node] = { ok: false, error: String(e) };
+        }
+      }
+      return json(200, { comfyUrl: comfyBaseUrl(), nodes: results });
+    }
+
+    // Validate an arbitrary set of node classes/inputs. No job created.
+    if (actionRaw === 'comfy_nodes') {
+      const requested = Array.isArray(body.nodes) ? body.nodes.map(String) : [];
+      const nodes = requested.length > 0 ? requested : [];
+      const results: Record<string, unknown> = {};
+      for (const node of nodes.slice(0, 40)) {
+        try {
+          const res = await fetch(`${comfyBaseUrl()}/object_info/${encodeURIComponent(node)}`);
+          const text = await res.text();
+          let parsed: Record<string, unknown> = {};
+          try {
+            parsed = JSON.parse(text);
+          } catch {
+            parsed = {};
+          }
+          const info = parsed[node] as
+            | { input?: { required?: Record<string, unknown>; optional?: Record<string, unknown> } }
+            | undefined;
+          results[node] = info
+            ? {
+                ok: true,
+                required: summarizeComfyInputs(info.input?.required),
+                optional: summarizeComfyInputs(info.input?.optional),
+              }
+            : { ok: false, http: res.status };
         } catch (e) {
           results[node] = { ok: false, error: String(e) };
         }
