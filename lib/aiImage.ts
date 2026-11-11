@@ -52,7 +52,7 @@ export type EditTarget = 'background' | 'hair' | 'body' | 'item';
 export type AIEdit = {
   target: EditTarget;
   prompt: string;
-  /** Present for Brush targets (Body/Item). Background/Hair fall back to auto masks. */
+  /** Present for Brush targets (Body/Objects). Background/Hair fall back to auto masks. */
   strokes?: BrushStroke[];
 };
 

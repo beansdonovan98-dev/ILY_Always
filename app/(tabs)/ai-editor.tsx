@@ -43,7 +43,7 @@ type EditRow = {
   target: EditTarget;
   label: string;
   placeholder: string;
-  /** Body/Item need a painted mask; Background/Hair default to auto masks. */
+  /** Body/Objects need a painted mask; Background/Hair default to auto masks. */
   brush: boolean;
   hint: string;
 };
@@ -72,7 +72,7 @@ const EDIT_ROWS: EditRow[] = [
   },
   {
     target: 'item',
-    label: 'Item',
+    label: 'Objects',
     placeholder: 'e.g. holding a joint, strapon',
     brush: true,
     hint: 'Paint the area',
@@ -568,7 +568,7 @@ export default function AIEditorScreen() {
         })}
 
         <Text style={styles.hint}>
-          Background and Hair mask themselves. Body and Item need you to paint the spot. Every prompt is sent as explicit.
+          Background and Hair mask themselves. Body and Objects need you to paint the spot. Every prompt is sent as explicit.
         </Text>
 
         {resultUri ? (
