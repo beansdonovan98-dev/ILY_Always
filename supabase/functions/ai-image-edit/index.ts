@@ -385,11 +385,20 @@ function extractA1111Image(output: unknown): string | null {
 }
 
 function buildStylePrompt(prefix: string, userPrompt: string): string {
-  let prompt = `${prefix}${userPrompt}`.trim();
+  // User request first: Pony weights early tokens more heavily.
+  let prompt = userPrompt.trim();
+  if (prompt) prompt += ', ';
+  prompt += prefix.trim();
   // The presets already include these, but keep the guarantee for custom styles.
   if (!/rating_explicit/i.test(prompt)) prompt += ', rating_explicit';
   if (!/explicit anatomical details/i.test(prompt)) prompt += ', explicit anatomical details';
   return prompt;
+}
+
+function looksLikeSceneChange(prompt: string): boolean {
+  return /\b(background|scene|setting|behind|in front of|on a|sitting on|lying on|standing on|surrounded by)\b/i.test(
+    prompt
+  );
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
@@ -473,6 +482,10 @@ async function handleStyleStart(
 
   const preset = STYLE_PRESETS[styleMode] || STYLE_PRESETS['tarot-card'];
   const effectivePrompt = userPrompt || 'surrounded by cannabis plants and neon green smoke';
+  // Scene/background requests need more freedom than a pure style transfer.
+  const denoise = looksLikeSceneChange(effectivePrompt)
+    ? Math.min(0.60, preset.denoising + 0.12)
+    : preset.denoising;
 
   const imageCheck = validateInputImage(imageBase64);
   if (!imageCheck.ok) return json(400, { error: imageCheck.error });
@@ -525,7 +538,7 @@ async function handleStyleStart(
       imageName,
       positive: `${buildStylePrompt(preset.prefix, effectivePrompt)}, ${STYLE_FACE_TAGS}`,
       negative: BASE_NEGATIVE,
-      denoise: preset.denoising,
+      denoise,
       seed: Math.floor(Math.random() * 2_147_483_647),
       filenamePrefix: `ily_${requestId}`,
       checkpoint: Deno.env.get('COMFY_CHECKPOINT') || undefined,
