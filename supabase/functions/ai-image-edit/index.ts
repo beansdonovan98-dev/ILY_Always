@@ -63,9 +63,116 @@ const EDIT_TARGETS: Record<EditTarget, EditTargetConfig> = {
 const EDIT_DENOISE_MIN = 0.3;
 const EDIT_DENOISE_MAX = 0.95;
 
-// The style pass must stay a style pass: enough to restyle, not enough to
-// redraw her face or body into Pony's cartoon bias.
+// The style pass must stay a style pass for real photos: enough to grade or
+// texture, not enough to redraw her face/body into Pony's cartoon bias.
 const STYLE_DENOISE_CAP = 0.35;
+
+/**
+ * Photographic / grade / effect styles whose point is the original image.
+ * These keep the 0.35 cap so a real photo doesn't drift into Pony's cartoon
+ * bias. Art mediums and composition styles use their preset strength instead.
+ */
+const PHOTO_TEXTURE_STYLES = new Set<string>([
+  'realistic',
+  'black-and-white',
+  '20s-era',
+  'polaroid',
+  'polaroid-after-dark',
+  'y2k-film',
+  'candle-light',
+  'velvet-glow',
+  'plum-and-espresso',
+  'thumbnail',
+  'luminescence',
+  'prism',
+  'glitch-art',
+  'color-swap',
+  'double-exposure',
+]);
+
+/**
+ * Mockups: her image is printed/painted onto a card, bus, car, bong, poster,
+ * shirt, wall, etc. These only work if the composition is allowed to change.
+ */
+const MOCKUP_STYLES = new Set<string>([
+  'tarot-card',
+  'snowglobe',
+  'holiday-cards',
+  'magazine-cover',
+  'pokemon-card',
+  'yugioh-card',
+  'playing-card',
+  'album-cover',
+  'record-vinyl',
+  'app-icon',
+  'scrapbook',
+  'post-it-note',
+  'post-card',
+  'wanted-poster',
+  'fbi-wanted',
+  'missing-poster',
+  'milk-carton',
+  'billboard',
+  'side-of-bus',
+  'car-wrap',
+  'perc-in-bong',
+  'backwoods-wrapper',
+  'advertisement',
+  'book-cover',
+  'merchandise',
+  'sticker-pack',
+  'photobooth',
+  'mural',
+  'graffiti',
+  'rip-shirt',
+  'blueprint',
+  'magazine-ransom-note',
+  'negative-space-invasion',
+]);
+
+/** Scene styles that rebuild the environment around her. */
+const SCENE_STYLES = new Set<string>([
+  'neon-noir',
+  'lord-of-the-rings',
+  'superhero',
+  'pop-garden',
+  'dream-diffusion',
+  'astrology',
+  'dungeon',
+  'olympian-greek-god',
+  'alien-abduction-beam',
+  'park-bench',
+  'product-photo',
+  'walmart-security-cam',
+]);
+
+const INSIDE_OBJECT_STYLES = new Set<string>(['snowglobe', 'perc-in-bong']);
+
+/** Style passes that need to recompose get a little extra push and stronger FaceID. */
+function styleDenoise(styleMode: string, presetDenoise: number): number {
+  if (PHOTO_TEXTURE_STYLES.has(styleMode)) {
+    return Math.min(STYLE_DENOISE_CAP, presetDenoise);
+  }
+  if (MOCKUP_STYLES.has(styleMode)) {
+    return Math.min(0.60, presetDenoise + 0.06);
+  }
+  if (SCENE_STYLES.has(styleMode)) {
+    return Math.min(0.60, presetDenoise + 0.04);
+  }
+  // Character/art styles: use the value the preset was tuned with.
+  return presetDenoise;
+}
+
+function styleFaceIdWeight(styleMode: string): number {
+  return MOCKUP_STYLES.has(styleMode) || SCENE_STYLES.has(styleMode) ? 0.75 : 0.65;
+}
+
+function stylePromptSuffix(styleMode: string): string {
+  if (MOCKUP_STYLES.has(styleMode) && !INSIDE_OBJECT_STYLES.has(styleMode)) {
+    return ', her photo printed on the object as the graphic, recognizable face';
+  }
+  return '';
+}
 
 // Reject blank/1x1/truncated uploads before they reach RunPod and burn GPU time.
 const MIN_IMAGE_BASE64_CHARS = 20_000;
@@ -599,8 +706,9 @@ async function handleStyleStart(
 
   const preset = STYLE_PRESETS[styleMode] || STYLE_PRESETS['tarot-card'];
   const effectivePrompt = userPrompt.trim();
-  // Never let a preset's high denoise redraw her. 0.35 is the ceiling.
-  const denoise = Math.min(STYLE_DENOISE_CAP, preset.denoising);
+  // Photo/texture styles stay at 0.35; mockup/scene/character styles use their
+  // designed strength so the style actually does what its name says.
+  const denoise = styleDenoise(styleMode, preset.denoising);
 
   const imageCheck = validateInputImage(imageBase64);
   if (!imageCheck.ok) return json(400, { error: imageCheck.error });
@@ -651,13 +759,14 @@ async function handleStyleStart(
 
     const workflow = buildComfyWorkflow({
       imageName,
-      positive: `${buildStylePrompt(preset.prefix, effectivePrompt)}, ${STYLE_FACE_TAGS}`,
+      positive: `${buildStylePrompt(preset.prefix, effectivePrompt)}${stylePromptSuffix(styleMode)}, ${STYLE_FACE_TAGS}`,
       negative: BASE_NEGATIVE,
       denoise,
       seed: Math.floor(Math.random() * 2_147_483_647),
       filenamePrefix: `ily_${requestId}`,
       checkpoint: Deno.env.get('COMFY_CHECKPOINT') || undefined,
       faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',
+      faceIdWeight: styleFaceIdWeight(styleMode),
     });
 
     const promptRes = await fetch(`${comfyBaseUrl()}/prompt`, {

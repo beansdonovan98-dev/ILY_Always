@@ -7,6 +7,7 @@ export type ComfyWorkflowOptions = {
   filenamePrefix: string;
   checkpoint?: string;
   faceIdProvider?: string;
+  faceIdWeight?: number;
 };
 
 /**
@@ -42,6 +43,7 @@ export type InpaintWorkflowOptions = {
 export function buildComfyWorkflow(options: ComfyWorkflowOptions): Record<string, unknown> {
   const checkpoint = options.checkpoint || 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors';
   const faceIdProvider = options.faceIdProvider || 'CPU';
+  const faceIdWeight = options.faceIdWeight ?? 0.65;
 
   return {
     '72': {
@@ -111,7 +113,7 @@ export function buildComfyWorkflow(options: ComfyWorkflowOptions): Record<string
     '86': {
       class_type: 'IPAdapterFaceID',
       inputs: {
-        weight: 0.65,
+        weight: faceIdWeight,
         weight_faceidv2: 1,
         weight_type: 'linear',
         combine_embeds: 'concat',
