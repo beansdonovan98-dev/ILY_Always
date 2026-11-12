@@ -1280,7 +1280,10 @@ async function handleStyleStart(
     };
 
     let workflow: Record<string, unknown>;
-    if (cfg.initFromSource === false) {
+    if (
+      bucketForStyle(styleMode) !== 'realism_composite' &&
+      bucketForStyle(styleMode) !== 'realism_outfit_nsfw'
+    ) {
       workflow = buildBucketStyleWorkflow({
         ...common,
         controlNet: poseImage ? 'openpose' : cfg.controlNet,

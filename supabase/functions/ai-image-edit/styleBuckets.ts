@@ -292,11 +292,14 @@ export function bucketForStyle(style: string): BucketId {
   return styleDefinition(style).bucket;
 }
 
-/** Buckets that keep img2img from her photo. Everything else gets a fresh canvas. */
+/** Buckets that keep img2img from her photo. */
 const IMG2IMG_BUCKETS: ReadonlySet<BucketId> = new Set<BucketId>([
   'realism_composite',
   'realism_outfit_nsfw',
-  'macro_object_embed',
+  'anime_2d_toon',
+  'toy_3d_sculpt',
+  'fine_art_medium',
+  'framed_card',
 ]);
 
 export function bucketConfig(style: string): BucketParams {
