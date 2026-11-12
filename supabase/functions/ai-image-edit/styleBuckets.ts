@@ -102,7 +102,6 @@ export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
     stylePrefix: 'traditional media, fine art illustration, heavy canvas and paper texture',
     negativeAdditions:
       'photorealistic, 35mm photograph, detailed skin pores, smooth digital airbrush, 3d render',
-    extraPositive: '(full hips, thick thighs, heavy bust:1.1)',
     blurRadius: 0,
     denoise: 0.65,
   },

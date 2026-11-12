@@ -1037,18 +1037,12 @@ function findWorkflowInPrompt(prompt: unknown): Record<string, unknown> | null {
  * into watercolour, stencil into poster art, and so on.
  */
 const STYLE_NEGATIVE_GUARDRAILS: Record<string, string> = {
-  pointillism:
-    '(watercolor, smooth brushstrokes, soft edges, bleed, painterly wash, gradient shading, airbrushed blending:1.4), (blurry, smudged, out of focus:1.2)',
-  stencil: '(watercolor, soft gradients, blurry edges:1.3)',
-  posterize: '(smooth gradients, soft blending, watercolor:1.3)',
-  'comic-dot': '(smooth gradients, watercolor, soft blending:1.3)',
-  'coloring-book': '(color fill, watercolor, soft gradients:1.3)',
+  // Empty on purpose: the pointillism guardrail made the dots bead on skin and
+  // flattened her face. v6 (no per-style guardrail) is the locked baseline.
 };
 
 /** Per-style positive nudges that a bucket-wide anchor cannot express. */
-const STYLE_POSITIVE_NUDGES: Record<string, string> = {
-  pointillism: '(tiny distinct stippled paint dots, visible dot texture, Georges Seurat:1.35)',
-};
+const STYLE_POSITIVE_NUDGES: Record<string, string> = {};
 
 function withoutFaceId(prompt: unknown): Record<string, unknown> | null {
   const candidate = findWorkflowInPrompt(prompt);
