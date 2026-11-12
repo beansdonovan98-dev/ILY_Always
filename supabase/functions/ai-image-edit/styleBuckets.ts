@@ -34,7 +34,7 @@ export const LORA_FILES = {
   husband: 'mbboi_v1_1200_steps_00001_.safetensors',
 };
 
-const COMMON_EXPLICIT_POS = 'score_9, score_8_up, score_7_up, rating_explicit, explicit anatomical details';
+const COMMON_EXPLICIT_POS = 'rating_explicit, explicit anatomical details';
 const COMMON_EXPLICIT_NEG =
   'score_6, score_5, score_4, worst quality, low quality, blurry, censored, mosaic censorship, bar censor, deformed, bad anatomy, bad hands, extra limbs, missing fingers, mutated hands, asymmetric eyes, cross-eyed, deformed mouth, bad teeth';
 
@@ -496,6 +496,17 @@ const SUBJECT_ANCHOR: Record<SubjectMode, string> = {
   couple: '1girl and 1man, two people, nude couple, full body visible, standing',
 };
 
+/** Medium tags placed immediately after the score tags, before anything else. */
+const MEDIUM_FRONT: Record<BucketId, string> = {
+  realism_composite: 'raw photo, 35mm photograph, photorealistic, detailed skin pores, natural eye size',
+  realism_outfit_nsfw: 'raw photo, 35mm photograph, photorealistic, detailed skin pores, natural eye size',
+  anime_2d_toon: 'source_anime, anime style, 2d cel shading, clean bold lineart, vibrant colors',
+  toy_3d_sculpt: '3d render, octane render, studio product lighting, macro miniature photography',
+  fine_art_medium: 'fine art masterpiece, authentic traditional media texture',
+  framed_card: 'ornate vintage tarot card illustration, detailed occult line etching, parchment paper texture, gold-foil border frame',
+  macro_object_embed: 'commercial product photography, professional studio lighting',
+};
+
 /** Keeps the model from zooming into a body close-up. */
 const FRAMING_BY_BUCKET: Record<BucketId, string> = {
   realism_composite: ', medium shot, waist-up framing, room visible behind her',
@@ -544,7 +555,14 @@ export function generateFinalOpenCodePayload(
 
   // Subject first: with an empty latent the model will happily fill the frame
   // with scenery if the medium tags lead, so she is anchored at the very start.
-  const positive = `${SUBJECT_ANCHOR[subject]}, ${SUBJECT_TAGS[subject]}, ${style.prompt}, ${bucket.basePrefix}, featuring ${easterEgg}${bodyDetailPrompt}, ${hardwareProp}${FRAMING_BY_BUCKET[style.bucket]}`;
+  // One score-tag prefix only, then the medium, then her. Anime style tokens land
+  // inside the first chunk instead of after the body description.
+  const SCORE_TAGS = 'score_9, score_8_up, score_7_up';
+  const styleText =
+    style.bucket === 'anime_2d_toon'
+      ? style.prompt.replace(/glossy blushed skin,?\s*/gi, '')
+      : style.prompt;
+  const positive = `${SCORE_TAGS}, ${MEDIUM_FRONT[style.bucket]}, ${SUBJECT_ANCHOR[subject]}, ${SUBJECT_TAGS[subject]}, ${styleText}, featuring ${easterEgg}${bodyDetailPrompt}, ${hardwareProp}${FRAMING_BY_BUCKET[style.bucket]}`;
   // The room is its own conditioning stream so it stops competing with her body.
   const backgroundPositive = `background environment: ${env}`;
   const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only`;

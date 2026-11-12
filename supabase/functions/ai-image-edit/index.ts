@@ -1265,8 +1265,14 @@ async function handleStyleStart(
     }
     const width = cfg.portrait ? 832 : 1024;
     const height = cfg.portrait ? 1216 : 1024;
-    const positive = [PONY_QUALITY, payload.positive].filter(Boolean).join(', ');
-    const negative = [BASE_NEGATIVE, payload.negative].filter(Boolean).join(', ');
+    const positive = payload.positive;
+    const isAnimeBucket = bucketForStyle(styleMode) === 'anime_2d_toon';
+    const baseNeg = [BASE_NEGATIVE, payload.negative].filter(Boolean).join(', ');
+    // "big eyes, anime eyes" in the negative actively fights source_anime, so they
+    // are stripped for 2d buckets only and kept everywhere else.
+    const negative = isAnimeBucket
+      ? baseNeg.replace(/,?\s*big eyes/gi, '').replace(/,?\s*anime eyes/gi, '')
+      : baseNeg;
 
     const common = {
       imageName,

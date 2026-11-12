@@ -754,6 +754,30 @@ export function buildBucketStyleWorkflow(
     workflow['201'] = { class_type: 'EmptyLatentImage', inputs: { width, height, batch_size: 1 } };
   }
 
+  // Background regeneration: the RMBG subject mask now drives the latent. The
+  // background region is fully noised so the campsite can actually generate,
+  // while her pixels stay at the low denoise.
+  if (options.initFromSource !== false) {
+    workflow['170'] = { class_type: 'SolidMask', inputs: { value: 1, width, height } };
+    workflow['171'] = {
+      class_type: 'MaskComposite',
+      inputs: { destination: ['170', 0], source: ['112', 0], x: 0, y: 0, operation: 'subtract' },
+    };
+    workflow['172'] = {
+      class_type: 'GrowMask',
+      inputs: { mask: ['171', 0], expand: 8, tapered_corners: true },
+    };
+    workflow['173'] = {
+      class_type: 'ImpactGaussianBlurMask',
+      inputs: { mask: ['172', 0], kernel_size: 24, sigma: 12 },
+    };
+    workflow['174'] = {
+      class_type: 'SetLatentNoiseMask',
+      inputs: { samples: ['201', 0], mask: ['173', 0] },
+    };
+    (workflow['77'] as { inputs: Record<string, unknown> }).inputs.latent_image = ['174', 0];
+  }
+
   // ControlNets stack on the masked subject, not on the raw photo.
   let subjectRef: [string, number] = ['84', 0];
 
