@@ -1056,6 +1056,13 @@ const SUBJECT_ALIASES = [
 const SUBJECT_TRIGGER = 'ashley';
 
 /**
+ * Golden-standard seed, locked from ily_retry-1794485964. Stylized buckets default
+ * to this so composition, framing, hair and glasses stay reproducible. Realism
+ * keeps a random seed because those graphs are driven by the source photo.
+ */
+const GOLDEN_SEED = 300661729;
+
+/**
  * Fallback physical traits when the client sends none. The LoRA was trained on
  * both glasses and no-glasses photos, so the glasses only appear if they are in
  * the prompt — nothing about them is baked into the weights.
@@ -1307,7 +1314,10 @@ async function handleStyleStart(
       seed:
         Number.isFinite(Number(overrides?.seed)) && Number(overrides?.seed) > 0
           ? Number(overrides?.seed)
-          : Math.floor(Math.random() * 2_147_483_647),
+          : bucketForStyle(styleMode) === 'realism_composite' ||
+              bucketForStyle(styleMode) === 'realism_outfit_nsfw'
+            ? Math.floor(Math.random() * 2_147_483_647)
+            : GOLDEN_SEED,
       filenamePrefix: `ily_${requestId}`,
       checkpoint: Deno.env.get('COMFY_CHECKPOINT') || undefined,
       width,

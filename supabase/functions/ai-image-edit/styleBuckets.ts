@@ -537,11 +537,11 @@ const MEDIUM_FRONT: Record<BucketId, string> = {
 
 /** Keeps the model from zooming into a body close-up. */
 const FRAMING_BY_BUCKET: Record<BucketId, string> = {
-  realism_composite: ', mid-thigh up framing, standing, thighs visible, wide shot, room visible around her',
-  realism_outfit_nsfw: ', mid-thigh up framing, standing, thighs visible, wide shot, room visible around her',
-  anime_2d_toon: ', mid-thigh up framing, standing, thighs visible, wide shot, background visible around her',
+  realism_composite: ', cowboy shot, mid-thigh up framing, standing, thighs visible, room visible around her',
+  realism_outfit_nsfw: ', cowboy shot, mid-thigh up framing, standing, thighs visible, room visible around her',
+  anime_2d_toon: ', cowboy shot, mid-thigh up framing, standing, thighs visible, background visible around her',
   toy_3d_sculpt: ', mid-thigh up figure, standing, diorama visible around her',
-  fine_art_medium: ', mid-thigh up framing, standing, thighs visible, painted room visible around her',
+  fine_art_medium: ', cowboy shot, mid-thigh up framing, standing, thighs visible, painted room visible around her',
   framed_card: ', centred mid-thigh up figure inside the card border, room visible around her',
   macro_object_embed: ', product shot framing, object centred in frame',
 };
