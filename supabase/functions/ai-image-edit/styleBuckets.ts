@@ -539,21 +539,22 @@ export const NUDE_BODY_DETAILS = [
 export const HAIR_DYE_OPTIONS = ['dyed vibrant neon green', 'dyed vibrant electric purple', 'with natural colored hair'];
 
 export const HUSBAND_GROOMING_OPTIONS = [
-  'chest hair artfully groomed and trimmed into the shape of a cannabis leaf',
-  'chest hair dyed vibrant neon green and styled into a weed leaf shape',
-  'chest hair dyed rich electric purple',
+  'chest hair trimmed into a cannabis leaf shape, neatly edged',
+  'natural chest hair with a cannabis leaf shape shaved into it',
+  'light chest hair with a small crisp leaf pattern',
+  'chest hair grown out and shaped into a broad cannabis leaf',
+  'chest hair trimmed low with a sharp leaf outline across the pecs',
 ];
 
 /** Shared pubic styling: both of them get the same weed-leaf options. */
 export const PUBIC_WEED_STYLES = WIFE_PUBIC_WEED_STYLES;
 
 export const WIFE_PUBIC_WEED_STYLES = [
-  'pubic hair neatly styled and trimmed into the precise shape of a cannabis leaf',
-  'cleanly shaven smooth pubic area adorned with intricate cannabis vine and leaf tattoos framing the vulva',
-  'natural full pubic bush dyed vibrant neon green, trimmed into a cannabis leaf shape',
-  'natural full pubic bush dyed rich electric purple, trimmed into a cannabis leaf shape',
-  'natural full pubic hair with a clean, sharply manicured cannabis leaf shape carved into the center',
-  'smooth shaved pubic area with delicate glowing cannabis leaf line-art tattoos framing the groin',
+  'pubic hair neatly trimmed into the precise shape of a cannabis leaf, close cropped',
+  'pubic hair trimmed into a cannabis leaf shape, slightly grown out and soft',
+  'full natural pubic bush shaped into a large cannabis leaf, edges sharply defined',
+  'pubic hair with a clean cannabis leaf shape carved into the centre, natural length',
+  'thick natural pubic hair trimmed into a bold cannabis leaf silhouette',
 ];
 
 export function getRandomItem(arr: unknown[]): any {
