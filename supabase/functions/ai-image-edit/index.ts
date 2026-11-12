@@ -1839,6 +1839,7 @@ async function handleBenchmarkStart(
         padScale: cfg.padScale,
         loraName: Deno.env.get('COMFY_SUBJECT_LORA') || 'ashley_v1_1200_steps_00001_.safetensors',
         loraStrength: cfg.loraStrength ?? 0.7,
+        cfgScale: cfg.cfgScale,
         faceIdWeight: cfg.faceIdWeight,
         faceIdLoraStrength: cfg.faceIdLoraStrength,
         faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',

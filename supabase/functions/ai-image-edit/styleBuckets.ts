@@ -1,4 +1,6 @@
-export type BucketMode =
+export type SubjectMode = 'wife' | 'husband' | 'couple';
+
+export type BucketId =
   | 'realism_composite'
   | 'realism_outfit_nsfw'
   | 'anime_2d_toon'
@@ -7,263 +9,324 @@ export type BucketMode =
   | 'framed_card'
   | 'macro_object_embed';
 
+export interface BucketConfig {
+  id: BucketId;
+  checkpoint: string;
+  basePrefix: string;
+  baseNegative: string;
+  defaultDenoise: number;
+  defaultCfg: number;
+  loraModelStrength: number;
+}
+
+export interface StyleDefinition {
+  id: string;
+  bucket: BucketId;
+  prompt: string;
+  negativeAdd?: string;
+  denoiseOverride?: number;
+  loraStrengthOverride?: number;
+  subjectTraits?: string;
+}
+
+export const LORA_FILES = {
+  wife: 'ashley_v1_1200_steps_00001_.safetensors',
+  husband: 'mbboi_v1_1200_steps_00001_.safetensors',
+};
+
+const COMMON_EXPLICIT_POS = 'score_9, score_8_up, score_7_up, rating_explicit, explicit anatomical details';
+const COMMON_EXPLICIT_NEG =
+  'score_6, score_5, score_4, worst quality, low quality, blurry, censored, mosaic censorship, bar censor, deformed, bad anatomy, bad hands, extra limbs, missing fingers, mutated hands, asymmetric eyes, cross-eyed, deformed mouth, bad teeth';
+
+export const BUCKET_CONFIGS: Record<BucketId, BucketConfig> = {
+  realism_composite: {
+    id: 'realism_composite',
+    checkpoint: 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors',
+    basePrefix: `${COMMON_EXPLICIT_POS}, raw photo, 35mm photograph, photorealistic, detailed skin pores, cinematic volumetric lighting, natural eye size, symmetrical eyes, realistic face proportions, natural lips`,
+    baseNegative: `${COMMON_EXPLICIT_NEG}, cgi, 3d render, anime, cartoon, illustration, painting, big eyes, anime eyes, plastic skin`,
+    defaultDenoise: 0.35, // Handled via 1.0 base + 0.16 harmonization pass in execution
+    defaultCfg: 5.5,
+    loraModelStrength: 0.85,
+  },
+  realism_outfit_nsfw: {
+    id: 'realism_outfit_nsfw',
+    checkpoint: 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors',
+    basePrefix: `${COMMON_EXPLICIT_POS}, raw photo, 35mm photograph, photorealistic, detailed skin pores, cinematic volumetric lighting, natural eye size, symmetrical eyes, realistic face and body proportions, natural lips`,
+    baseNegative: `${COMMON_EXPLICIT_NEG}, cgi, 3d render, anime, cartoon, illustration, painting, big eyes, anime eyes, plastic skin`,
+    defaultDenoise: 0.5, // Strict likeness cap for lifelike outfits/dungeon/superhero
+    defaultCfg: 6.0,
+    loraModelStrength: 0.85,
+  },
+  anime_2d_toon: {
+    id: 'anime_2d_toon',
+    checkpoint: 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors',
+    basePrefix: `${COMMON_EXPLICIT_POS}, source_anime, 2d illustration, clean bold lineart, vibrant colors, expressive eyes, stylized proportions`,
+    baseNegative: `${COMMON_EXPLICIT_NEG}, photorealistic, raw photo, 35mm photograph, real human skin pores, 3d render, cgi, messy lines`,
+    defaultDenoise: 0.5, // Capped to preserve facial geometry for anime styles
+    defaultCfg: 6.5,
+    loraModelStrength: 0.85,
+  },
+  toy_3d_sculpt: {
+    id: 'toy_3d_sculpt',
+    checkpoint: 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors',
+    basePrefix: `${COMMON_EXPLICIT_POS}, 3d render, octane render, studio product lighting, macro miniature photography, tactile physical material texture`,
+    baseNegative: `${COMMON_EXPLICIT_NEG}, 2d illustration, flat drawing, sketch, anime, real human skin pores, photorealistic flesh, broken geometry`,
+    defaultDenoise: 0.72, // Allowed to be high ONLY because toy molds don't use real facial geometry
+    defaultCfg: 6.5,
+    loraModelStrength: 0.45,
+  },
+  fine_art_medium: {
+    id: 'fine_art_medium',
+    checkpoint: 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors',
+    basePrefix: `${COMMON_EXPLICIT_POS}, fine art masterpiece, authentic traditional media texture, artistic composition, symmetrical eyes`,
+    baseNegative: `${COMMON_EXPLICIT_NEG}, raw photo, smartphone selfie, 3d render, cgi, plastic texture, watermark, signature`,
+    defaultDenoise: 0.5, // Capped for tarot, watercolor, paintings
+    defaultCfg: 6.0,
+    loraModelStrength: 0.85,
+  },
+  framed_card: {
+    id: 'framed_card',
+    checkpoint: 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors',
+    basePrefix: `${COMMON_EXPLICIT_POS}, centered graphic design layout, distinct outer border frame, crisp graphic details, balanced composition, symmetrical eyes`,
+    baseNegative: `${COMMON_EXPLICIT_NEG}, cropped frame, cut-off border, unframed, gibberish text`,
+    defaultDenoise: 0.5, // Capped to protect likeness inside tarot/magazine/pokemon frames
+    defaultCfg: 6.5,
+    loraModelStrength: 0.85,
+  },
+  macro_object_embed: {
+    id: 'macro_object_embed',
+    checkpoint: 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors',
+    basePrefix: `${COMMON_EXPLICIT_POS}, commercial product photography, isolated physical object, professional studio lighting, blank surface template ready for graphic inlay`,
+    baseNegative: `${COMMON_EXPLICIT_NEG}, flat 2d paste, unblended edges, floating disembodied head, bad perspective`,
+    defaultDenoise: 0.65,
+    defaultCfg: 6.0,
+    loraModelStrength: 0.65,
+  },
+};
+
+export const STYLE_DEFINITIONS: Record<string, StyleDefinition> = {
+  // 1. REALISM COMPOSITE (20)
+  realistic: { id: 'realistic', bucket: 'realism_composite', prompt: 'high-end DSLR portrait, 85mm f/1.4 lens, natural soft daylight, crisp facial details, subtle bokeh background', denoiseOverride: 0.3 },
+  'double-exposure': { id: 'double-exposure', bucket: 'realism_composite', prompt: 'artistic double exposure photography, silhouette blended with misty pine forest and starry night sky, translucent overlapping layers, ethereal mood', denoiseOverride: 0.4 },
+  polaroid: { id: 'polaroid', bucket: 'realism_composite', prompt: 'vintage 1990s Polaroid instant film photo, direct on-camera flash, warm faded color cast, soft vignette, chemical film grain', denoiseOverride: 0.35 },
+  'glitch-art': { id: 'glitch-art', bucket: 'realism_composite', prompt: 'cyberpunk datamosh glitch art, VHS tracking distortion, RGB chromatic aberration split, CRT scanlines, digital pixel sorting effects', denoiseOverride: 0.4 },
+  'neon-noir': { id: 'neon-noir', bucket: 'realism_composite', prompt: 'cinematic neon noir portrait, drenched in magenta and cyan neon sign reflections, wet rainy night street background, dramatic high-contrast shadows', denoiseOverride: 0.38 },
+  'color-swap': { id: 'color-swap', bucket: 'realism_composite', prompt: 'surreal infrared Aerochrome color-swap photography, dramatic complementary split-toning, vibrant shifted environmental hues, preserved natural skin texture', denoiseOverride: 0.38 },
+  luminescence: { id: 'luminescence', bucket: 'realism_composite', prompt: 'bioluminescent portrait, glowing ultraviolet freckles and ethereal light particles floating around face, dark enchanted atmosphere, subsurface scattering glow', denoiseOverride: 0.4 },
+  '20s-era': { id: '20s-era', bucket: 'realism_composite', prompt: '1920s roaring twenties silver gelatin portrait, vintage Art Deco studio backdrop, antique large-format camera lens softness, sepia-tinted monochrome, film dust and scratches', denoiseOverride: 0.4 },
+  prism: { id: 'prism', bucket: 'realism_composite', prompt: 'optical glass prism photography, rainbow spectral light refraction streaks across face, kaleidoscopic crystal lens flare, dreamy sunbeams', denoiseOverride: 0.35 },
+  'black-and-white': { id: 'black-and-white', bucket: 'realism_composite', prompt: 'classic Ilford HP5 black and white film photography, dramatic Leica monochrome contrast, rich silver halide grain, deep shadows and bright highlights', denoiseOverride: 0.32 },
+  'y2k-film': { id: 'y2k-film', bucket: 'realism_composite', prompt: 'early 2000s Y2K disposable camera aesthetic, harsh point-and-shoot flash, cool cyan-green film tint, glossy metallic sheen, nostalgic party vibe', denoiseOverride: 0.36 },
+  'candle-light': { id: 'candle-light', bucket: 'realism_composite', prompt: 'intimate chiaroscuro portrait lit strictly by flickering warm candlelight, deep golden-amber glow on skin, dark moody surroundings, soft flickering shadows', denoiseOverride: 0.38 },
+  'dream-diffusion': { id: 'dream-diffusion', bucket: 'realism_composite', prompt: 'ethereal Pro-Mist diffusion filter portrait, halation bloom around highlights, soft-focus pastel haze, angelic dreamy atmosphere', denoiseOverride: 0.36 },
+  'velvet-glow': { id: 'velvet-glow', bucket: 'realism_composite', prompt: 'rich velvet-toned studio portrait, warm golden-hour rim lighting, satin skin sheen, deep burgundy and warm cocoa shadow grading', denoiseOverride: 0.34 },
+  'polaroid-after-dark': { id: 'polaroid-after-dark', bucket: 'realism_composite', prompt: 'late-night Polaroid 600 flash photo in a dark room, harsh direct flash falloff, pitch-black background, raw candid nightlife aesthetic, heavy film grain', denoiseOverride: 0.38 },
+  'plum-and-espresso': { id: 'plum-and-espresso', bucket: 'realism_composite', prompt: 'editorial color grading with deep plum purples and rich espresso browns, moody autumn coffeehouse lighting, matte film finish', denoiseOverride: 0.34 },
+  'walmart-security-cam': { id: 'walmart-security-cam', bucket: 'realism_composite', prompt: 'high-angle fisheye CCTV security camera footage inside a fluorescent-lit retail store aisle, low-bitrate digital compression artifacts, timestamp overlay aesthetic', denoiseOverride: 0.42 },
+  'alien-abduction-beam': { id: 'alien-abduction-beam', bucket: 'realism_composite', prompt: 'cinematic sci-fi night scene, intense volumetric emerald-green tractor beam shining down from a UFO in the night sky, floating dust motes, dramatic upward lighting', denoiseOverride: 0.42 },
+  'park-bench': { id: 'park-bench', bucket: 'realism_composite', prompt: 'candid outdoor portrait sitting on a weathered wooden park bench, dappled sunlight filtering through lush green trees, golden hour bokeh', denoiseOverride: 0.4 },
+  'product-photo': { id: 'product-photo', bucket: 'realism_composite', prompt: 'high-fashion commercial luxury campaign photography, seamless studio cyclorama backdrop, precision three-point strobe lighting, razor-sharp editorial polish', denoiseOverride: 0.35 },
+
+  // 2. REALISM OUTFIT NSFW (5) - Locked to 0.50 denoise & 0.85 strength
+  superhero: { id: 'superhero', bucket: 'realism_outfit_nsfw', prompt: 'wearing a form-fitting textured comic-book superhero bodysuit with metallic armor accents, dramatic cape, cinematic rooftop city night backdrop, heroic lighting', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'lord-of-the-rings': { id: 'lord-of-the-rings', bucket: 'realism_outfit_nsfw', prompt: 'high-fantasy Middle-earth elven royal attire, intricate silver filigree chestplate and sheer flowing silk robes, ancient Rivendell forest sanctuary, ethereal moonlight', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'change-outfit': { id: 'change-outfit', bucket: 'realism_outfit_nsfw', prompt: 'wearing provocative luxury designer evening wear, sheer lace and tailored satin couture, upscale penthouse suite lighting, alluring pose', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'olympian-greek-god': { id: 'olympian-greek-god', bucket: 'realism_outfit_nsfw', prompt: 'Olympian Greek deity, draped in sheer white silk chiton and hammered gold body jewelry, golden laurel wreath, marble Mount Olympus temple in clouds, divine golden glow', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  dungeon: { id: 'dungeon', bucket: 'realism_outfit_nsfw', prompt: 'dark fantasy underground stone dungeon, wearing provocative gothic leather harness and metal chains, flickering wall torches, dramatic moody shadows, glossy skin sheen', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+
+  // 3. ANIME 2D TOON (14) - Locked to 0.50 denoise & 0.85 strength for likeness protection
+  'comic-book': { id: 'comic-book', bucket: 'anime_2d_toon', prompt: 'modern American superhero comic book art, Jim Lee style heavy black ink crosshatching, bold dynamic outlines, vibrant cel-shaded coloring', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  anime: { id: 'anime', bucket: 'anime_2d_toon', prompt: 'modern seasonal key visual anime illustration, Makoto Shinkai lighting, detailed glossy anime eyes, clean cel-shading, cinematic sky backdrop', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'adult-anime': { id: 'adult-anime', bucket: 'anime_2d_toon', prompt: 'mature late-night anime aesthetic, seductive expression, glossy blushed skin, detailed adult anime proportions, moody bedroom lighting', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  cartoon: { id: 'cartoon', bucket: 'anime_2d_toon', prompt: 'Saturday morning 2D Western cartoon character design, expressive bold outlines, flat vibrant vector colors, playful exaggerated proportions', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'powerpuff-girls': { id: 'powerpuff-girls', bucket: 'anime_2d_toon', prompt: 'Powerpuff Girls Craig McCracken 1998 cartoon style, chibi proportions, giant oval eyes, thick black vector outlines, pastel heart background', denoiseOverride: 0.72, loraStrengthOverride: 0.45 },
+  'sticker-pack': { id: 'sticker-pack', bucket: 'anime_2d_toon', prompt: 'die-cut vinyl kiss-cut sticker design, thick white offset border around character, glossy vector chibi illustration, simple solid background', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'pixel-art': { id: 'pixel-art', bucket: 'anime_2d_toon', prompt: '32-bit indie game pixel art portrait, crisp hand-placed pixel clusters, dithering shading, limited retro color palette, visible pixel grid', denoiseOverride: 0.7, loraStrengthOverride: 0.5 },
+  'manga-memoir': { id: 'manga-memoir', bucket: 'anime_2d_toon', prompt: 'black and white Japanese seinen manga page illustration, G-pen ink linework, halftone screentone shading, speedlines, dramatic manga panel framing', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  '90s-anime': { id: '90s-anime', bucket: 'anime_2d_toon', prompt: '1990s retro hand-painted cel anime, Sailor Moon and Evangelion VHS aesthetic, soft film grain, muted vintage anime palette, retro hair highlights', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  gameboy: { id: 'gameboy', bucket: 'anime_2d_toon', prompt: '1989 Nintendo Game Boy 8-bit dot-matrix screen graphic, strict 4-shade olive green monochrome pixel palette, chunky retro handheld LCD pixels', denoiseOverride: 0.75, loraStrengthOverride: 0.45 },
+  'south-park': { id: 'south-park', bucket: 'anime_2d_toon', prompt: 'South Park construction paper cutout animation style, flat 2D paper texture, simple geometric oval eyes, crude cutout shapes, snowy Colorado town background', denoiseOverride: 0.76, loraStrengthOverride: 0.4 },
+  'adventure-time': { id: 'adventure-time', bucket: 'anime_2d_toon', prompt: 'Adventure Time Pendleton Ward cartoon style, noodle arms, simple dot eyes, thin clean outlines, candy kingdom vibrant pastel background', denoiseOverride: 0.75, loraStrengthOverride: 0.45 },
+  atla: { id: 'atla', bucket: 'anime_2d_toon', prompt: 'Avatar: The Last Airbender animation style, Studio Mir expressive character design, elemental bending aura, warm painterly background', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  '16-bit-arcade': { id: '16-bit-arcade', bucket: 'anime_2d_toon', prompt: '1990s Capcom CPS2 16-bit arcade fighting game character select portrait, vibrant pixel sprite art, CRT scanlines, dynamic arcade UI vibes', denoiseOverride: 0.65, loraStrengthOverride: 0.52 },
+
+  // 4. TOY 3D SCULPT (12) - Mold styles keep high denoise / low strength
+  lego: { id: 'lego', bucket: 'toy_3d_sculpt', prompt: 'official LEGO minifigure character, glossy yellow cylindrical plastic head with stud on top, claw hands, ABS plastic brick environment, macro toy photo', denoiseOverride: 0.76, loraStrengthOverride: 0.45 },
+  figurine: { id: 'figurine', bucket: 'toy_3d_sculpt', prompt: '1/7 scale painted PVC anime collector figurine standing on an acrylic display base, smooth airbrushed plastic shading, glass display cabinet lighting', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  pixar: { id: 'pixar', bucket: 'toy_3d_sculpt', prompt: 'Disney Pixar 3D animated movie character portrait, expressive large eyes, soft subsurface skin scattering, groomed 3D hair strands, warm cinematic render', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  claymation: { id: 'claymation', bucket: 'toy_3d_sculpt', prompt: 'Aardman stop-motion plasticine claymation figure, visible thumbprints and sculpted clay tool marks, miniature handcrafted studio set lighting', denoiseOverride: 0.7, loraStrengthOverride: 0.5 },
+  'plush-doll': { id: 'plush-doll', bucket: 'toy_3d_sculpt', prompt: 'cute handmade stuffed fabric plushie doll, soft felt and fleece textures, visible embroidered thread stitching, button eyes, cozy bedroom shelf background', denoiseOverride: 0.74, loraStrengthOverride: 0.45 },
+  'kawaii-collector': { id: 'kawaii-collector', bucket: 'toy_3d_sculpt', prompt: 'Pop Mart blind-box designer vinyl art toy, chibi proportions, smooth matte pastel vinyl finish, oversized head, cute studio showcase', denoiseOverride: 0.72, loraStrengthOverride: 0.48 },
+  statue: { id: 'statue', bucket: 'toy_3d_sculpt', prompt: 'classical Renaissance carved Carrara white marble bust statue, smooth chiselled stone surface, blank sculpted marble eyes, museum gallery spotlight', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  '3d-avatar': { id: '3d-avatar', bucket: 'toy_3d_sculpt', prompt: 'stylized glossy 3D metaverse avatar portrait, Unreal Engine 5 render, smooth stylized proportions, soft neon rim lighting', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  bobblehead: { id: 'bobblehead', bucket: 'toy_3d_sculpt', prompt: 'hand-painted polyresin dashboard bobblehead figure, oversized caricature head mounted on a metal neck spring, miniature body on a display stand', denoiseOverride: 0.7, loraStrengthOverride: 0.58 },
+  minecraft: { id: 'minecraft', bucket: 'toy_3d_sculpt', prompt: 'Minecraft voxel character model, cubic blocky head and limbs, low-res pixel skin texture, sunlit blocky voxel landscape with shaders', denoiseOverride: 0.78, loraStrengthOverride: 0.4 },
+  'mini-me': { id: 'mini-me', bucket: 'toy_3d_sculpt', prompt: 'chibi Nendoroid-style articulated miniature figure, interchangeable faceplate look, glossy plastic hair, standing on a real wooden desk next to a coffee mug', denoiseOverride: 0.7, loraStrengthOverride: 0.52 },
+  'paper-people': { id: 'paper-people', bucket: 'toy_3d_sculpt', prompt: '3D origami and layered papercraft diorama character, folded matte cardstock facets, sharp paper creases, warm drop-shadow lighting', denoiseOverride: 0.72, loraStrengthOverride: 0.48 },
+
+  // 5. FINE ART MEDIUM (17) - Locked to 0.50 denoise & 0.85 strength
+  watercolor: { id: 'watercolor', bucket: 'fine_art_medium', prompt: 'expressive wet-on-wet watercolor painting on cold-press cotton paper, translucent pigment blooms, paint splatter edges, visible paper grain', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'ink-illustration': { id: 'ink-illustration', bucket: 'fine_art_medium', prompt: 'fine-liner black India ink dip-pen illustration on cream paper, intricate crosshatching and stippling shading, high-contrast linework', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  posterize: { id: 'posterize', bucket: 'fine_art_medium', prompt: 'Shepard Fairey Obey-style screenprint posterized portrait, bold 4-color flat tonal separation in crimson, cream, navy, and black, distressed paper texture', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'coloring-book': { id: 'coloring-book', bucket: 'fine_art_medium', prompt: 'adult coloring book page, pure black-and-white clean vector line art on stark white background, zero shading, uncolored open spaces ready for coloring', negativeAdd: 'color, shading, gradients, greyscale, filled colors, photo', denoiseOverride: 0.55, loraStrengthOverride: 0.85 },
+  stencil: { id: 'stencil', bucket: 'fine_art_medium', prompt: 'Banksy-style multi-layer cardboard cutout spray-paint stencil art on a rough concrete wall, aerosol overspray mist and paint drips, high contrast', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  astrology: { id: 'astrology', bucket: 'fine_art_medium', prompt: 'celestial golden zodiac alchemy illustration, ornate gold foil constellation lines, crescent moons and stars on deep midnight-blue parchment', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  psychedelic: { id: 'psychedelic', bucket: 'fine_art_medium', prompt: '1960s LSD psychedelic blacklight poster art, Alex Grey swirling neon fractals, melting kaleidoscopic rainbow aura, trippy visionary patterns', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'comic-dot': { id: 'comic-dot', bucket: 'fine_art_medium', prompt: 'Roy Lichtenstein 1960s Pop Art painting, bold black outlines filled with oversized Ben-Day cyan, magenta, and yellow halftone dots', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'pop-garden': { id: 'pop-garden', bucket: 'fine_art_medium', prompt: 'Takashi Murakami Superflat pop-art portrait surrounded by smiling vibrant botanical flowers, glossy graphic vector colors, joyful maximalist composition', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  pointillism: { id: 'pointillism', bucket: 'fine_art_medium', prompt: 'Georges Seurat Neo-Impressionist oil pointillism painting, composed entirely of thousands of distinct small dabs and dots of pure oil paint on canvas', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'negative-space-invasion': { id: 'negative-space-invasion', bucket: 'fine_art_medium', prompt: 'minimalist high-contrast negative space optical illusion illustration, stark black and white figure-ground reversal silhouette, surreal graphic design', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'drawn-to-life': { id: 'drawn-to-life', bucket: 'fine_art_medium', prompt: 'Take On Me trompe-l-oeil hybrid art, half photorealistic human emerging out of a rough graphite pencil sketchbook page on a wooden desk, torn paper boundary', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'stained-glass': { id: 'stained-glass', bucket: 'fine_art_medium', prompt: 'Gothic cathedral illuminated stained-glass window mosaic, translucent jewel-toned glass pieces separated by thick black lead came solder lines, sunlight shining through', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  mural: { id: 'mural', bucket: 'fine_art_medium', prompt: 'large-scale urban outdoor brick wall mural painting, visible red brick mortar texture beneath vibrant acrylic brushwork, daylight street angle', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  graffiti: { id: 'graffiti', bucket: 'fine_art_medium', prompt: 'street art aerosol graffiti character portrait surrounded by wildstyle spray-paint lettering tags, neon paint drips, gritty subway wall texture', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  blueprint: { id: 'blueprint', bucket: 'fine_art_medium', prompt: 'cyanotype architectural engineering blueprint schematic, glowing white technical drafting lines, measurement callouts, and geometric grid on Prussian blue paper', denoiseOverride: 0.55, loraStrengthOverride: 0.85 },
+  sketch: { id: 'sketch', bucket: 'fine_art_medium', prompt: 'expressive charcoal and graphite pencil portrait sketch on toothy toned sketchbook paper, smudged shading, dynamic construction lines, white chalk highlights', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+
+  // 6. FRAMED CARD (22) - Locked to 0.50 denoise & 0.85 strength (Tarot cards, etc.)
+  'tarot-card': { id: 'tarot-card', bucket: 'framed_card', prompt: 'ornate Rider-Waite-Smith and Art Nouveau gold-foil Tarot card, decorative celestial border frame, Roman numeral header and bottom title banner', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'holiday-cards': { id: 'holiday-cards', bucket: 'framed_card', prompt: 'festive embossed holiday greeting card layout, decorative winter holly and gold ribbon border frame, warm cozy seasonal lighting, cardstock texture', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'magazine-cover': { id: 'magazine-cover', bucket: 'framed_card', prompt: 'glossy Vogue and GQ high-fashion magazine cover layout, bold masthead title behind head, editorial coverlines and barcode in corner, studio portrait', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'pokemon-card': { id: 'pokemon-card', bucket: 'framed_card', prompt: 'holographic foil Full-Art Pokemon TCG trading card frame, HP stats in top corner, attack move text box overlay, sparkling rainbow holo pattern', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'yugioh-card': { id: 'yugioh-card', bucket: 'framed_card', prompt: 'Yu-Gi-Oh! Secret Rare trading card layout, metallic stone card border, level stars along top, ornate foil artwork box, ATK/DEF stat box at bottom', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'playing-card': { id: 'playing-card', bucket: 'framed_card', prompt: 'vintage Bicycle poker playing card court face (King/Queen of Hearts), mirrored two-way symmetrical royal illustration, corner suit indices, linen card texture', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'myspace-glitter': { id: 'myspace-glitter', bucket: 'framed_card', prompt: '2006 MySpace Blingee graphic edit, sparkling animated-style pink and silver diamond glitter border, pixelated cursive heart stamps, nostalgic Y2K web aesthetic', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'magazine-ransom-note': { id: 'magazine-ransom-note', bucket: 'framed_card', prompt: '1990s punk zine collage portrait framed by cut-out magazine ransom-note letters, torn halftone newspaper clippings, Scotch tape and safety pins', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'album-cover': { id: 'album-cover', bucket: 'framed_card', prompt: 'iconic square vinyl LP music album cover design, Parental Advisory Explicit Content sticker in bottom corner, dramatic moody lighting, ring-wear sleeve texture', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'record-vinyl': { id: 'record-vinyl', bucket: 'framed_card', prompt: 'circular center paper label printed on a grooved black 12-inch vinyl record disc, central spindle hole, glossy vinyl microgrooves catching studio light', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'app-icon': { id: 'app-icon', bucket: 'framed_card', prompt: 'iOS squircle mobile app icon design, rounded glossy 3D bevel frame, vibrant gradient background, punchy stylized portrait popping out of icon frame', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  scrapbook: { id: 'scrapbook', bucket: 'framed_card', prompt: 'handmade memory scrapbook page layout, portrait photo attached with pastel washi tape, dried pressed flowers, stickers, and Kraft paper background', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'backwoods-wrapper': { id: 'backwoods-wrapper', bucket: 'framed_card', prompt: 'custom foil cigarillo pouch packaging wrapper design, bold street-wear graphic banner header, metallic crinkle foil bag texture, high-contrast portrait', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'post-card': { id: 'post-card', bucket: 'framed_card', prompt: 'vintage mid-century "Greetings From" souvenir travel postcard, scalloped white border, retro 3D block lettering, postage stamp and ink postmark overlay', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  photobooth: { id: 'photobooth', bucket: 'framed_card', prompt: 'vertical mall photo-booth film strip showing expressive candid poses inside a glossy white paper frame, harsh flash, nostalgic chemical photo texture', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'wanted-poster': { id: 'wanted-poster', bucket: 'framed_card', prompt: '1880s Old West "WANTED DEAD OR ALIVE" reward poster nailed to a weathered wooden saloon post, sepia woodcut-style portrait, burnt parchment edges', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'book-cover': { id: 'book-cover', bucket: 'framed_card', prompt: 'New York Times bestselling hardcover novel dust-jacket book cover, embossed metallic foil title typography, dramatic painterly portrait illustration', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  thumbnail: { id: 'thumbnail', bucket: 'framed_card', prompt: 'viral high-CTR YouTube thumbnail composition, glowing white outline cutout around subject, hyper-saturated background, dramatic rim lighting and bold graphic arrows', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  advertisement: { id: 'advertisement', bucket: 'framed_card', prompt: '1950s Madison Avenue vintage magazine print advertisement layout, retro mid-century slogan typography, warm Technicolor commercial illustration', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'missing-poster': { id: 'missing-poster', bucket: 'framed_card', prompt: 'urban photocopy "HAVE YOU SEEN ME?" missing person flyer stapled to a wooden telephone pole, high-contrast xerox halftone portrait, tear-off tabs at bottom', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'fbi-wanted': { id: 'fbi-wanted', bucket: 'framed_card', prompt: 'official federal FBI Ten Most Wanted fugitive dossier sheet, red header banner, mugshot height-chart grid and biometric data boxes', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'post-it-note': { id: 'post-it-note', bucket: 'framed_card', prompt: 'ballpoint pen doodle portrait drawn on a square canary-yellow 3M Post-it sticky note stuck to a computer monitor bezel, curled bottom paper corner', denoiseOverride: 0.55, loraStrengthOverride: 0.85 },
+
+  // 7. MACRO OBJECT EMBED (8)
+  snowglobe: { id: 'snowglobe', bucket: 'macro_object_embed', prompt: 'miniature 3D portrait scene enclosed inside a glass water snowglobe on an ornate wooden base, swirling white glitter snow flakes, curved glass refraction', denoiseOverride: 0.65 },
+  'rip-shirt': { id: 'rip-shirt', bucket: 'macro_object_embed', prompt: '90s airbrushed memorial graphic T-shirt design printed on heavy vintage cotton fabric, fluffy clouds and doves frame, visible knit cotton fabric folds', denoiseOverride: 0.65 },
+  merchandise: { id: 'merchandise', bucket: 'macro_object_embed', prompt: 'custom tour merchandise showcase featuring the portrait printed on a ceramic coffee mug and streetwear hoodie on a retail display table', denoiseOverride: 0.65 },
+  billboard: { id: 'billboard', bucket: 'macro_object_embed', prompt: 'massive illuminated Times Square highway billboard sign displaying the portrait advertisement, steel scaffolding structure, dusk city twilight sky', denoiseOverride: 0.65 },
+  'side-of-bus': { id: 'side-of-bus', bucket: 'macro_object_embed', prompt: 'full-scale vinyl transit advertisement wrap printed across the side of a city double-decker bus on a busy downtown street, window perforations and metal seams', denoiseOverride: 0.65 },
+  'milk-carton': { id: 'milk-carton', bucket: 'macro_object_embed', prompt: 'vintage 1980s waxed paperboard milk carton on a kitchen table with the portrait printed in a "Missing" box on the side panel, halftone ink print texture', denoiseOverride: 0.65 },
+  'perc-in-bong': { id: 'perc-in-bong', bucket: 'macro_object_embed', prompt: 'custom heady borosilicate art glass water pipe featuring an intricate sculpted glass percolator of the character inside the chamber, colorful UV glass accents, bubbling water', denoiseOverride: 0.68 },
+  'car-wrap': { id: 'car-wrap', bucket: 'macro_object_embed', prompt: 'glossy custom JDM itasha vinyl car wrap printed across the hood and doors of a tuned sports car under neon parking garage lights, metallic paint reflections', denoiseOverride: 0.65 },
+};
+
+/* ---------------------------------------------------------------------------
+ * Execution layer
+ *
+ * Everything above is the source of truth. Below maps a style onto the concrete
+ * node parameters the workflow builders consume, so nothing else in the backend
+ * needs to know about buckets.
+ * ------------------------------------------------------------------------- */
+
+export type BucketMode = BucketId;
+
 export type BucketParams = {
   checkpoint: 'pony' | 'anime';
   controlNet: 'depth' | 'depth_line' | 'anime_line' | 'openpose' | 'none';
   controlNetStrength: number;
   controlNetEndPercent: number;
-  /** Lineart leg of a stacked ControlNet pair. */
   lineartStrength?: number;
   lineartEndPercent?: number;
-  /** FaceID stops early so the style can own the final surface. */
-  faceIdEndAt?: number;
-  /** true = img2img from her gray-replaced cutout. */
-  initFromSource?: boolean;
-  /** Render at portrait 832x1216 instead of the source aspect. */
-  portrait?: boolean;
-  /** Subject LoRA strength override. */
-  loraStrength?: number;
-  /** Scale for the subject when padded (0.7 leaves a 15% margin per side). */
-  padScale?: number;
   faceIdWeight: number;
   faceIdLoraStrength: number;
+  faceIdEndAt?: number;
   stylePrefix: string;
   negativeAdditions: string;
-  /** Extra positive tags appended for this bucket only. */
   extraPositive?: string;
-  /** Shrink and center the subject so a container can form around her. */
-  padSubject?: boolean;
-  /** Blur radius for the color-block latent; 0 = empty latent. */
   blurRadius: number;
   denoise: number;
+  initFromSource?: boolean;
+  portrait?: boolean;
+  padScale?: number;
+  loraStrength?: number;
+  cfgScale?: number;
 };
 
-export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
-  realism_composite: {
-    checkpoint: 'pony',
-    controlNet: 'none',
-    controlNetStrength: 0,
-    controlNetEndPercent: 0,
-    faceIdWeight: 0.65,
-    faceIdLoraStrength: 0.5,
-    stylePrefix: 'photorealistic, raw photo, 35mm photograph, detailed skin texture',
-    negativeAdditions: 'anime, cartoon, 2d, sketch, drawing, painting, doll, plastic skin',
-    blurRadius: 0,
-    denoise: 0.65,
-  },
-  realism_outfit_nsfw: {
-    checkpoint: 'pony',
-    controlNet: 'depth',
-    controlNetStrength: 0.8,
-    controlNetEndPercent: 0.6,
-    faceIdWeight: 0.65,
-    faceIdLoraStrength: 0.5,
-    stylePrefix: 'photorealistic, raw photo, 35mm photograph, detailed skin texture',
-    negativeAdditions: 'anime, cartoon, 2d, sketch, drawing, painting, doll, plastic skin',
-    blurRadius: 0,
-    denoise: 0.65,
-  },
-  anime_2d_toon: {
-    checkpoint: 'pony',
-    controlNet: 'anime_line',
-    controlNetStrength: 0.4,
-    controlNetEndPercent: 0.4,
-    faceIdWeight: 0.35,
-    faceIdLoraStrength: 0.35,
-    faceIdEndAt: 0.4,
-    loraStrength: 0.85,
-    portrait: true,
-    stylePrefix: 'source_anime, anime screencap, cel shading, vibrant saturated colors, bold flat color fill, clean 2d linework',
-    negativeAdditions:
-      'photorealistic, 35mm photograph, detailed skin pores, real person, 3d render, photograph, washed out, desaturated',
-    initFromSource: false,
-    blurRadius: 0,
-    denoise: 1.0,
-  },
-  toy_3d_sculpt: {
-    checkpoint: 'pony',
-    controlNet: 'none',
-    controlNetStrength: 0,
-    controlNetEndPercent: 0,
-    faceIdWeight: 0.35,
-    faceIdLoraStrength: 0.35,
-    faceIdEndAt: 0.4,
-    loraStrength: 0.85,
-    portrait: true,
-    stylePrefix: '3d render, macro collectible figure photography, stylized proportions',
-    negativeAdditions: 'real human skin pores, 35mm photograph, flat 2d drawing',
-    extraPositive: '(anatomically correct adult collectible figure, explicit nude anatomy:1.15)',
-    initFromSource: false,
-    blurRadius: 0,
-    denoise: 1.0,
-  },
-  fine_art_medium: {
-    checkpoint: 'pony',
-    controlNet: 'depth_line',
-    controlNetStrength: 0.3,
-    controlNetEndPercent: 0.4,
-    lineartStrength: 0.55,
-    lineartEndPercent: 0.6,
-    faceIdWeight: 0.65,
-    faceIdLoraStrength: 0.5,
-    faceIdEndAt: 0.65,
-    stylePrefix: 'traditional media, fine art illustration, heavy canvas and paper texture',
-    negativeAdditions:
-      'photorealistic, 35mm photograph, detailed skin pores, smooth digital airbrush, 3d render',
-    blurRadius: 0,
-    denoise: 0.65,
-  },
-  framed_card: {
-    checkpoint: 'pony',
-    controlNet: 'none',
-    controlNetStrength: 0,
-    controlNetEndPercent: 0,
-    faceIdWeight: 0.35,
-    faceIdLoraStrength: 0.35,
-    faceIdEndAt: 0.4,
-    loraStrength: 0.85,
-    portrait: true,
-    stylePrefix: 'centered framed graphic design layout, ornate border composition',
-    negativeAdditions: 'cropped border, cut off frame',
-    initFromSource: false,
-    blurRadius: 0,
-    denoise: 1.0,
-  },
-  macro_object_embed: {
-    checkpoint: 'pony',
-    controlNet: 'none',
-    controlNetStrength: 0,
-    controlNetEndPercent: 0,
-    faceIdWeight: 0.35,
-    faceIdLoraStrength: 0.35,
-    faceIdEndAt: 0.4,
-    loraStrength: 0.85,
-    stylePrefix: 'wide angle macro scene, high detail object composition',
-    negativeAdditions: 'close-up selfie, cropped frame',
-    initFromSource: false,
-    blurRadius: 0,
-    denoise: 1.0,
-  },
+/** Which ControlNet each bucket runs. Realism builds its own graphs. */
+const CONTROL_NET_BY_BUCKET: Record<BucketId, BucketParams['controlNet']> = {
+  realism_composite: 'none',
+  realism_outfit_nsfw: 'depth',
+  anime_2d_toon: 'anime_line',
+  toy_3d_sculpt: 'none',
+  fine_art_medium: 'anime_line',
+  framed_card: 'none',
+  macro_object_embed: 'none',
 };
 
-export const STYLE_BUCKET: Record<string, BucketMode> = {
-  // realism_composite (20)
-  realistic: 'realism_composite',
-  'double-exposure': 'realism_composite',
-  polaroid: 'realism_composite',
-  'glitch-art': 'realism_composite',
-  'neon-noir': 'realism_composite',
-  'color-swap': 'realism_composite',
-  luminescence: 'realism_composite',
-  '20s-era': 'realism_composite',
-  prism: 'realism_composite',
-  'black-and-white': 'realism_composite',
-  'y2k-film': 'realism_composite',
-  'candle-light': 'realism_composite',
-  'dream-diffusion': 'realism_composite',
-  'velvet-glow': 'realism_composite',
-  'polaroid-after-dark': 'realism_composite',
-  'plum-and-espresso': 'realism_composite',
-  'walmart-security-cam': 'realism_composite',
-  'alien-abduction-beam': 'realism_composite',
-  'park-bench': 'realism_composite',
-  'product-photo': 'realism_composite',
+/** Portrait canvas for the buckets that need room around her. */
+const PORTRAIT_BUCKETS: ReadonlySet<BucketId> = new Set<BucketId>([
+  'anime_2d_toon',
+  'toy_3d_sculpt',
+  'fine_art_medium',
+  'framed_card',
+]);
 
-  // realism_outfit_nsfw (5)
-  superhero: 'realism_outfit_nsfw',
-  'lord-of-the-rings': 'realism_outfit_nsfw',
-  'change-outfit': 'realism_outfit_nsfw',
-  'olympian-greek-god': 'realism_outfit_nsfw',
-  dungeon: 'realism_outfit_nsfw',
-
-  // anime_2d_toon (14)
-  'comic-book': 'anime_2d_toon',
-  anime: 'anime_2d_toon',
-  'adult-anime': 'anime_2d_toon',
-  cartoon: 'anime_2d_toon',
-  'powerpuff-girls': 'anime_2d_toon',
-  'sticker-pack': 'anime_2d_toon',
-  'pixel-art': 'anime_2d_toon',
-  'manga-memoir': 'anime_2d_toon',
-  '90s-anime': 'anime_2d_toon',
-  gameboy: 'anime_2d_toon',
-  'south-park': 'anime_2d_toon',
-  'adventure-time': 'anime_2d_toon',
-  atla: 'anime_2d_toon',
-  '16-bit-arcade': 'anime_2d_toon',
-
-  // toy_3d_sculpt (12)
-  lego: 'toy_3d_sculpt',
-  figurine: 'toy_3d_sculpt',
-  pixar: 'toy_3d_sculpt',
-  claymation: 'toy_3d_sculpt',
-  'plush doll': 'toy_3d_sculpt',
-  'kawaii-collector': 'toy_3d_sculpt',
-  statue: 'toy_3d_sculpt',
-  '3d-avatar': 'toy_3d_sculpt',
-  bobblehead: 'toy_3d_sculpt',
-  minecraft: 'toy_3d_sculpt',
-  'mini-me': 'toy_3d_sculpt',
-  'paper-people': 'toy_3d_sculpt',
-
-  // fine_art_medium (17)
-  watercolor: 'fine_art_medium',
-  'ink-illustration': 'fine_art_medium',
-  posterize: 'fine_art_medium',
-  'coloring-book': 'fine_art_medium',
-  stencil: 'fine_art_medium',
-  astrology: 'fine_art_medium',
-  psychedelic: 'fine_art_medium',
-  'comic-dot': 'fine_art_medium',
-  'pop-garden': 'fine_art_medium',
-  pointillism: 'fine_art_medium',
-  'negative-space-invasion': 'fine_art_medium',
-  'drawn-to life': 'fine_art_medium',
-  'stained-glass': 'fine_art_medium',
-  mural: 'fine_art_medium',
-  graffiti: 'fine_art_medium',
-  blueprint: 'fine_art_medium',
-  sketch: 'fine_art_medium',
-
-  // framed_card (22)
-  'tarot-card': 'framed_card',
-  'holiday-cards': 'framed_card',
-  'magazine-cover': 'framed_card',
-  'pokemon-card': 'framed_card',
-  'yugioh-card': 'framed_card',
-  'playing-card': 'framed_card',
-  'myspace-glitter': 'framed_card',
-  'magazine-ransom-note': 'framed_card',
-  'album-cover': 'framed_card',
-  'record-vinyl': 'framed_card',
-  'app-icon': 'framed_card',
-  scrapbook: 'framed_card',
-  'backwoods-wrapper': 'framed_card',
-  'post-card': 'framed_card',
-  photobooth: 'framed_card',
-  'wanted-poster': 'framed_card',
-  'book-cover': 'framed_card',
-  thumbnail: 'framed_card',
-  advertisement: 'framed_card',
-  'missing-poster': 'framed_card',
-  'fbi-wanted': 'framed_card',
-  'post-it-note': 'framed_card',
-
-  // macro_object_embed (8)
-  snowglobe: 'macro_object_embed',
-  'rip-shirt': 'macro_object_embed',
-  merchandise: 'macro_object_embed',
-  billboard: 'macro_object_embed',
-  'side-of-bus': 'macro_object_embed',
-  'milk-carton': 'macro_object_embed',
-  'perc-in-bong': 'macro_object_embed',
-  'car-wrap': 'macro_object_embed',
+/** FaceID: strong on realism, deliberately weak where the LoRA carries her. */
+const FACE_ID_BY_BUCKET: Record<BucketId, { weight: number; lora: number; endAt: number }> = {
+  realism_composite: { weight: 0.85, lora: 0.65, endAt: 0.85 },
+  realism_outfit_nsfw: { weight: 0.85, lora: 0.65, endAt: 0.85 },
+  anime_2d_toon: { weight: 0.35, lora: 0.35, endAt: 0.4 },
+  toy_3d_sculpt: { weight: 0.35, lora: 0.35, endAt: 0.4 },
+  fine_art_medium: { weight: 0.35, lora: 0.35, endAt: 0.4 },
+  framed_card: { weight: 0.35, lora: 0.35, endAt: 0.4 },
+  macro_object_embed: { weight: 0.5, lora: 0.45, endAt: 0.6 },
 };
 
-export function bucketForStyle(style: string): BucketMode {
-  return STYLE_BUCKET[style] ?? 'realism_composite';
+export const STYLE_BUCKET: Record<string, BucketId> = Object.fromEntries(
+  Object.values(STYLE_DEFINITIONS).map((def) => [def.id, def.bucket])
+);
+
+export function styleDefinition(style: string): StyleDefinition {
+  return STYLE_DEFINITIONS[style] ?? STYLE_DEFINITIONS.realistic;
+}
+
+export function bucketForStyle(style: string): BucketId {
+  return styleDefinition(style).bucket;
 }
 
 export function bucketConfig(style: string): BucketParams {
-  return BUCKET_PRESETS[bucketForStyle(style)];
+  const def = styleDefinition(style);
+  const bucket = BUCKET_CONFIGS[def.bucket];
+  const faceId = FACE_ID_BY_BUCKET[def.bucket];
+  const isMacro = def.bucket === 'macro_object_embed';
+
+  return {
+    checkpoint: 'pony',
+    controlNet: CONTROL_NET_BY_BUCKET[def.bucket],
+    controlNetStrength: 0.4,
+    controlNetEndPercent: 0.4,
+    lineartStrength: 0.55,
+    lineartEndPercent: 0.6,
+    faceIdWeight: faceId.weight,
+    faceIdLoraStrength: faceId.lora,
+    faceIdEndAt: faceId.endAt,
+    stylePrefix: bucket.basePrefix,
+    negativeAdditions: [bucket.baseNegative, def.negativeAdd].filter(Boolean).join(', '),
+    blurRadius: 0,
+    denoise: def.denoiseOverride ?? bucket.defaultDenoise,
+    initFromSource: !isMacro,
+    portrait: PORTRAIT_BUCKETS.has(def.bucket),
+    loraStrength: def.loraStrengthOverride ?? bucket.loraModelStrength,
+    cfgScale: bucket.defaultCfg,
+  };
+}
+
+/** Prompt fragment for a style: its own text plus the bucket's medium tags. */
+export function stylePrompt(style: string): string {
+  const def = styleDefinition(style);
+  return `${def.prompt}, ${BUCKET_CONFIGS[def.bucket].basePrefix}`;
+}
+
+export function loraForSubject(subject: SubjectMode): string | null {
+  if (subject === 'wife') return LORA_FILES.wife;
+  if (subject === 'husband') return LORA_FILES.husband;
+  return null;
 }

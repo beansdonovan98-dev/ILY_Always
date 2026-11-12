@@ -582,6 +582,8 @@ export type BucketStyleWorkflowOptions = {
   /** Trained subject LoRA (e.g. ashley_v1). */
   loraName?: string;
   loraStrength?: number;
+  /** Sampler CFG from the bucket config. */
+  cfgScale?: number;
   faceIdWeight: number;
   faceIdLoraStrength: number;
   faceIdProvider?: string;
@@ -622,7 +624,7 @@ export function buildBucketStyleWorkflow(
     '75': { class_type: 'LoadImage', inputs: { image: options.imageName } },
     '87': {
       class_type: 'ImageScale',
-      inputs: { image: ['75', 0], upscale_method: 'lanczos', width, height, crop: 'disabled' },
+      inputs: { image: ['75', 0], upscale_method: 'lanczos', width, height, crop: 'center' },
     },
     // Subject over neutral gray: bedroom is gone, silhouette stays.
     '84': {
@@ -715,6 +717,14 @@ export function buildBucketStyleWorkflow(
     };
     (workflow['81'] as { inputs: Record<string, unknown> }).inputs.clip = ['71', 1];
     (workflow['85'] as { inputs: Record<string, unknown> }).inputs.model = ['71', 0];
+  }
+
+  // Bucket CFG applies to every sampler in this graph.
+  if (options.cfgScale) {
+    for (const nodeId of ['77', '121']) {
+      const node = workflow[nodeId] as { inputs?: Record<string, unknown> } | undefined;
+      if (node?.inputs) node.inputs.cfg = options.cfgScale;
+    }
   }
 
   if (options.initFromSource !== false) {
