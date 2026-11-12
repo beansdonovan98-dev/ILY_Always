@@ -1045,11 +1045,28 @@ function withoutFaceId(prompt: unknown): Record<string, unknown> | null {
   }
   if (!removed) return null;
 
+  // Any FaceID applier (her portrait, the host reference) must fall back to the
+  // base checkpoint once its loader is gone, or validation fails on a dangling ref.
+  const faceIdAppliers = new Set<string>();
+  for (const [nodeId, node] of Object.entries(workflow)) {
+    const classType = (node as { class_type?: string })?.class_type;
+    if (classType === 'IPAdapterFaceID' || classType === 'IPAdapterAdvanced') {
+      faceIdAppliers.add(nodeId);
+      delete workflow[nodeId];
+    }
+  }
+
   for (const node of Object.values(workflow)) {
     const inputs = (node as { inputs?: Record<string, unknown> })?.inputs;
-    const model = inputs?.model;
-    if (Array.isArray(model) && model[0] === '86') inputs!.model = ['72', 0];
+    if (!inputs) continue;
+    for (const key of ['model', 'positive', 'negative']) {
+      const ref = inputs[key];
+      if (Array.isArray(ref) && faceIdAppliers.has(String(ref[0]))) {
+        inputs[key] = ['72', 0];
+      }
+    }
   }
+
   return workflow;
 }
 
@@ -1613,13 +1630,13 @@ async function handleBenchmarkStart(
     ]
       .filter(Boolean)
       .join(', ');
-    const realismNegative = `${BASE_NEGATIVE}, ${cfg.negativeAdditions}, people, person, human, body parts, limbs, hands, feet, text, watermark`;
+    const realismNegative = `${BASE_NEGATIVE}, ${cfg.negativeAdditions}, obese, overweight, fat, inflated body, exaggerated proportions, giant breasts, unnaturally wide hips, belly, people, person, human, body parts, limbs, hands, feet, text, watermark`;
 
     const bucketPositive = [
       PONY_QUALITY,
+      styleTags ? `(${styleTags}:1.4)` : '',
       cfg.stylePrefix,
-      styleTags,
-      '(voluptuous thick body, heavy bust, huge breasts, cleavage, soft chubby curves, wide hips, long wavy burgundy red hair, messy bangs, oversized round wireframe glasses:1.3)',
+      'woman, cleavage, long wavy burgundy red hair, round wireframe glasses',
       cfg.extraPositive,
       backgroundPrompt,
       'rating_explicit, explicit anatomical details',
@@ -1627,7 +1644,7 @@ async function handleBenchmarkStart(
     ]
       .filter(Boolean)
       .join(', ');
-    const bucketNegative = `${BASE_NEGATIVE}, ${cfg.negativeAdditions}`;
+    const bucketNegative = `${BASE_NEGATIVE}, ${cfg.negativeAdditions}, obese, overweight, fat, inflated body, exaggerated proportions, giant breasts, unnaturally wide hips, belly`;
     const baseEditPositive = [PONY_QUALITY, cfg.stylePrefix, styleTags, editPrompt]
       .filter(Boolean)
       .join(', ');
@@ -1670,7 +1687,7 @@ async function handleBenchmarkStart(
       const portraitPositive = [
         PONY_QUALITY,
         'sticker graphic, printed portrait, head and shoulders portrait',
-        '(voluptuous thick body, heavy bust, huge breasts, cleavage, soft chubby curves, wide hips, long wavy burgundy red hair, messy bangs, oversized round wireframe glasses:1.3)',
+        '(curvy figure, natural body proportions, heavy bust, long wavy red hair, messy bangs, round wireframe glasses:1.1)',
         'rating_explicit, explicit anatomical details',
         'bold flat lighting, centered subject, clean simple backdrop',
       ]
@@ -1690,6 +1707,8 @@ async function handleBenchmarkStart(
         faceIdWeight: cfg.faceIdWeight,
         faceIdLoraStrength: cfg.faceIdLoraStrength,
         faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',
+        hostFaceImage: Deno.env.get('COMFY_KINGVON_IMAGE') || 'kingvon.png',
+        hostFaceIdWeight: 0.85,
       });
     } else {
       workflow = buildBucketStyleWorkflow({
@@ -1701,13 +1720,18 @@ async function handleBenchmarkStart(
             ? 'depth_line'
             : cfg.controlNet === 'anime_line'
               ? 'anime_line'
-              : cfg.controlNet === 'depth'
-                ? 'depth'
-                : 'none',
+              : cfg.controlNet === 'openpose'
+                ? 'openpose'
+                : cfg.controlNet === 'depth'
+                  ? 'depth'
+                  : 'none',
         controlNetStrength: cfg.controlNetStrength,
         controlNetEndPercent: cfg.controlNetEndPercent,
         lineartStrength: cfg.lineartStrength,
         lineartEndPercent: cfg.lineartEndPercent,
+        faceIdEndAt: cfg.faceIdEndAt,
+        initFromSource: cfg.initFromSource,
+        padScale: cfg.padScale,
         faceIdWeight: cfg.faceIdWeight,
         faceIdLoraStrength: cfg.faceIdLoraStrength,
         faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',

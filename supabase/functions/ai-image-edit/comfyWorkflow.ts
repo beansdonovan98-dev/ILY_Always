@@ -441,7 +441,8 @@ function realismBase(options: RealismWorkflowOptions): Record<string, unknown> {
       inputs: { segs: ['113', 0], target: 'area(=w*h)', order: true, take_start: 0, take_count: 1 },
     },
     '116': { class_type: 'SegsToCombinedMask', inputs: { segs: ['122', 0] } },
-    '117': { class_type: 'GrowMask', inputs: { mask: ['116', 0], expand: 0, tapered_corners: true } },
+    // Grow the face mask so her glasses are protected too, not just the inner face.
+    '117': { class_type: 'GrowMask', inputs: { mask: ['116', 0], expand: 22, tapered_corners: true } },
     '118': { class_type: 'SolidMask', inputs: { value: 1.0, width, height } },
     '119': {
       class_type: 'MaskComposite',
@@ -567,11 +568,17 @@ export type BucketStyleWorkflowOptions = {
   checkpoint?: string;
   width: number;
   height: number;
-  controlNet: 'depth' | 'anime_line' | 'depth_line' | 'none';
+  controlNet: 'depth' | 'anime_line' | 'depth_line' | 'openpose' | 'none';
   controlNetStrength: number;
   controlNetEndPercent: number;
   lineartStrength?: number;
   lineartEndPercent?: number;
+  /** FaceID stops early so the style can finish the surface. */
+  faceIdEndAt?: number;
+  /** true = img2img from her gray-replaced cutout instead of empty latent. */
+  initFromSource?: boolean;
+  /** Scale for the subject when padded (0.7 leaves a 15% margin per side). */
+  padScale?: number;
   faceIdWeight: number;
   faceIdLoraStrength: number;
   faceIdProvider?: string;
@@ -681,7 +688,7 @@ export function buildBucketStyleWorkflow(
         combine_embeds: 'concat',
         start_at: 0,
         // FaceID builds structure early; the tail renders style over it.
-        end_at: 0.72,
+        end_at: options.faceIdEndAt ?? 0.72,
         embeds_scaling: 'V only',
         model: ['85', 0],
         ipadapter: ['85', 1],
@@ -713,6 +720,10 @@ export function buildBucketStyleWorkflow(
       inputs: { image: ['84', 0], blur_radius: blurRadius, sigma: blurRadius / 2 },
     };
     workflow['201'] = { class_type: 'VAEEncode', inputs: { pixels: ['88', 0], vae: ['72', 2] } };
+  } else if (options.initFromSource) {
+    // Straight img2img on her gray-replaced cutout: keeps her real face and
+    // body weight under the style instead of inventing them from noise.
+    workflow['201'] = { class_type: 'VAEEncode', inputs: { pixels: ['84', 0], vae: ['72', 2] } };
   } else {
     workflow['201'] = { class_type: 'EmptyLatentImage', inputs: { width, height, batch_size: 1 } };
   }
@@ -721,10 +732,13 @@ export function buildBucketStyleWorkflow(
   let subjectRef: [string, number] = ['84', 0];
 
   if (options.padSubject) {
-    // Shrink her to 50% and center her on gray so a container can form around her.
+    // Shrink her and center her on gray so a container or card border can form around her.
+    const padScale = options.padScale ?? 0.5;
+    const padX = Math.round((width * (1 - padScale)) / 2);
+    const padY = Math.round((height * (1 - padScale)) / 2);
     workflow['89'] = {
       class_type: 'ImageScaleBy',
-      inputs: { image: ['84', 0], upscale_method: 'lanczos', scale_by: 0.5 },
+      inputs: { image: ['84', 0], upscale_method: 'lanczos', scale_by: padScale },
     };
     workflow['98'] = {
       class_type: 'EmptyImage',
@@ -735,8 +749,8 @@ export function buildBucketStyleWorkflow(
       inputs: {
         destination: ['98', 0],
         source: ['89', 0],
-        x: Math.round(width * 0.25),
-        y: Math.round(height * 0.25),
+        x: padX,
+        y: padY,
         resize_source: false,
       },
     };
@@ -766,6 +780,39 @@ export function buildBucketStyleWorkflow(
     };
     posRef = ['102', 0];
     negRef = ['102', 1];
+  }
+
+  if (options.controlNet === 'openpose') {
+    // Pose only: where her head/shoulders/hands are, with zero human flesh volume.
+    workflow['106'] = {
+      class_type: 'OpenposePreprocessor',
+      inputs: {
+        image: subjectRef,
+        detect_hand: 'enable',
+        detect_body: 'enable',
+        detect_face: 'enable',
+        resolution: 1024,
+        scale_stick_for_xinsr_cn: 'disable',
+      },
+    };
+    workflow['107'] = {
+      class_type: 'ControlNetLoader',
+      inputs: { control_net_name: 'thibaud_xl_openpose.safetensors' },
+    };
+    workflow['108'] = {
+      class_type: 'ControlNetApplyAdvanced',
+      inputs: {
+        positive: posRef,
+        negative: negRef,
+        control_net: ['107', 0],
+        image: ['106', 0],
+        strength: options.controlNetStrength,
+        start_percent: 0,
+        end_percent: options.controlNetEndPercent,
+      },
+    };
+    posRef = ['108', 0];
+    negRef = ['108', 1];
   }
 
   if (options.controlNet === 'anime_line' || options.controlNet === 'depth_line') {
@@ -810,6 +857,9 @@ export type RipShirtWorkflowOptions = {
   faceIdWeight: number;
   faceIdLoraStrength: number;
   faceIdProvider?: string;
+  /** Reference photo of the host (King Von) so his face is actually his. */
+  hostFaceImage?: string;
+  hostFaceIdWeight?: number;
 };
 
 /** Two-pass macro: King Von in a blank tee + her portrait printed on the chest. */
@@ -819,10 +869,11 @@ export function buildRipShirtWorkflow(
   const checkpoint = options.checkpoint || 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors';
   const width = Math.max(512, Math.round(options.width / 8) * 8);
   const height = Math.max(512, Math.round(options.height / 8) * 8);
-  const chestX = Math.round(width * 0.34);
-  const chestY = Math.round(height * 0.30);
-  const chestW = Math.round(width * 0.32);
-  const chestH = Math.round(height * 0.32);
+  const chestX = Math.round(width * 0.3);
+  const chestY = Math.round(height * 0.6);
+  const chestW = Math.round(width * 0.4);
+  const chestH = Math.round(height * 0.3);
+  const hostFaceImage = options.hostFaceImage || 'kingvon.png';
 
   return {
     '72': { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: checkpoint } },
@@ -840,18 +891,99 @@ export function buildRipShirtWorkflow(
         sampler_name: 'dpmpp_2m',
         scheduler: 'karras',
         denoise: 1.0,
-        model: ['72', 0],
+        model: ['88', 0],
         positive: ['73', 0],
         negative: ['74', 0],
         latent_image: ['201', 0],
       },
     },
     '203': { class_type: 'VAEDecode', inputs: { samples: ['202', 0], vae: ['72', 2] } },
+    // Host face reference: tight crop of King Von so FaceID has his actual face.
+    '70': { class_type: 'LoadImage', inputs: { image: hostFaceImage } },
+    '90': {
+      class_type: 'MediaPipeFaceMeshToSEGS',
+      inputs: {
+        image: ['70', 0],
+        crop_factor: 2.0,
+        bbox_fill: true,
+        crop_min_size: 50,
+        drop_size: 1,
+        dilation: 0,
+        face: true,
+        mouth: false,
+        left_eyebrow: false,
+        left_eye: false,
+        left_pupil: false,
+        right_eyebrow: false,
+        right_eye: false,
+        right_pupil: false,
+      },
+    },
+    '91': {
+      class_type: 'ImpactSEGSOrderedFilter',
+      inputs: { segs: ['90', 0], target: 'area(=w*h)', order: true, take_start: 0, take_count: 1 },
+    },
+    '92': {
+      class_type: 'SEGSToImageList',
+      inputs: { segs: ['91', 0], fallback_image_opt: ['70', 0] },
+    },
+    '93': { class_type: 'ImageFromBatch', inputs: { image: ['92', 0], batch_index: 0, length: 1 } },
+    '94': {
+      class_type: 'ImageScale',
+      inputs: { image: ['93', 0], upscale_method: 'lanczos', width: 1024, height: 1024, crop: 'center' },
+    },
+    '88': {
+      class_type: 'IPAdapterFaceID',
+      inputs: {
+        weight: options.hostFaceIdWeight ?? 0.8,
+        weight_faceidv2: 1,
+        weight_type: 'linear',
+        combine_embeds: 'concat',
+        start_at: 0,
+        end_at: 0.9,
+        embeds_scaling: 'V only',
+        model: ['85', 0],
+        ipadapter: ['85', 1],
+        image: ['94', 0],
+      },
+    },
     // Portrait branch: her likeness on a clean graphic.
     '75': { class_type: 'LoadImage', inputs: { image: options.imageName } },
     '80': {
       class_type: 'ImageScaleToMaxDimension',
       inputs: { upscale_method: 'area', largest_size: 1536, image: ['75', 0] },
+    },
+    '95': {
+      class_type: 'MediaPipeFaceMeshToSEGS',
+      inputs: {
+        image: ['80', 0],
+        crop_factor: 2.0,
+        bbox_fill: true,
+        crop_min_size: 50,
+        drop_size: 1,
+        dilation: 0,
+        face: true,
+        mouth: false,
+        left_eyebrow: false,
+        left_eye: false,
+        left_pupil: false,
+        right_eyebrow: false,
+        right_eye: false,
+        right_pupil: false,
+      },
+    },
+    '96': {
+      class_type: 'ImpactSEGSOrderedFilter',
+      inputs: { segs: ['95', 0], target: 'area(=w*h)', order: true, take_start: 0, take_count: 1 },
+    },
+    '97': {
+      class_type: 'SEGSToImageList',
+      inputs: { segs: ['96', 0], fallback_image_opt: ['80', 0] },
+    },
+    '98': { class_type: 'ImageFromBatch', inputs: { image: ['97', 0], batch_index: 0, length: 1 } },
+    '99': {
+      class_type: 'ImageScale',
+      inputs: { image: ['98', 0], upscale_method: 'lanczos', width: 1024, height: 1024, crop: 'center' },
     },
     '85': {
       class_type: 'IPAdapterUnifiedLoaderFaceID',
@@ -874,7 +1006,7 @@ export function buildRipShirtWorkflow(
         embeds_scaling: 'V only',
         model: ['85', 0],
         ipadapter: ['85', 1],
-        image: ['80', 0],
+        image: ['99', 0],
       },
     },
     '206': {
@@ -898,14 +1030,14 @@ export function buildRipShirtWorkflow(
       },
     },
     '207': { class_type: 'VAEDecode', inputs: { samples: ['205', 0], vae: ['72', 2] } },
-    // Cover-fit the portrait to the full canvas, then mask only the chest.
+    // Fit the whole portrait inside the chest print box, then mask only the chest.
     '208': {
       class_type: 'ImageScale',
       inputs: {
         image: ['207', 0],
         upscale_method: 'lanczos',
-        width,
-        height,
+        width: chestW,
+        height: chestH,
         crop: 'center',
       },
     },
@@ -930,8 +1062,8 @@ export function buildRipShirtWorkflow(
       inputs: {
         destination: ['203', 0],
         source: ['208', 0],
-        x: 0,
-        y: 0,
+        x: chestX,
+        y: chestY,
         resize_source: false,
         mask: ['212', 0],
       },

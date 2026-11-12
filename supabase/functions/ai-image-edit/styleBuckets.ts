@@ -9,12 +9,18 @@ export type BucketMode =
 
 export type BucketParams = {
   checkpoint: 'pony' | 'anime';
-  controlNet: 'depth' | 'depth_line' | 'anime_line' | 'none';
+  controlNet: 'depth' | 'depth_line' | 'anime_line' | 'openpose' | 'none';
   controlNetStrength: number;
   controlNetEndPercent: number;
   /** Lineart leg of a stacked ControlNet pair. */
   lineartStrength?: number;
   lineartEndPercent?: number;
+  /** FaceID stops early so the style can own the final surface. */
+  faceIdEndAt?: number;
+  /** true = img2img from her gray-replaced cutout. */
+  initFromSource?: boolean;
+  /** Scale for the subject when padded (0.7 leaves a 15% margin per side). */
+  padScale?: number;
   faceIdWeight: number;
   faceIdLoraStrength: number;
   stylePrefix: string;
@@ -62,7 +68,7 @@ export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
     faceIdLoraStrength: 0.4,
     stylePrefix: 'source_anime, anime screencap, cel shading, vibrant saturated colors, bold flat color fill, clean 2d linework',
     negativeAdditions:
-      'photorealistic, 35mm photograph, detailed skin pores, real person, 3d render, photograph, washed out, desaturated, (skinny, slim, petite, thin waist, flat chest, small breasts:1.4)',
+      'photorealistic, 35mm photograph, detailed skin pores, real person, 3d render, photograph, washed out, desaturated, obese, overweight, inflated body, exaggerated proportions, giant breasts',
     blurRadius: 0,
     denoise: 1.0,
     lineartStrength: 0.4,
@@ -70,59 +76,59 @@ export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
   },
   toy_3d_sculpt: {
     checkpoint: 'pony',
-    controlNet: 'depth_line',
+    controlNet: 'openpose',
     controlNetStrength: 0.65,
-    controlNetEndPercent: 0.55,
-    faceIdWeight: 0.5,
-    faceIdLoraStrength: 0.4,
+    controlNetEndPercent: 0.5,
+    faceIdWeight: 0.45,
+    faceIdLoraStrength: 0.35,
+    faceIdEndAt: 0.55,
     stylePrefix: '3d render, macro collectible figure photography, stylized proportions',
     negativeAdditions:
-      'real human skin pores, 35mm photograph, flat 2d drawing, (skinny, slim, petite, thin waist, flat chest, small breasts:1.4)',
-    extraPositive: '(anatomically correct adult collectible figure, explicit nude anatomy:1.25)',
+      'real human skin pores, 35mm photograph, flat 2d drawing, obese, overweight, inflated body, exaggerated proportions, giant breasts',
+    extraPositive: '(anatomically correct adult collectible figure, explicit nude anatomy:1.15)',
     blurRadius: 0,
     denoise: 1.0,
-    lineartStrength: 0.25,
-    lineartEndPercent: 0.4,
   },
   fine_art_medium: {
     checkpoint: 'pony',
-    controlNet: 'depth_line',
-    controlNetStrength: 0.7,
-    controlNetEndPercent: 0.6,
-    faceIdWeight: 0.45,
-    faceIdLoraStrength: 0.4,
+    controlNet: 'anime_line',
+    controlNetStrength: 0.45,
+    controlNetEndPercent: 0.55,
+    faceIdWeight: 0.75,
+    faceIdLoraStrength: 0.5,
+    faceIdEndAt: 0.72,
     stylePrefix: 'traditional media, fine art illustration, heavy canvas and paper texture',
     negativeAdditions:
-      'photorealistic, 35mm photograph, detailed skin pores, smooth digital airbrush, 3d render, (skinny, slim, petite, thin waist, flat chest, small breasts:1.4)',
+      'photorealistic, 35mm photograph, detailed skin pores, smooth digital airbrush, 3d render',
+    initFromSource: true,
     blurRadius: 0,
-    denoise: 1.0,
-    lineartStrength: 0.3,
-    lineartEndPercent: 0.45,
+    denoise: 0.65,
   },
   framed_card: {
     checkpoint: 'pony',
-    controlNet: 'depth_line',
-    controlNetStrength: 0.65,
-    controlNetEndPercent: 0.55,
-    faceIdWeight: 0.5,
-    faceIdLoraStrength: 0.4,
+    controlNet: 'anime_line',
+    controlNetStrength: 0.3,
+    controlNetEndPercent: 0.35,
+    faceIdWeight: 0.45,
+    faceIdLoraStrength: 0.35,
+    faceIdEndAt: 0.55,
     stylePrefix: 'centered framed graphic design layout, ornate border composition',
-    negativeAdditions: 'cropped border, cut off frame, (skinny, slim, petite, thin waist, flat chest, small breasts:1.4)',
+    negativeAdditions: 'cropped border, cut off frame',
+    padSubject: true,
+    padScale: 0.7,
     blurRadius: 0,
     denoise: 1.0,
-    lineartStrength: 0.4,
-    lineartEndPercent: 0.5,
   },
   macro_object_embed: {
     checkpoint: 'pony',
-    controlNet: 'depth',
-    controlNetStrength: 0.7,
-    controlNetEndPercent: 0.55,
-    faceIdWeight: 0.85,
-    faceIdLoraStrength: 0.65,
+    controlNet: 'none',
+    controlNetStrength: 0,
+    controlNetEndPercent: 0,
+    faceIdWeight: 0.55,
+    faceIdLoraStrength: 0.4,
+    faceIdEndAt: 0.72,
     stylePrefix: 'wide angle macro scene, high detail object composition',
-    negativeAdditions: 'close-up selfie, cropped frame, (skinny, slim, petite, thin waist, flat chest, small breasts:1.4)',
-    padSubject: true,
+    negativeAdditions: 'close-up selfie, cropped frame',
     blurRadius: 0,
     denoise: 1.0,
   },
