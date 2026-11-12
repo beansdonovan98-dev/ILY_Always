@@ -303,29 +303,10 @@ export async function editImageWithStyle(
 
     current = await runComfyJob(styleBody, 'style_status', styleRequestId);
 
-    // Styles like 20s Era / Walmart / Dungeon own their scene. Run the
-    // subject-protected background pass automatically so the room changes
-    // with the style, while the Background edit stays free for extras.
-    const scene = STYLE_SCENES[styleMode];
-    if (scene) {
-      onProgress?.('Building the scene...');
-      const sceneRequestId = createAIRequestId();
-      const sceneBody: Record<string, unknown> = {
-        action: 'inpaint_start',
-        request_id: sceneRequestId,
-        couple_id: coupleId,
-        target: 'background',
-        prompt: scene.prompt,
-        styleMode,
-      };
-      if (scene.negative) sceneBody.negative = scene.negative;
-      if (current.startsWith('data:')) {
-        sceneBody.imageBase64 = current.replace(/^data:[^;,]+[;,]/, '');
-      } else {
-        sceneBody.imageUrl = current;
-      }
-      current = await runComfyJob(sceneBody, 'inpaint_status', sceneRequestId);
-    }
+    // The style pass now owns the scene: the bucket prompt generates the room,
+    // background conditioning and neon sign together. Running the old automatic
+    // background inpaint on top of that re-painted the finished scene and turned
+    // it into a muddy blur, so it is gone.
   }
 
   for (const edit of active) {

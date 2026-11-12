@@ -486,6 +486,17 @@ export function getRandomItem(arr: unknown[]): any {
 }
 
 
+/** Keeps the model from zooming into a body close-up. */
+const FRAMING_BY_BUCKET: Record<BucketId, string> = {
+  realism_composite: ', medium shot, waist-up framing, room visible behind her',
+  realism_outfit_nsfw: ', medium shot, waist-up framing, room visible behind her',
+  anime_2d_toon: ', medium shot, waist-up framing, background visible behind her',
+  toy_3d_sculpt: ', medium shot, figure centred, diorama visible behind her',
+  fine_art_medium: ', medium shot, waist-up framing, painted room visible behind her',
+  framed_card: ', centred figure inside the card border, room visible behind her',
+  macro_object_embed: ', product shot framing, object centred in frame',
+};
+
 export function generateFinalOpenCodePayload(
   styleId: string,
   subject: SubjectMode,
@@ -523,7 +534,7 @@ export function generateFinalOpenCodePayload(
 
   // The easter egg sits immediately after the style tag so it lands inside the
   // first 77-token CLIP chunk instead of being truncated at the tail.
-  const positive = `${bucket.basePrefix}, ${SUBJECT_TAGS[subject]}, ${style.prompt}, featuring ${easterEgg}${bodyDetailPrompt}, ${hardwareProp}`;
+  const positive = `${bucket.basePrefix}, ${SUBJECT_TAGS[subject]}, ${style.prompt}, featuring ${easterEgg}${bodyDetailPrompt}, ${hardwareProp}${FRAMING_BY_BUCKET[style.bucket]}`;
   // The room is its own conditioning stream so it stops competing with her body.
   const backgroundPositive = `background environment: ${env}`;
   const negative = bucket.baseNegative;

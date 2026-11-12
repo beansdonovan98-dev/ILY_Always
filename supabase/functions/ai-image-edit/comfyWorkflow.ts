@@ -983,6 +983,9 @@ export function buildBucketStyleWorkflow(
       class_type: 'ImpactGaussianBlurMask',
       inputs: { mask: ['144', 0], kernel_size: 6, sigma: 3 },
     };
+    // LoadImage's MASK is the inverted alpha, so invert it or the composite
+    // paints the transparent background as a solid black rectangle.
+    workflow['153'] = { class_type: 'InvertMask', inputs: { mask: ['145', 0] } };
     workflow['146'] = {
       class_type: 'ImageCompositeMasked',
       inputs: {
@@ -991,10 +994,10 @@ export function buildBucketStyleWorkflow(
         x: Math.round(width * 0.06),
         y: Math.round(height * 0.07),
         resize_source: false,
-        mask: ['145', 0],
+        mask: ['153', 0],
       },
     };
-    workflow['147'] = { class_type: 'GrowMask', inputs: { mask: ['145', 0], expand: 48, tapered_corners: true } };
+    workflow['147'] = { class_type: 'GrowMask', inputs: { mask: ['153', 0], expand: 48, tapered_corners: true } };
     workflow['148'] = {
       class_type: 'ImpactGaussianBlurMask',
       inputs: { mask: ['147', 0], kernel_size: 32, sigma: 16 },
