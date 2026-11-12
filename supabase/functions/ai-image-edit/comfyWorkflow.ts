@@ -637,35 +637,18 @@ export function buildBucketStyleWorkflow(
         background_color: '#808080',
       },
     },
-    // Tight face crop for FaceID (largest face, fallback to full frame).
-    '90': {
-      class_type: 'MediaPipeFaceMeshToSEGS',
+    // Deterministic head-and-shoulders crop for FaceID. MediaPipe returns empty
+    // SEGS on this pod, which silently fed InsightFace a blank image.
+    '93': {
+      class_type: 'ImageCrop',
       inputs: {
         image: ['87', 0],
-        crop_factor: 2.0,
-        bbox_fill: true,
-        crop_min_size: 50,
-        drop_size: 1,
-        dilation: 0,
-        face: true,
-        mouth: false,
-        left_eyebrow: false,
-        left_eye: false,
-        left_pupil: false,
-        right_eyebrow: false,
-        right_eye: false,
-        right_pupil: false,
+        width: Math.round(width * 0.56),
+        height: Math.round(height * 0.5),
+        x: Math.round(width * 0.22),
+        y: Math.round(height * 0.02),
       },
     },
-    '91': {
-      class_type: 'ImpactSEGSOrderedFilter',
-      inputs: { segs: ['90', 0], target: 'area(=w*h)', order: true, take_start: 0, take_count: 1 },
-    },
-    '92': {
-      class_type: 'SEGSToImageList',
-      inputs: { segs: ['91', 0], fallback_image_opt: ['87', 0] },
-    },
-    '93': { class_type: 'ImageFromBatch', inputs: { image: ['92', 0], batch_index: 0, length: 1 } },
     '94': {
       class_type: 'ImageScale',
       inputs: { image: ['93', 0], upscale_method: 'lanczos', width: 1024, height: 1024, crop: 'center' },
@@ -717,19 +700,54 @@ export function buildBucketStyleWorkflow(
   if (useBlurredBase) {
     workflow['88'] = {
       class_type: 'ImageBlur',
-      inputs: { image: ['84', 0], blur_radius: blurRadius, sigma: blurRadius / 2 },
+      inputs: { image: ['116', 0], blur_radius: blurRadius, sigma: blurRadius / 2 },
     };
     workflow['201'] = { class_type: 'VAEEncode', inputs: { pixels: ['88', 0], vae: ['72', 2] } };
   } else if (options.initFromSource) {
     // Straight img2img on her gray-replaced cutout: keeps her real face and
     // body weight under the style instead of inventing them from noise.
-    workflow['201'] = { class_type: 'VAEEncode', inputs: { pixels: ['84', 0], vae: ['72', 2] } };
+    workflow['201'] = { class_type: 'VAEEncode', inputs: { pixels: ['116', 0], vae: ['72', 2] } };
   } else {
     workflow['201'] = { class_type: 'EmptyLatentImage', inputs: { width, height, batch_size: 1 } };
   }
 
   // ControlNets stack on the masked subject, not on the raw photo.
   let subjectRef: [string, number] = ['84', 0];
+
+  // Mirror selfies make RMBG keep the reflection as a second blob. Keep only the
+  // largest connected component so nothing but her reaches ControlNet or FaceID.
+  workflow['110'] = {
+    class_type: 'MaskToSEGS',
+    inputs: {
+      mask: ['84', 1],
+      combined: false,
+      crop_factor: 1.0,
+      bbox_fill: false,
+      drop_size: 1,
+      contour_fill: false,
+    },
+  };
+  workflow['111'] = {
+    class_type: 'ImpactSEGSOrderedFilter',
+    inputs: { segs: ['110', 0], target: 'area(=w*h)', order: true, take_start: 0, take_count: 1 },
+  };
+  workflow['112'] = { class_type: 'SegsToCombinedMask', inputs: { segs: ['111', 0] } };
+  workflow['115'] = {
+    class_type: 'EmptyImage',
+    inputs: { width, height, batch_size: 1, color: 8421504 },
+  };
+  workflow['116'] = {
+    class_type: 'ImageCompositeMasked',
+    inputs: {
+      destination: ['115', 0],
+      source: ['84', 0],
+      x: 0,
+      y: 0,
+      resize_source: false,
+      mask: ['112', 0],
+    },
+  };
+  subjectRef = ['116', 0];
 
   if (options.padSubject) {
     // Shrink her and center her on gray so a container or card border can form around her.
@@ -773,9 +791,9 @@ export function buildBucketStyleWorkflow(
         negative: negRef,
         control_net: ['101', 0],
         image: ['100', 0],
-        strength: options.controlNet === 'depth' ? options.controlNetStrength : 0.75,
+        strength: options.controlNetStrength,
         start_percent: 0,
-        end_percent: options.controlNet === 'depth' ? options.controlNetEndPercent : 0.65,
+        end_percent: options.controlNetEndPercent,
       },
     };
     posRef = ['102', 0];
@@ -898,36 +916,18 @@ export function buildRipShirtWorkflow(
       },
     },
     '203': { class_type: 'VAEDecode', inputs: { samples: ['202', 0], vae: ['72', 2] } },
-    // Host face reference: tight crop of King Von so FaceID has his actual face.
+    // Host face reference: fixed head crop (MediaPipe SEGS is empty on this pod).
     '70': { class_type: 'LoadImage', inputs: { image: hostFaceImage } },
-    '90': {
-      class_type: 'MediaPipeFaceMeshToSEGS',
+    '93': {
+      class_type: 'ImageCrop',
       inputs: {
         image: ['70', 0],
-        crop_factor: 2.0,
-        bbox_fill: true,
-        crop_min_size: 50,
-        drop_size: 1,
-        dilation: 0,
-        face: true,
-        mouth: false,
-        left_eyebrow: false,
-        left_eye: false,
-        left_pupil: false,
-        right_eyebrow: false,
-        right_eye: false,
-        right_pupil: false,
+        width: 280,
+        height: 260,
+        x: 95,
+        y: 20,
       },
     },
-    '91': {
-      class_type: 'ImpactSEGSOrderedFilter',
-      inputs: { segs: ['90', 0], target: 'area(=w*h)', order: true, take_start: 0, take_count: 1 },
-    },
-    '92': {
-      class_type: 'SEGSToImageList',
-      inputs: { segs: ['91', 0], fallback_image_opt: ['70', 0] },
-    },
-    '93': { class_type: 'ImageFromBatch', inputs: { image: ['92', 0], batch_index: 0, length: 1 } },
     '94': {
       class_type: 'ImageScale',
       inputs: { image: ['93', 0], upscale_method: 'lanczos', width: 1024, height: 1024, crop: 'center' },
@@ -954,36 +954,18 @@ export function buildRipShirtWorkflow(
       inputs: { upscale_method: 'area', largest_size: 1536, image: ['75', 0] },
     },
     '95': {
-      class_type: 'MediaPipeFaceMeshToSEGS',
+      class_type: 'ImageCrop',
       inputs: {
         image: ['80', 0],
-        crop_factor: 2.0,
-        bbox_fill: true,
-        crop_min_size: 50,
-        drop_size: 1,
-        dilation: 0,
-        face: true,
-        mouth: false,
-        left_eyebrow: false,
-        left_eye: false,
-        left_pupil: false,
-        right_eyebrow: false,
-        right_eye: false,
-        right_pupil: false,
+        width: 700,
+        height: 620,
+        x: 300,
+        y: 20,
       },
     },
-    '96': {
-      class_type: 'ImpactSEGSOrderedFilter',
-      inputs: { segs: ['95', 0], target: 'area(=w*h)', order: true, take_start: 0, take_count: 1 },
-    },
-    '97': {
-      class_type: 'SEGSToImageList',
-      inputs: { segs: ['96', 0], fallback_image_opt: ['80', 0] },
-    },
-    '98': { class_type: 'ImageFromBatch', inputs: { image: ['97', 0], batch_index: 0, length: 1 } },
     '99': {
       class_type: 'ImageScale',
-      inputs: { image: ['98', 0], upscale_method: 'lanczos', width: 1024, height: 1024, crop: 'center' },
+      inputs: { image: ['95', 0], upscale_method: 'lanczos', width: 1024, height: 1024, crop: 'center' },
     },
     '85': {
       class_type: 'IPAdapterUnifiedLoaderFaceID',

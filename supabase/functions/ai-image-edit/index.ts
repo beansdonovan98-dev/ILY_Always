@@ -1036,6 +1036,17 @@ function withoutFaceId(prompt: unknown): Record<string, unknown> | null {
   if (!candidate) return null;
 
   const workflow = JSON.parse(JSON.stringify(candidate)) as Record<string, unknown>;
+
+  // Collect every FaceID applier BEFORE deleting the loader, otherwise refs to
+  // the appliers are left dangling and the retry fails validation.
+  const faceIdAppliers = new Set<string>();
+  for (const [nodeId, node] of Object.entries(workflow)) {
+    const classType = (node as { class_type?: string })?.class_type;
+    if (classType === 'IPAdapterFaceID' || classType === 'IPAdapterAdvanced') {
+      faceIdAppliers.add(nodeId);
+    }
+  }
+
   let removed = false;
   for (const nodeId of ['85', '86']) {
     if (nodeId in workflow) {
@@ -1045,15 +1056,8 @@ function withoutFaceId(prompt: unknown): Record<string, unknown> | null {
   }
   if (!removed) return null;
 
-  // Any FaceID applier (her portrait, the host reference) must fall back to the
-  // base checkpoint once its loader is gone, or validation fails on a dangling ref.
-  const faceIdAppliers = new Set<string>();
-  for (const [nodeId, node] of Object.entries(workflow)) {
-    const classType = (node as { class_type?: string })?.class_type;
-    if (classType === 'IPAdapterFaceID' || classType === 'IPAdapterAdvanced') {
-      faceIdAppliers.add(nodeId);
-      delete workflow[nodeId];
-    }
+  for (const nodeId of faceIdAppliers) {
+    delete workflow[nodeId];
   }
 
   for (const node of Object.values(workflow)) {
@@ -1630,13 +1634,13 @@ async function handleBenchmarkStart(
     ]
       .filter(Boolean)
       .join(', ');
-    const realismNegative = `${BASE_NEGATIVE}, ${cfg.negativeAdditions}, obese, overweight, fat, inflated body, exaggerated proportions, giant breasts, unnaturally wide hips, belly, people, person, human, body parts, limbs, hands, feet, text, watermark`;
+    const realismNegative = `${BASE_NEGATIVE}, ${cfg.negativeAdditions}, (skinny, anorexic, flat chest:1.15), (morbidly obese, bloated torso:1.25), people, person, human, body parts, limbs, hands, feet, text, watermark`;
 
     const bucketPositive = [
       PONY_QUALITY,
       styleTags ? `(${styleTags}:1.4)` : '',
       cfg.stylePrefix,
-      'woman, cleavage, long wavy burgundy red hair, round wireframe glasses',
+      '(curvy hourglass figure, full bust, natural soft waist, shapely hips and thighs:1.05)',
       cfg.extraPositive,
       backgroundPrompt,
       'rating_explicit, explicit anatomical details',
@@ -1644,7 +1648,7 @@ async function handleBenchmarkStart(
     ]
       .filter(Boolean)
       .join(', ');
-    const bucketNegative = `${BASE_NEGATIVE}, ${cfg.negativeAdditions}, obese, overweight, fat, inflated body, exaggerated proportions, giant breasts, unnaturally wide hips, belly`;
+    const bucketNegative = `${BASE_NEGATIVE}, ${cfg.negativeAdditions}, (skinny, anorexic, flat chest:1.15), (morbidly obese, bloated torso:1.25)`;
     const baseEditPositive = [PONY_QUALITY, cfg.stylePrefix, styleTags, editPrompt]
       .filter(Boolean)
       .join(', ');
