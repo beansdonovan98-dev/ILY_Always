@@ -1031,6 +1031,25 @@ function findWorkflowInPrompt(prompt: unknown): Record<string, unknown> | null {
  * Remove the FaceID branch (nodes 85/86) and feed the checkpoint model straight
  * into KSampler. Returns null when the prompt has no FaceID branch to remove.
  */
+/**
+ * Per-style negative guardrails. These exist because a soft-gradient source image
+ * plus a low denoise lets a style collapse into its neighbour: pointillism bleeds
+ * into watercolour, stencil into poster art, and so on.
+ */
+const STYLE_NEGATIVE_GUARDRAILS: Record<string, string> = {
+  pointillism:
+    '(watercolor, smooth brushstrokes, soft edges, bleed, painterly wash, gradient shading, airbrushed blending:1.4), (blurry, smudged, out of focus:1.2)',
+  stencil: '(watercolor, soft gradients, blurry edges:1.3)',
+  posterize: '(smooth gradients, soft blending, watercolor:1.3)',
+  'comic-dot': '(smooth gradients, watercolor, soft blending:1.3)',
+  'coloring-book': '(color fill, watercolor, soft gradients:1.3)',
+};
+
+/** Per-style positive nudges that a bucket-wide anchor cannot express. */
+const STYLE_POSITIVE_NUDGES: Record<string, string> = {
+  pointillism: '(tiny distinct stippled paint dots, visible dot texture, Georges Seurat:1.35)',
+};
+
 function withoutFaceId(prompt: unknown): Record<string, unknown> | null {
   const candidate = findWorkflowInPrompt(prompt);
   if (!candidate) return null;
@@ -1649,13 +1668,14 @@ async function handleBenchmarkStart(
       '(curvy hourglass figure, full bust, natural soft waist, shapely hips and thighs:1.05)',
       subjectTraits,
       cfg.extraPositive,
+      STYLE_POSITIVE_NUDGES[styleMode],
       backgroundPrompt,
       'rating_explicit, explicit anatomical details',
       'wide shot, full scene',
     ]
       .filter(Boolean)
       .join(', ');
-    const bucketNegative = `${BASE_NEGATIVE}, ${cfg.negativeAdditions}, (skinny, anorexic, flat chest:1.15), (morbidly obese, bloated torso:1.25)`;
+    const bucketNegative = `${BASE_NEGATIVE}, ${cfg.negativeAdditions}, ${STYLE_NEGATIVE_GUARDRAILS[styleMode] ?? ''}, (skinny, anorexic, flat chest:1.15), (morbidly obese, bloated torso:1.25)`;
     const baseEditPositive = [PONY_QUALITY, cfg.stylePrefix, styleTags, editPrompt]
       .filter(Boolean)
       .join(', ');
