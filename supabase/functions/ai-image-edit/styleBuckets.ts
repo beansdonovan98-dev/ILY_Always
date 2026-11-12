@@ -19,6 +19,10 @@ export type BucketParams = {
   faceIdLoraStrength: number;
   stylePrefix: string;
   negativeAdditions: string;
+  /** Extra positive tags appended for this bucket only. */
+  extraPositive?: string;
+  /** Shrink and center the subject so a container can form around her. */
+  padSubject?: boolean;
   /** Blur radius for the color-block latent; 0 = empty latent. */
   blurRadius: number;
   denoise: number;
@@ -67,23 +71,24 @@ export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
   toy_3d_sculpt: {
     checkpoint: 'pony',
     controlNet: 'depth_line',
-    controlNetStrength: 0.75,
-    controlNetEndPercent: 0.65,
+    controlNetStrength: 0.65,
+    controlNetEndPercent: 0.55,
     faceIdWeight: 0.5,
     faceIdLoraStrength: 0.4,
     stylePrefix: '3d render, macro collectible figure photography, stylized proportions',
     negativeAdditions:
       'real human skin pores, 35mm photograph, flat 2d drawing, (skinny, slim, petite, thin waist, flat chest, small breasts:1.4)',
+    extraPositive: '(anatomically correct adult collectible figure, explicit nude anatomy:1.25)',
     blurRadius: 0,
     denoise: 1.0,
-    lineartStrength: 0.45,
-    lineartEndPercent: 0.55,
+    lineartStrength: 0.25,
+    lineartEndPercent: 0.4,
   },
   fine_art_medium: {
     checkpoint: 'pony',
     controlNet: 'depth_line',
-    controlNetStrength: 0.75,
-    controlNetEndPercent: 0.65,
+    controlNetStrength: 0.7,
+    controlNetEndPercent: 0.6,
     faceIdWeight: 0.45,
     faceIdLoraStrength: 0.4,
     stylePrefix: 'traditional media, fine art illustration, heavy canvas and paper texture',
@@ -91,32 +96,33 @@ export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
       'photorealistic, 35mm photograph, detailed skin pores, smooth digital airbrush, 3d render, (skinny, slim, petite, thin waist, flat chest, small breasts:1.4)',
     blurRadius: 0,
     denoise: 1.0,
-    lineartStrength: 0.45,
-    lineartEndPercent: 0.55,
+    lineartStrength: 0.3,
+    lineartEndPercent: 0.45,
   },
   framed_card: {
     checkpoint: 'pony',
     controlNet: 'depth_line',
-    controlNetStrength: 0.75,
-    controlNetEndPercent: 0.65,
+    controlNetStrength: 0.65,
+    controlNetEndPercent: 0.55,
     faceIdWeight: 0.5,
     faceIdLoraStrength: 0.4,
     stylePrefix: 'centered framed graphic design layout, ornate border composition',
     negativeAdditions: 'cropped border, cut off frame, (skinny, slim, petite, thin waist, flat chest, small breasts:1.4)',
     blurRadius: 0,
     denoise: 1.0,
-    lineartStrength: 0.5,
-    lineartEndPercent: 0.6,
+    lineartStrength: 0.4,
+    lineartEndPercent: 0.5,
   },
   macro_object_embed: {
     checkpoint: 'pony',
-    controlNet: 'none',
-    controlNetStrength: 0,
-    controlNetEndPercent: 0,
+    controlNet: 'depth',
+    controlNetStrength: 0.7,
+    controlNetEndPercent: 0.55,
     faceIdWeight: 0.85,
     faceIdLoraStrength: 0.65,
     stylePrefix: 'wide angle macro scene, high detail object composition',
     negativeAdditions: 'close-up selfie, cropped frame, (skinny, slim, petite, thin waist, flat chest, small breasts:1.4)',
+    padSubject: true,
     blurRadius: 0,
     denoise: 1.0,
   },

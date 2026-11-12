@@ -1620,6 +1620,7 @@ async function handleBenchmarkStart(
       cfg.stylePrefix,
       styleTags,
       '(voluptuous thick body, heavy bust, huge breasts, cleavage, soft chubby curves, wide hips, long wavy burgundy red hair, messy bangs, oversized round wireframe glasses:1.3)',
+      cfg.extraPositive,
       backgroundPrompt,
       'rating_explicit, explicit anatomical details',
       'wide shot, full scene',
@@ -1659,6 +1660,7 @@ async function handleBenchmarkStart(
         PONY_QUALITY,
         'photorealistic, raw photo, 35mm photograph',
         'King Von the rapper, black man, short hair, beard, standing, front view, upper body, torso visible',
+        'wearing a thick gold O Block chain necklace, diamond pendant',
         'wearing a plain blank black T-shirt, no print, no logo, smooth black cotton fabric, large empty chest area',
         backgroundPrompt,
         'centered composition, sharp focus',
@@ -1711,6 +1713,7 @@ async function handleBenchmarkStart(
         faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',
         blurRadius: typeof body.blurRadius === 'number' ? body.blurRadius : cfg.blurRadius,
         denoise: typeof body.denoise === 'number' ? body.denoise : cfg.denoise,
+        padSubject: cfg.padSubject,
       });
     }
 

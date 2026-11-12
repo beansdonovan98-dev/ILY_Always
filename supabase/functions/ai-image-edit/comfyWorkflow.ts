@@ -578,6 +578,8 @@ export type BucketStyleWorkflowOptions = {
   /** Blur radius for the color-block latent. 0 disables the blurred base. */
   blurRadius?: number;
   denoise?: number;
+  /** Shrink the masked subject to 50% and center it, leaving room for an object around her. */
+  padSubject?: boolean;
 };
 
 /**
@@ -716,11 +718,36 @@ export function buildBucketStyleWorkflow(
   }
 
   // ControlNets stack on the masked subject, not on the raw photo.
+  let subjectRef: [string, number] = ['84', 0];
+
+  if (options.padSubject) {
+    // Shrink her to 50% and center her on gray so a container can form around her.
+    workflow['89'] = {
+      class_type: 'ImageScaleBy',
+      inputs: { image: ['84', 0], upscale_method: 'lanczos', scale_by: 0.5 },
+    };
+    workflow['98'] = {
+      class_type: 'EmptyImage',
+      inputs: { width, height, batch_size: 1, color: 8421504 },
+    };
+    workflow['99'] = {
+      class_type: 'ImageCompositeMasked',
+      inputs: {
+        destination: ['98', 0],
+        source: ['89', 0],
+        x: Math.round(width * 0.25),
+        y: Math.round(height * 0.25),
+        resize_source: false,
+      },
+    };
+    subjectRef = ['99', 0];
+  }
+
   let posRef: [string, number] = ['73', 0];
   let negRef: [string, number] = ['74', 0];
 
   if (options.controlNet === 'depth' || options.controlNet === 'depth_line') {
-    workflow['100'] = { class_type: 'Zoe-DepthMapPreprocessor', inputs: { image: ['84', 0] } };
+    workflow['100'] = { class_type: 'Zoe-DepthMapPreprocessor', inputs: { image: subjectRef } };
     workflow['101'] = {
       class_type: 'ControlNetLoader',
       inputs: { control_net_name: 'SDXL/depth-zoe-xl-v1.0-controlnet.safetensors' },
@@ -743,7 +770,7 @@ export function buildBucketStyleWorkflow(
 
   if (options.controlNet === 'anime_line' || options.controlNet === 'depth_line') {
     // AnimeLineArt draws clean lines; the Canny ControlNet accepts them.
-    workflow['103'] = { class_type: 'AnimeLineArtPreprocessor', inputs: { image: ['84', 0] } };
+    workflow['103'] = { class_type: 'AnimeLineArtPreprocessor', inputs: { image: subjectRef } };
     workflow['104'] = {
       class_type: 'ControlNetLoader',
       inputs: { control_net_name: 'diffusers_xl_canny_full.safetensors' },
