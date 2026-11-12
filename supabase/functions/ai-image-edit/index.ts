@@ -1286,10 +1286,7 @@ async function handleStyleStart(
     };
 
     let workflow: Record<string, unknown>;
-    if (
-      bucketForStyle(styleMode) !== 'realism_composite' &&
-      bucketForStyle(styleMode) !== 'realism_outfit_nsfw'
-    ) {
+    if (bucketForStyle(styleMode) !== 'realism_composite') {
       workflow = buildBucketStyleWorkflow({
         ...common,
         controlNet: poseImage ? 'openpose' : cfg.controlNet,
@@ -1851,8 +1848,6 @@ async function handleBenchmarkStart(
         loraStrength: 0.8,
         faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',
       });
-    } else if (bucket === 'realism_outfit_nsfw') {
-      workflow = buildRealismOutfitWorkflow({ ...common, editPositive: baseEditPositive });
     } else if (bucket === 'realism_composite') {
       workflow = buildRealismCompositeWorkflow(common);
     } else if (styleMode === 'rip-shirt') {

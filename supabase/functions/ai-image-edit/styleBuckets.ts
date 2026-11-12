@@ -253,7 +253,7 @@ export type BucketParams = {
 /** Which ControlNet each bucket runs. Realism builds its own graphs. */
 const CONTROL_NET_BY_BUCKET: Record<BucketId, BucketParams['controlNet']> = {
   realism_composite: 'none',
-  realism_outfit_nsfw: 'depth',
+  realism_outfit_nsfw: 'openpose',
   anime_2d_toon: 'anime_line',
   toy_3d_sculpt: 'none',
   fine_art_medium: 'anime_line',
@@ -264,7 +264,7 @@ const CONTROL_NET_BY_BUCKET: Record<BucketId, BucketParams['controlNet']> = {
 /** Lineart is the composition anchor for stylized buckets. */
 const CONTROL_STRENGTH: Record<BucketId, { strength: number; end: number }> = {
   realism_composite: { strength: 0.4, end: 0.4 },
-  realism_outfit_nsfw: { strength: 0.4, end: 0.4 },
+  realism_outfit_nsfw: { strength: 0.65, end: 0.6 },
   anime_2d_toon: { strength: 0.75, end: 0.8 },
   toy_3d_sculpt: { strength: 0.4, end: 0.4 },
   fine_art_medium: { strength: 0.75, end: 0.8 },
@@ -303,11 +303,8 @@ export function bucketForStyle(style: string): BucketId {
   return styleDefinition(style).bucket;
 }
 
-/** Buckets that keep img2img from her photo. */
-const IMG2IMG_BUCKETS: ReadonlySet<BucketId> = new Set<BucketId>([
-  'realism_composite',
-  'realism_outfit_nsfw',
-]);
+/** Buckets that keep img2img from her photo. Only the clothed composite path. */
+const IMG2IMG_BUCKETS: ReadonlySet<BucketId> = new Set<BucketId>(['realism_composite']);
 
 export function bucketConfig(style: string): BucketParams {
   const def = styleDefinition(style);
@@ -569,8 +566,10 @@ export function generateFinalOpenCodePayload(
     style.bucket === 'anime_2d_toon'
       ? style.prompt.replace(/glossy blushed skin,?\s*/gi, '')
       : style.prompt;
-  const positive = `${SCORE_TAGS}, ${MEDIUM_FRONT[style.bucket]}, ${SUBJECT_ANCHOR[subject]}, ${SUBJECT_TAGS[subject]}, ${styleText}, featuring ${easterEgg}${bodyDetailPrompt}, ${hardwareProp}, background environment: ${env}${FRAMING_BY_BUCKET[style.bucket]}`;
-  const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only`;
+  // Weed room and hardware sit early — before the easter egg — so they land inside
+  // the first CLIP chunk instead of being buried at token 130.
+  const positive = `${SCORE_TAGS}, ${MEDIUM_FRONT[style.bucket]}, ${SUBJECT_ANCHOR[subject]}, ${SUBJECT_TAGS[subject]}${bodyDetailPrompt}, ${styleText}, ${hardwareProp}, surrounded by ${env}, featuring ${easterEgg}${FRAMING_BY_BUCKET[style.bucket]}`;
+  const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only, plain background, gray background, simple background`;
 
   return {
     checkpoint: bucket.checkpoint,
