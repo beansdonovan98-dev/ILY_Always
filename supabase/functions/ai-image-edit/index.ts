@@ -1548,7 +1548,7 @@ async function handleBackgroundGenerate(
   }
 }
 
-/** Benchmark router for the two realism modes (1A composite, 1B outfit/NSFW). */
+/** Benchmark router: realism composite/outfit plus every style bucket. */
 async function handleBenchmarkStart(
   body: Record<string, unknown>,
   requestId: string,
@@ -1561,9 +1561,6 @@ async function handleBenchmarkStart(
 
   const styleMode = String(body.styleMode ?? '').trim();
   const bucket = bucketForStyle(styleMode);
-  if (bucket !== 'realism_composite' && bucket !== 'realism_outfit_nsfw') {
-    return json(400, { error: `Benchmark route not implemented for bucket "${bucket}".` });
-  }
 
   let source: ResolvedImage;
   try {
@@ -1622,8 +1619,8 @@ async function handleBenchmarkStart(
       PONY_QUALITY,
       cfg.stylePrefix,
       styleTags,
+      '(voluptuous thick body, heavy bust, huge breasts, cleavage, soft chubby curves, wide hips, long wavy burgundy red hair, messy bangs, oversized round wireframe glasses:1.3)',
       backgroundPrompt,
-      'curvy body, large breasts, long red hair, eyeglasses',
       'rating_explicit, explicit anatomical details',
       'wide shot, full scene',
     ]
@@ -1671,7 +1668,7 @@ async function handleBenchmarkStart(
       const portraitPositive = [
         PONY_QUALITY,
         'sticker graphic, printed portrait, head and shoulders portrait',
-        'curvy body, large breasts, long red hair, eyeglasses',
+        '(voluptuous thick body, heavy bust, huge breasts, cleavage, soft chubby curves, wide hips, long wavy burgundy red hair, messy bangs, oversized round wireframe glasses:1.3)',
         'rating_explicit, explicit anatomical details',
         'bold flat lighting, centered subject, clean simple backdrop',
       ]
@@ -1698,12 +1695,22 @@ async function handleBenchmarkStart(
         positive: bucketPositive,
         negative: bucketNegative,
         controlNet:
-          cfg.controlNet === 'anime_line' ? 'anime_line' : cfg.controlNet === 'depth' ? 'depth' : 'none',
+          cfg.controlNet === 'depth_line'
+            ? 'depth_line'
+            : cfg.controlNet === 'anime_line'
+              ? 'anime_line'
+              : cfg.controlNet === 'depth'
+                ? 'depth'
+                : 'none',
         controlNetStrength: cfg.controlNetStrength,
         controlNetEndPercent: cfg.controlNetEndPercent,
+        lineartStrength: cfg.lineartStrength,
+        lineartEndPercent: cfg.lineartEndPercent,
         faceIdWeight: cfg.faceIdWeight,
         faceIdLoraStrength: cfg.faceIdLoraStrength,
         faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',
+        blurRadius: typeof body.blurRadius === 'number' ? body.blurRadius : cfg.blurRadius,
+        denoise: typeof body.denoise === 'number' ? body.denoise : cfg.denoise,
       });
     }
 

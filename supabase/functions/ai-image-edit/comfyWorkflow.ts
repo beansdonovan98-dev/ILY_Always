@@ -567,21 +567,40 @@ export type BucketStyleWorkflowOptions = {
   checkpoint?: string;
   width: number;
   height: number;
-  controlNet: 'depth' | 'anime_line' | 'none';
+  controlNet: 'depth' | 'anime_line' | 'depth_line' | 'none';
   controlNetStrength: number;
   controlNetEndPercent: number;
+  lineartStrength?: number;
+  lineartEndPercent?: number;
   faceIdWeight: number;
   faceIdLoraStrength: number;
   faceIdProvider?: string;
+  /** Blur radius for the color-block latent. 0 disables the blurred base. */
+  blurRadius?: number;
+  denoise?: number;
 };
 
-/** EmptyLatent style pass for anime/toy/fine-art/framed/macro buckets. */
+/**
+ * Style pass for anime/toy/fine-art/framed/macro buckets.
+ *
+ * Likeness comes from three stacked signals instead of a trained LoRA:
+ *  1. A tight face crop (MediaPipe bbox) fed to IPAdapterFaceID, so InsightFace
+ *     spends its pixels on her eyes/glasses/lips instead of torso and bedroom.
+ *  2. A blurred color-block latent: segmented subject over neutral gray, blurred
+ *     hard, VAE-encoded at 0.86 denoise. Keeps skin tone, hair shade and body
+ *     mass while destroying photo grain so the style fully takes over.
+ *  3. Depth + lineart ControlNets stacked on the same masked subject: depth holds
+ *     volume/weight, lineart holds glasses, eye shape, lip contour, hair.
+ */
 export function buildBucketStyleWorkflow(
   options: BucketStyleWorkflowOptions
 ): Record<string, unknown> {
   const checkpoint = options.checkpoint || 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors';
   const width = Math.max(512, Math.round(options.width / 8) * 8);
   const height = Math.max(512, Math.round(options.height / 8) * 8);
+  const blurRadius = options.blurRadius ?? 20;
+  const denoise = options.denoise ?? 0.86;
+  const useBlurredBase = blurRadius > 0;
 
   const workflow: Record<string, unknown> = {
     '72': { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: checkpoint } },
@@ -589,14 +608,15 @@ export function buildBucketStyleWorkflow(
     '73': { class_type: 'CLIPTextEncode', inputs: { text: options.positive, clip: ['81', 0] } },
     '74': { class_type: 'CLIPTextEncode', inputs: { text: options.negative, clip: ['81', 0] } },
     '75': { class_type: 'LoadImage', inputs: { image: options.imageName } },
-    '80': {
-      class_type: 'ImageScaleToMaxDimension',
-      inputs: { upscale_method: 'area', largest_size: 1536, image: ['75', 0] },
+    '87': {
+      class_type: 'ImageScale',
+      inputs: { image: ['75', 0], upscale_method: 'lanczos', width, height, crop: 'disabled' },
     },
+    // Subject over neutral gray: bedroom is gone, silhouette stays.
     '84': {
       class_type: 'RMBG',
       inputs: {
-        image: ['80', 0],
+        image: ['87', 0],
         model: 'RMBG-2.0',
         sensitivity: 1.0,
         process_res: 1024,
@@ -604,9 +624,42 @@ export function buildBucketStyleWorkflow(
         mask_offset: 0,
         invert_output: false,
         refine_foreground: true,
-        background: 'Alpha',
-        background_color: '#222222',
+        background: 'Color',
+        background_color: '#808080',
       },
+    },
+    // Tight face crop for FaceID (largest face, fallback to full frame).
+    '90': {
+      class_type: 'MediaPipeFaceMeshToSEGS',
+      inputs: {
+        image: ['87', 0],
+        crop_factor: 2.0,
+        bbox_fill: true,
+        crop_min_size: 50,
+        drop_size: 1,
+        dilation: 0,
+        face: true,
+        mouth: false,
+        left_eyebrow: false,
+        left_eye: false,
+        left_pupil: false,
+        right_eyebrow: false,
+        right_eye: false,
+        right_pupil: false,
+      },
+    },
+    '91': {
+      class_type: 'ImpactSEGSOrderedFilter',
+      inputs: { segs: ['90', 0], target: 'area(=w*h)', order: true, take_start: 0, take_count: 1 },
+    },
+    '92': {
+      class_type: 'SEGSToImageList',
+      inputs: { segs: ['91', 0], fallback_image_opt: ['87', 0] },
+    },
+    '93': { class_type: 'ImageFromBatch', inputs: { image: ['92', 0], batch_index: 0, length: 1 } },
+    '94': {
+      class_type: 'ImageScale',
+      inputs: { image: ['93', 0], upscale_method: 'lanczos', width: 1024, height: 1024, crop: 'center' },
     },
     '85': {
       class_type: 'IPAdapterUnifiedLoaderFaceID',
@@ -625,14 +678,14 @@ export function buildBucketStyleWorkflow(
         weight_type: 'linear',
         combine_embeds: 'concat',
         start_at: 0,
-        end_at: 1,
+        // FaceID builds structure early; the tail renders style over it.
+        end_at: 0.72,
         embeds_scaling: 'V only',
         model: ['85', 0],
         ipadapter: ['85', 1],
-        image: ['80', 0],
+        image: ['94', 0],
       },
     },
-    '201': { class_type: 'EmptyLatentImage', inputs: { width, height, batch_size: 1 } },
     '77': {
       class_type: 'KSampler',
       inputs: {
@@ -641,7 +694,7 @@ export function buildBucketStyleWorkflow(
         cfg: 5.5,
         sampler_name: 'dpmpp_2m',
         scheduler: 'karras',
-        denoise: 1.0,
+        denoise,
         model: ['86', 0],
         positive: ['73', 0],
         negative: ['74', 0],
@@ -652,36 +705,67 @@ export function buildBucketStyleWorkflow(
     '79': { class_type: 'SaveImage', inputs: { filename_prefix: options.filenamePrefix, images: ['78', 0] } },
   };
 
-  if (options.controlNet !== 'none' && options.controlNetStrength > 0) {
-    if (options.controlNet === 'depth') {
-      workflow['102'] = { class_type: 'Zoe-DepthMapPreprocessor', inputs: { image: ['84', 0] } };
-      workflow['103'] = {
-        class_type: 'ControlNetLoader',
-        inputs: { control_net_name: 'SDXL/depth-zoe-xl-v1.0-controlnet.safetensors' },
-      };
-    } else {
-      // AnimeLineArt outputs clean lines; the Canny ControlNet accepts them.
-      workflow['102'] = { class_type: 'AnimeLineArtPreprocessor', inputs: { image: ['84', 0] } };
-      workflow['103'] = {
-        class_type: 'ControlNetLoader',
-        inputs: { control_net_name: 'diffusers_xl_canny_full.safetensors' },
-      };
-    }
-    workflow['104'] = {
+  if (useBlurredBase) {
+    workflow['88'] = {
+      class_type: 'ImageBlur',
+      inputs: { image: ['84', 0], blur_radius: blurRadius, sigma: blurRadius / 2 },
+    };
+    workflow['201'] = { class_type: 'VAEEncode', inputs: { pixels: ['88', 0], vae: ['72', 2] } };
+  } else {
+    workflow['201'] = { class_type: 'EmptyLatentImage', inputs: { width, height, batch_size: 1 } };
+  }
+
+  // ControlNets stack on the masked subject, not on the raw photo.
+  let posRef: [string, number] = ['73', 0];
+  let negRef: [string, number] = ['74', 0];
+
+  if (options.controlNet === 'depth' || options.controlNet === 'depth_line') {
+    workflow['100'] = { class_type: 'Zoe-DepthMapPreprocessor', inputs: { image: ['84', 0] } };
+    workflow['101'] = {
+      class_type: 'ControlNetLoader',
+      inputs: { control_net_name: 'SDXL/depth-zoe-xl-v1.0-controlnet.safetensors' },
+    };
+    workflow['102'] = {
       class_type: 'ControlNetApplyAdvanced',
       inputs: {
-        positive: ['73', 0],
-        negative: ['74', 0],
-        control_net: ['103', 0],
-        image: ['102', 0],
-        strength: options.controlNetStrength,
+        positive: posRef,
+        negative: negRef,
+        control_net: ['101', 0],
+        image: ['100', 0],
+        strength: options.controlNet === 'depth' ? options.controlNetStrength : 0.75,
         start_percent: 0,
-        end_percent: options.controlNetEndPercent,
+        end_percent: options.controlNet === 'depth' ? options.controlNetEndPercent : 0.65,
       },
     };
-    (workflow['77'] as { inputs: Record<string, unknown> }).inputs.positive = ['104', 0];
-    (workflow['77'] as { inputs: Record<string, unknown> }).inputs.negative = ['104', 1];
+    posRef = ['102', 0];
+    negRef = ['102', 1];
   }
+
+  if (options.controlNet === 'anime_line' || options.controlNet === 'depth_line') {
+    // AnimeLineArt draws clean lines; the Canny ControlNet accepts them.
+    workflow['103'] = { class_type: 'AnimeLineArtPreprocessor', inputs: { image: ['84', 0] } };
+    workflow['104'] = {
+      class_type: 'ControlNetLoader',
+      inputs: { control_net_name: 'diffusers_xl_canny_full.safetensors' },
+    };
+    workflow['105'] = {
+      class_type: 'ControlNetApplyAdvanced',
+      inputs: {
+        positive: posRef,
+        negative: negRef,
+        control_net: ['104', 0],
+        image: ['103', 0],
+        strength: options.controlNet === 'anime_line' ? options.controlNetStrength : options.lineartStrength ?? 0.55,
+        start_percent: 0,
+        end_percent: options.controlNet === 'anime_line' ? options.controlNetEndPercent : options.lineartEndPercent ?? 0.65,
+      },
+    };
+    posRef = ['105', 0];
+    negRef = ['105', 1];
+  }
+
+  (workflow['77'] as { inputs: Record<string, unknown> }).inputs.positive = posRef;
+  (workflow['77'] as { inputs: Record<string, unknown> }).inputs.negative = negRef;
 
   return workflow;
 }

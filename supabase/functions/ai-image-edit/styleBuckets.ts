@@ -9,13 +9,19 @@ export type BucketMode =
 
 export type BucketParams = {
   checkpoint: 'pony' | 'anime';
-  controlNet: 'depth' | 'cany' | 'anime_line' | 'none';
+  controlNet: 'depth' | 'depth_line' | 'anime_line' | 'none';
   controlNetStrength: number;
   controlNetEndPercent: number;
+  /** Lineart leg of a stacked ControlNet pair. */
+  lineartStrength?: number;
+  lineartEndPercent?: number;
   faceIdWeight: number;
   faceIdLoraStrength: number;
   stylePrefix: string;
   negativeAdditions: string;
+  /** Blur radius for the color-block latent; 0 = empty latent. */
+  blurRadius: number;
+  denoise: number;
 };
 
 export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
@@ -28,6 +34,8 @@ export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
     faceIdLoraStrength: 0.5,
     stylePrefix: 'photorealistic, raw photo, 35mm photograph, detailed skin texture',
     negativeAdditions: 'anime, cartoon, 2d, sketch, drawing, painting, doll, plastic skin',
+    blurRadius: 0,
+    denoise: 1.0,
   },
   realism_outfit_nsfw: {
     checkpoint: 'pony',
@@ -38,56 +46,79 @@ export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
     faceIdLoraStrength: 0.5,
     stylePrefix: 'photorealistic, raw photo, 35mm photograph, detailed skin texture',
     negativeAdditions: 'anime, cartoon, 2d, sketch, drawing, painting, doll, plastic skin',
+    blurRadius: 0,
+    denoise: 1.0,
   },
   anime_2d_toon: {
     checkpoint: 'pony',
-    controlNet: 'anime_line',
-    controlNetStrength: 0.5,
-    controlNetEndPercent: 0.5,
-    faceIdWeight: 0.35,
-    faceIdLoraStrength: 0.3,
-    stylePrefix: 'source_anime, cel shading, clean 2d linework, vibrant anime style',
-    negativeAdditions: 'photorealistic, 35mm photograph, detailed skin pores, real person, 3d render, photograph',
+    controlNet: 'depth_line',
+    controlNetStrength: 0.75,
+    controlNetEndPercent: 0.65,
+    faceIdWeight: 0.5,
+    faceIdLoraStrength: 0.4,
+    stylePrefix: 'source_anime, anime screencap, cel shading, vibrant saturated colors, bold flat color fill, clean 2d linework',
+    negativeAdditions:
+      'photorealistic, 35mm photograph, detailed skin pores, real person, 3d render, photograph, washed out, desaturated, (skinny, slim, petite, thin waist, flat chest, small breasts:1.4)',
+    blurRadius: 0,
+    denoise: 1.0,
+    lineartStrength: 0.4,
+    lineartEndPercent: 0.55,
   },
   toy_3d_sculpt: {
     checkpoint: 'pony',
-    controlNet: 'depth',
-    controlNetStrength: 0.45,
-    controlNetEndPercent: 0.45,
-    faceIdWeight: 0.35,
-    faceIdLoraStrength: 0.3,
+    controlNet: 'depth_line',
+    controlNetStrength: 0.75,
+    controlNetEndPercent: 0.65,
+    faceIdWeight: 0.5,
+    faceIdLoraStrength: 0.4,
     stylePrefix: '3d render, macro collectible figure photography, stylized proportions',
-    negativeAdditions: 'real human skin pores, 35mm photograph, flat 2d drawing',
+    negativeAdditions:
+      'real human skin pores, 35mm photograph, flat 2d drawing, (skinny, slim, petite, thin waist, flat chest, small breasts:1.4)',
+    blurRadius: 0,
+    denoise: 1.0,
+    lineartStrength: 0.45,
+    lineartEndPercent: 0.55,
   },
   fine_art_medium: {
     checkpoint: 'pony',
-    controlNet: 'anime_line',
-    controlNetStrength: 0.55,
-    controlNetEndPercent: 0.55,
-    faceIdWeight: 0.35,
-    faceIdLoraStrength: 0.3,
+    controlNet: 'depth_line',
+    controlNetStrength: 0.75,
+    controlNetEndPercent: 0.65,
+    faceIdWeight: 0.45,
+    faceIdLoraStrength: 0.4,
     stylePrefix: 'traditional media, fine art illustration, heavy canvas and paper texture',
-    negativeAdditions: 'photorealistic, 35mm photograph, detailed skin pores, smooth digital airbrush, 3d render',
+    negativeAdditions:
+      'photorealistic, 35mm photograph, detailed skin pores, smooth digital airbrush, 3d render, (skinny, slim, petite, thin waist, flat chest, small breasts:1.4)',
+    blurRadius: 0,
+    denoise: 1.0,
+    lineartStrength: 0.45,
+    lineartEndPercent: 0.55,
   },
   framed_card: {
     checkpoint: 'pony',
-    controlNet: 'depth',
-    controlNetStrength: 0.35,
-    controlNetEndPercent: 0.45,
-    faceIdWeight: 0.55,
-    faceIdLoraStrength: 0.45,
+    controlNet: 'depth_line',
+    controlNetStrength: 0.75,
+    controlNetEndPercent: 0.65,
+    faceIdWeight: 0.5,
+    faceIdLoraStrength: 0.4,
     stylePrefix: 'centered framed graphic design layout, ornate border composition',
-    negativeAdditions: 'cropped border, cut off frame',
+    negativeAdditions: 'cropped border, cut off frame, (skinny, slim, petite, thin waist, flat chest, small breasts:1.4)',
+    blurRadius: 0,
+    denoise: 1.0,
+    lineartStrength: 0.5,
+    lineartEndPercent: 0.6,
   },
   macro_object_embed: {
     checkpoint: 'pony',
     controlNet: 'none',
     controlNetStrength: 0,
     controlNetEndPercent: 0,
-    faceIdWeight: 0.65,
-    faceIdLoraStrength: 0.5,
+    faceIdWeight: 0.85,
+    faceIdLoraStrength: 0.65,
     stylePrefix: 'wide angle macro scene, high detail object composition',
-    negativeAdditions: 'close-up selfie, cropped frame',
+    negativeAdditions: 'close-up selfie, cropped frame, (skinny, slim, petite, thin waist, flat chest, small breasts:1.4)',
+    blurRadius: 0,
+    denoise: 1.0,
   },
 };
 
