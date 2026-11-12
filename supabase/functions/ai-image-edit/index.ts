@@ -17,7 +17,9 @@ import {
   bucketConfig,
   bucketForStyle,
   generateFinalOpenCodePayload,
+  getRandomItem,
   LORA_FILES,
+  POSE_OPTIONS,
   loraForSubject,
   type SubjectMode,
 } from './styleBuckets.ts';
@@ -1204,6 +1206,8 @@ async function handleStyleStart(
     seed?: number;
     wide?: boolean;
     bodyTags?: string;
+    poseMode?: string;
+    posePrompt?: string;
   }
 ): Promise<Response> {
   const db = getDb();
@@ -1284,13 +1288,21 @@ async function handleStyleStart(
     const subjectTraits =
       (overrides?.subjectTraits ?? '').trim() || DEFAULT_SUBJECT_TRAITS[subject];
     const wide = overrides?.wide === true;
+    const poseMode = String(overrides?.poseMode ?? 'match_photo');
+    const poseText =
+      poseMode === 'match_photo'
+        ? ''
+        : poseMode === 'random'
+          ? getRandomItem(POSE_OPTIONS)
+          : (overrides?.posePrompt ?? '').trim();
     const payload = generateFinalOpenCodePayload(
       styleMode,
       subject,
       isNude,
       backgroundPrompt,
       subjectTraits,
-      wide
+      wide,
+      poseText
     );
 
     // Optional pose reference: uploaded and fed to OpenPose so the body adopts
@@ -1307,10 +1319,14 @@ async function handleStyleStart(
     const isAnimeBucket = bucketForStyle(styleMode) === 'anime_2d_toon';
     const baseNeg = [BASE_NEGATIVE, payload.negative].filter(Boolean).join(', ');
     // "big eyes, anime eyes" in the negative actively fights source_anime, so they
-    // are stripped for 2d buckets only and kept everywhere else.
-    const negative = isAnimeBucket
+    // are stripped for 2d buckets only and kept everywhere else. A custom pose also
+    // strips the pose-lock words so the new pose is allowed to differ.
+    const negative = (isAnimeBucket
       ? baseNeg.replace(/,?\s*big eyes/gi, '').replace(/,?\s*anime eyes/gi, '')
-      : baseNeg;
+      : baseNeg
+    )
+      .replace(/,?\s*changed pose/gi, '')
+      .replace(/,?\s*different pose/gi, '');
 
     const common = {
       imageName,
@@ -1333,7 +1349,7 @@ async function handleStyleStart(
     if (bucketForStyle(styleMode) !== 'realism_composite') {
       workflow = buildBucketStyleWorkflow({
         ...common,
-        controlNet: poseImage ? 'openpose' : cfg.controlNet,
+        controlNet: poseText ? 'none' : poseImage ? 'openpose' : cfg.controlNet,
         poseImage,
         controlNetStrength: wide ? 0.32 : cfg.controlNetStrength,
         controlNetEndPercent: wide ? 0.45 : cfg.controlNetEndPercent,
@@ -2203,6 +2219,8 @@ serve(async (req) => {
         subjectTraits: typeof body.subjectTraits === 'string' ? body.subjectTraits : undefined,
         seed: typeof body.seed === 'number' ? body.seed : undefined,
         wide: body.wide === true,
+        poseMode: typeof body.poseMode === 'string' ? body.poseMode : undefined,
+        posePrompt: typeof body.posePrompt === 'string' ? body.posePrompt : undefined,
         bodyTags: typeof body.bodyTags === 'string' ? body.bodyTags : undefined,
       });
     }

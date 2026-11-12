@@ -541,9 +541,9 @@ export const HAIR_DYE_OPTIONS = ['dyed vibrant neon green', 'dyed vibrant electr
 export const HUSBAND_GROOMING_OPTIONS = [
   'chest hair trimmed into a cannabis leaf shape, neatly edged',
   'natural chest hair with a cannabis leaf shape shaved into it',
-  'light chest hair with a small crisp leaf pattern',
+  'chest hair dyed vibrant neon green, shaped into a cannabis leaf',
+  'chest hair dyed rich electric purple, trimmed low across the pecs',
   'chest hair grown out and shaped into a broad cannabis leaf',
-  'chest hair trimmed low with a sharp leaf outline across the pecs',
 ];
 
 /** Shared pubic styling: both of them get the same weed-leaf options. */
@@ -595,13 +595,83 @@ const FRAMING_BY_BUCKET: Record<BucketId, string> = {
 const WIDE_FRAMING =
   ', wide establishing shot, full room interior visible, subject standing to one side, environment prominent';
 
+/** Large pose pool. Pose mode is always randomized from this list. */
+export const POSE_OPTIONS = [
+  'sitting cross-legged on a velvet couch, leaning forward, holding a glowing bong',
+  'lounging on a bed propped on one elbow, legs relaxed, looking at the viewer',
+  'kneeling on floor cushions, hands resting on her thighs, leaning slightly back',
+  'leaning against a wall with one knee bent, hip cocked, holding a lit joint',
+  'lying on a rug on her side, head propped on one hand, other hand on her hip',
+  'reclining in an armchair with one leg over the armrest, relaxed and unhurried',
+  'sitting on the floor with knees drawn up, arms wrapped around them',
+  'crouching low on her heels, elbows on knees, looking up at the viewer',
+  'standing with her weight on one hip, one hand in her hair',
+  'standing with arms stretched overhead, body arched, eyes closed',
+  'sitting sideways on a windowsill, one leg dangling, shoulder against the frame',
+  'lying on her stomach on a bed, chin propped on folded arms, feet up',
+  'lying on her back with knees bent, arms above her head',
+  'sitting on a kitchen counter, legs crossed at the ankle, leaning back on her hands',
+  'kneeling upright with her hands clasped behind her neck, chest lifted',
+  'sitting in a beanbag chair, sunk low, legs splayed',
+  'perched on a bar stool with legs crossed, one elbow on the counter',
+  'leaning over a table with both palms flat, looking back over her shoulder',
+  'standing in a doorway with one hand on the frame, hip out',
+  'sitting on the edge of a bathtub, towel slipping, one knee raised',
+  'curled up in a blanket on a couch, only her shoulders and knees out',
+  'stretching on tiptoe, arms high, spine long',
+  'sitting on a low stool with her knees together and hands between them',
+  'leaning back against a headboard, legs stretched out, ankles crossed',
+  'lying diagonally across a bed, one arm draped off the edge',
+  'sitting on a rug with her legs folded to one side, hands on the floor',
+  'standing with her back to the viewer, looking over her shoulder',
+  'kneeling with one knee up, forearm resting on it, other hand on the floor',
+  'sitting on a stack of cushions, legs tucked, holding a mug',
+  'leaning on a windowsill with both elbows, gazing outside',
+  'sitting on a swing chair, feet off the ground, hands on the ropes',
+  'crouched beside a coffee table, one hand reaching for a lighter',
+  'standing with one foot up on a low crate, elbow on the knee',
+  'sitting on a bed with her legs hanging over the side, shoulders slumped',
+  'lying on a couch with her legs over the backrest, head hanging off the seat',
+  'kneeling on a bed with her weight on her forearms, hips raised',
+  'sitting cross-legged with a bong balanced on her knee',
+  'standing under a shower with her head tipped back, water running',
+  'leaning against a fridge with the door open, lighting up',
+  'sitting on the floor with her back to the couch, knees up, head tipped back',
+  'straddling a chair backwards, arms folded on the backrest',
+  'lying on a sunlounger with one knee raised, arm behind her head',
+  'sitting on a windowsill with both knees up, hugging her shins',
+  'kneeling on a rug with her hands on her thighs, shoulders back',
+  'standing with her hands behind her back, chin lifted, defiant',
+  'sitting on a bar counter with her legs crossed, leaning on one hand',
+  'curled on her side on a couch, knees tucked, watching the viewer',
+  'leaning out of a window with both forearms on the ledge',
+  'sitting on a bed with one leg folded under her, the other hanging down',
+  'crouched in a corner with her arms around her knees',
+  'lying on a bed with one arm over her eyes, the other across her stomach',
+  'standing with her back arched and hands on her lower back',
+  'sitting on a wooden floor with her legs stretched wide, leaning forward',
+  'kneeling on cushions with one hand in her hair, the other on her hip',
+  'reclining on a pile of pillows, one knee up, ankle on the other knee',
+  'sitting on a stool with her elbows on her knees, chin in her hands',
+  'sitting with her legs spread wide, one hand between her thighs, head tipped back',
+  'lying on her back with her legs spread, one hand between her legs, back arched',
+  'kneeling with her knees apart, one hand between her thighs, looking at the viewer',
+  'reclining with one leg raised and bent, her hand between her legs',
+  'sitting back on her heels with her thighs apart, fingers between her legs',
+  'lying on her side with her top leg raised, hand between her thighs',
+  'leaning back on one arm with her legs spread, the other hand between her legs',
+  'crouched with her knees wide apart, one hand between her thighs, looking up',
+  'sitting with one knee up and the other flat, her hand resting between her legs',
+];
+
 export function generateFinalOpenCodePayload(
   styleId: string,
   subject: SubjectMode,
   isNude: boolean,
   customBackground?: string,
   subjectTraits?: string,
-  wide?: boolean
+  wide?: boolean,
+  pose?: string
 ) {
   const style = STYLE_DEFINITIONS[styleId];
   if (!style) throw new Error(`Unknown style: ${styleId}`);
@@ -646,7 +716,19 @@ export function generateFinalOpenCodePayload(
   // Weed room and hardware sit early � before the easter egg � so they land inside
   // the first CLIP chunk instead of being buried at token 130.
   const traits = (subjectTraits ?? '').replace(/[\r\n\t]+/g, ' ').replace(/[{}]/g, '').trim().slice(0, 120);
-  const positive = `${SCORE_TAGS}, ${MEDIUM_FRONT[style.bucket]}, ${SUBJECT_ANCHOR[subject]}, ${SUBJECT_TAGS[subject]}${traits ? `, ${traits}` : ''}${bodyDetailPrompt}, ${styleText}, ${hardwareProp}, surrounded by ${env}, featuring ${easterEgg}${wide ? WIDE_FRAMING : FRAMING_BY_BUCKET[style.bucket]}`;
+  const poseAnchor = pose
+    ? subject === 'couple'
+      ? '1girl and 1man, two people, nude'
+      : subject === 'husband'
+        ? '1man, solo, nude man'
+        : '1girl, solo, nude woman'
+    : SUBJECT_ANCHOR[subject];
+  const framingText = pose
+    ? `, ${pose}, full scene, environment visible around her`
+    : wide
+      ? WIDE_FRAMING
+      : FRAMING_BY_BUCKET[style.bucket];
+  const positive = `${SCORE_TAGS}, ${MEDIUM_FRONT[style.bucket]}, ${poseAnchor}, ${SUBJECT_TAGS[subject]}${traits ? `, ${traits}` : ''}${bodyDetailPrompt}, ${styleText}, ${hardwareProp}, surrounded by ${env}, featuring ${easterEgg}${framingText}`;
   const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only, plain background, gray background, simple background, freckles, freckled skin`;
 
   return {
