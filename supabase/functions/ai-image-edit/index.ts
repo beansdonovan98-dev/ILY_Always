@@ -1636,11 +1636,18 @@ async function handleBenchmarkStart(
       .join(', ');
     const realismNegative = `${BASE_NEGATIVE}, ${cfg.negativeAdditions}, (skinny, anorexic, flat chest:1.15), (morbidly obese, bloated torso:1.25), people, person, human, body parts, limbs, hands, feet, text, watermark`;
 
+    const subjectTraits = String(body.subjectTraits ?? '')
+      .replace(/[\r\n\t]+/g, ' ')
+      .replace(/[{}]/g, '')
+      .trim()
+      .slice(0, 200);
+
     const bucketPositive = [
       PONY_QUALITY,
       styleTags ? `(${styleTags}:1.4)` : '',
       cfg.stylePrefix,
       '(curvy hourglass figure, full bust, natural soft waist, shapely hips and thighs:1.05)',
+      subjectTraits,
       cfg.extraPositive,
       backgroundPrompt,
       'rating_explicit, explicit anatomical details',

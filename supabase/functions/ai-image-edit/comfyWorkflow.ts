@@ -697,13 +697,46 @@ export function buildBucketStyleWorkflow(
     '79': { class_type: 'SaveImage', inputs: { filename_prefix: options.filenamePrefix, images: ['78', 0] } },
   };
 
-  if (useBlurredBase) {
+  if (options.initFromSource !== false) {
+    // Stage A: build the style's scene from noise, lay her real cutout over it,
+    // then run the style pass. Keeps her pixels AND a generated background,
+    // instead of encoding a flat gray wall that survives at 0.65.
+    workflow['120'] = { class_type: 'EmptyLatentImage', inputs: { width, height, batch_size: 1 } };
+    workflow['121'] = {
+      class_type: 'KSampler',
+      inputs: {
+        seed: options.seed + 11,
+        steps: 24,
+        cfg: 5.5,
+        sampler_name: 'dpmpp_2m',
+        scheduler: 'karras',
+        denoise: 1.0,
+        model: ['86', 0],
+        positive: ['73', 0],
+        negative: ['74', 0],
+        latent_image: ['120', 0],
+      },
+    };
+    workflow['122'] = { class_type: 'VAEDecode', inputs: { samples: ['121', 0], vae: ['72', 2] } };
+    workflow['124'] = {
+      class_type: 'ImageCompositeMasked',
+      inputs: {
+        destination: ['122', 0],
+        source: ['87', 0],
+        x: 0,
+        y: 0,
+        resize_source: false,
+        mask: ['112', 0],
+      },
+    };
+    workflow['201'] = { class_type: 'VAEEncode', inputs: { pixels: ['124', 0], vae: ['72', 2] } };
+  } else if (useBlurredBase) {
     workflow['88'] = {
       class_type: 'ImageBlur',
       inputs: { image: ['116', 0], blur_radius: blurRadius, sigma: blurRadius / 2 },
     };
     workflow['201'] = { class_type: 'VAEEncode', inputs: { pixels: ['88', 0], vae: ['72', 2] } };
-  } else if (options.initFromSource) {
+  } else if (options.initFromSource !== false) {
     // Straight img2img on her gray-replaced cutout: keeps her real face and
     // body weight under the style instead of inventing them from noise.
     workflow['201'] = { class_type: 'VAEEncode', inputs: { pixels: ['116', 0], vae: ['72', 2] } };

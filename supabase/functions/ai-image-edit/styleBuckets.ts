@@ -45,7 +45,7 @@ export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
     stylePrefix: 'photorealistic, raw photo, 35mm photograph, detailed skin texture',
     negativeAdditions: 'anime, cartoon, 2d, sketch, drawing, painting, doll, plastic skin',
     blurRadius: 0,
-    denoise: 1.0,
+    denoise: 0.65,
   },
   realism_outfit_nsfw: {
     checkpoint: 'pony',
@@ -57,7 +57,7 @@ export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
     stylePrefix: 'photorealistic, raw photo, 35mm photograph, detailed skin texture',
     negativeAdditions: 'anime, cartoon, 2d, sketch, drawing, painting, doll, plastic skin',
     blurRadius: 0,
-    denoise: 1.0,
+    denoise: 0.65,
   },
   anime_2d_toon: {
     checkpoint: 'pony',
@@ -73,7 +73,7 @@ export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
     negativeAdditions:
       'photorealistic, 35mm photograph, detailed skin pores, real person, 3d render, photograph, washed out, desaturated',
     blurRadius: 0,
-    denoise: 1.0,
+    denoise: 0.65,
   },
   toy_3d_sculpt: {
     checkpoint: 'pony',
@@ -87,7 +87,7 @@ export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
     negativeAdditions: 'real human skin pores, 35mm photograph, flat 2d drawing',
     extraPositive: '(anatomically correct adult collectible figure, explicit nude anatomy:1.15)',
     blurRadius: 0,
-    denoise: 1.0,
+    denoise: 0.65,
   },
   fine_art_medium: {
     checkpoint: 'pony',
@@ -103,22 +103,22 @@ export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
     negativeAdditions:
       'photorealistic, 35mm photograph, detailed skin pores, smooth digital airbrush, 3d render',
     blurRadius: 0,
-    denoise: 1.0,
+    denoise: 0.65,
   },
   framed_card: {
     checkpoint: 'pony',
     controlNet: 'none',
     controlNetStrength: 0,
     controlNetEndPercent: 0,
-    faceIdWeight: 0.65,
-    faceIdLoraStrength: 0.5,
-    faceIdEndAt: 0.65,
+    faceIdWeight: 0.8,
+    faceIdLoraStrength: 0.6,
+    faceIdEndAt: 0.75,
     stylePrefix: 'centered framed graphic design layout, ornate border composition',
     negativeAdditions: 'cropped border, cut off frame',
     padSubject: true,
     padScale: 0.5,
     blurRadius: 0,
-    denoise: 1.0,
+    denoise: 0.5,
   },
   macro_object_embed: {
     checkpoint: 'pony',
@@ -131,7 +131,7 @@ export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
     stylePrefix: 'wide angle macro scene, high detail object composition',
     negativeAdditions: 'close-up selfie, cropped frame',
     blurRadius: 0,
-    denoise: 1.0,
+    denoise: 0.7,
   },
 };
 
