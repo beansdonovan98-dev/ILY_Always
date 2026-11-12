@@ -87,9 +87,9 @@ export const BUCKET_CONFIGS: Record<BucketId, BucketConfig> = {
   framed_card: {
     id: 'framed_card',
     checkpoint: 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors',
-    basePrefix: `${COMMON_EXPLICIT_POS}, centered graphic design layout, distinct outer border frame, crisp graphic details, balanced composition, symmetrical eyes`,
-    baseNegative: `${COMMON_EXPLICIT_NEG}, cropped frame, cut-off border, unframed, gibberish text`,
-    defaultDenoise: 0.5, // Capped to protect likeness inside tarot/magazine/pokemon frames
+    basePrefix: `${COMMON_EXPLICIT_POS}, ornate vintage tarot card and magazine cover illustration style, detailed occult line etching, rich parchment paper texture, decorative gold-foil border frame, Roman numerals, bottom title banner, professional illustration masterwork`,
+    baseNegative: `${COMMON_EXPLICIT_NEG}, photorealistic photo, 3d render, modern flat vector, clean digital art, cropped frame, cut-off border, unframed, gibberish text`,
+    defaultDenoise: 0.5,
     defaultCfg: 6.5,
     loraModelStrength: 0.85,
   },
@@ -292,11 +292,18 @@ export function bucketForStyle(style: string): BucketId {
   return styleDefinition(style).bucket;
 }
 
+/** Buckets that keep img2img from her photo. Everything else gets a fresh canvas. */
+const IMG2IMG_BUCKETS: ReadonlySet<BucketId> = new Set<BucketId>([
+  'realism_composite',
+  'realism_outfit_nsfw',
+  'macro_object_embed',
+]);
+
 export function bucketConfig(style: string): BucketParams {
   const def = styleDefinition(style);
   const bucket = BUCKET_CONFIGS[def.bucket];
   const faceId = FACE_ID_BY_BUCKET[def.bucket];
-  const isMacro = def.bucket === 'macro_object_embed';
+  const initFromSource = IMG2IMG_BUCKETS.has(def.bucket);
 
   return {
     checkpoint: 'pony',
@@ -311,8 +318,11 @@ export function bucketConfig(style: string): BucketParams {
     stylePrefix: bucket.basePrefix,
     negativeAdditions: [bucket.baseNegative, def.negativeAdd].filter(Boolean).join(', '),
     blurRadius: 0,
-    denoise: def.denoiseOverride ?? bucket.defaultDenoise,
-    initFromSource: !isMacro,
+    // An EmptyLatent canvas must start at 1.0; a partial denoise on pure noise
+    // would sample a half-finished blur instead of an image. Per-style denoise
+    // values therefore only apply to the img2img buckets.
+    denoise: initFromSource ? (def.denoiseOverride ?? bucket.defaultDenoise) : 1.0,
+    initFromSource,
     portrait: PORTRAIT_BUCKETS.has(def.bucket),
     loraStrength: def.loraStrengthOverride ?? bucket.loraModelStrength,
     cfgScale: bucket.defaultCfg,
@@ -329,4 +339,211 @@ export function loraForSubject(subject: SubjectMode): string | null {
   if (subject === 'wife') return LORA_FILES.wife;
   if (subject === 'husband') return LORA_FILES.husband;
   return null;
+}
+
+/** Trigger tokens. Only these go into the image prompt. */
+export const SUBJECT_TAGS: Record<SubjectMode, string> = {
+  wife: 'ashley',
+  husband: 'mbboi',
+  couple: 'ashley and mbboi',
+};
+
+// ==========================================
+// MASTER STONER ENVIRONMENT POOL
+// ==========================================
+export const MASSIVE_AUTHENTIC_WEED_ENVIRONMENTS = [
+  'high-rise Chicago apartment living room at 2:00 AM, glowing purple and green LED strip lighting framing the windows, heavy snow falling against the glass outside, city lights blurring in the background, thick aromatic smoke hanging in the air',
+  'cozy vintage Chicago brick-loft apartment at midnight, exposed brick walls adorned with cannabis tapestries and vintage weed posters, glowing green and purple neon lights, coffee table covered in rolling trays, raw papers, and glass bongs',
+  'chic downtown apartment balcony during late twilight, overlooking the Chicago skyline twinkling in the dark, string fairy lights weaving through potted outdoor cannabis plants, crisp night air carrying thick smoke',
+  'darkened basement apartment smoke den at 4:20 AM, blacklight posters glowing on the walls, purple and green laser lights cutting through heavy smoke clouds, vinyl records playing in the corner',
+  'artistic bohemian loft studio at midnight, floor cushions scattered around a massive wooden coffee table loaded with blunts, joints, packs of raw papers, grinders, and fresh bud',
+  'cozy studio apartment at 3:00 AM, heavy velvet curtains closed, purple and green fairy lights strung across the ceiling, rolling supplies, tip booklets, and amber mason jars lining the shelves',
+  'urban penthouse hotbox session at midnight, floor-to-ceiling windows showing a glowing city skyline, velvet couches, massive glass percolator bongs, golden rolling trays, and thick aromatic smoke haze',
+  'suburban apartment living room late at night under glowing blacklights, string weed leaf fairy lights, glass bong and scattered swisher sweets and white owl wrappers on the table',
+  'creative music producer apartment studio at 2:30 AM, synthesizers and DJ decks glowing with green and purple LEDs, soundproofing foam on walls, hazy smoke filling the room',
+  'vintage retro apartment living room at midnight, 70s shag carpet, green and purple lava lamps, cannabis leaf tapestries, heavy fragrant smoke hanging in the air',
+  'cozy wooden cabin deep in the snowy woods at 1:00 AM, warm yellow light spilling from windows mixed with green and purple fairy lights inside, crackling stone fireplace, rolling up a fresh Backwood on the wooden table',
+  'isolated cabin porch in the deep forest at midnight, surrounded by towering pine trees and outdoor cannabis crops, starry night sky, glowing campfire embers casting warm light',
+  'rustic timber-framed cabin living room at 3:00 AM, massive stone fireplace throwing warm amber light, green and purple accent lighting, leather couch, heavy smoke hanging in the air',
+  'cozy wooden treehouse tucked deep in the forest at midnight, fairy lights woven through the branches, open windows letting in the crisp night air, blankets and pillows piled high, packing a fresh bowl',
+  'mystic forest clearing at 2:00 AM illuminated by glowing green bio-luminescent moss and cannabis fairy lights strung between trees, peaceful secluded smoke spot under the stars',
+  'remote mountain cabin at midnight, snow-covered roof, windows glowing with green and purple interior ambient light, thick aromatic smoke rising from the chimney into the cold night air',
+  'rustic log cabin back porch at 4:00 AM, rocking chairs, tiki torches casting purple and green hues, tall pine trees surrounding the property, peaceful wilderness night vibe',
+  'secluded woodland campsite at midnight, glowing campfire lighting up surrounding cannabis bushes, string fairy lights on tent poles, thick smoke rising into the dark sky',
+  'mountain-view cabin living room at 1:30 AM, floor-to-ceiling glass looking out into the dark forest, glowing neon weed sign on the wall, bongs and rolling trays on the coffee table',
+  'rustic hunting cabin at midnight, wood-paneled walls, taxidermy, green and purple LED mood lighting, heavy smoke hanging low over a wooden table covered in papers and flower',
+  'authentic underground grow room and sesh spot at 2:00 AM, glowing purple full-spectrum horticulture lights, drying colas hanging overhead, crystal trichome resin glistening under moody colored lights',
+  'secret indoor hydroponic grow room at midnight, glowing red and purple LED grow panels, rows of resinous flowering cannabis plants framing the shot, heavy aromatic pine and skunk scent in the air',
+  'mystical ancient greenhouse sanctuary at 3:00 AM, overgrown exotic cannabis strains winding up ancient stone pillars, shafts of moonlight piercing through glass roofs and thick resinous smoke',
+  'sunlit commercial cultivation room at dawn, bright natural morning light mixing with purple supplemental grow beams, manicuring trays full of fresh trim',
+  'rustic wooden barn greenhouse at midnight, strings of warm Edison bulbs and green fairy lights, potted cannabis plants stretching toward the rafters, quiet rural night atmosphere',
+  'tropical jungle greenhouse at 2:00 AM, giant palm leaves and exotic cannabis plants, glowing green and purple accent lights, misty air thick with fragrant smoke',
+  'desert greenhouse oasis at midnight, cacti and flowering cannabis plants under glass panels, purple grow lights reflecting off glass jars and rolling trays',
+  'hidden outdoor hoop-house greenhouse at 1:00 AM, plastic walls glowing from green and purple interior lights, rows of sticky flowering colas, peaceful night atmosphere',
+  'overgrown botanical garden greenhouse at midnight, moonlight and green fairy lights illuminating giant cannabis fan leaves, stone pathways, heavy smoke haze',
+  'clandestine garage grow room at 3:00 AM, makeshift reflective Mylar walls, purple LED grow lights casting a moody glow over jars, grinders, and fresh harvests',
+  'late night outdoor patio session under the stars at midnight, string fairy lights weaving through giant cannabis plants, hazy smoke clouds drifting into the cool night air, comfortable outdoor couches',
+  'backyard porch at 2:00 AM lit by glowing green and purple tiki torches and cannabis fairy lights, hazy smoke in the crisp air, relaxing chill atmosphere',
+  'rooftop balcony overlooking a quiet neighborhood at 1:00 AM, string lights, comfortable patio chairs, rolling tray on an iron table, cool evening breeze carrying smoke away',
+  'camper van interior parked deep in nature at midnight, custom fairy lights, velvet upholstery, rolling tray on the dashboard, hazy smoke filling the small cozy space',
+  'hidden desert oasis patio at 3:00 AM, warm breeze, tiki torches, string lights, comfortable wicker furniture surrounded by potted outdoor cannabis plants',
+  'VIP backroom of a private lounge at midnight, deep leather armchairs, low amber and green mood lighting, crystal ashtrays, glass jars of top-shelf exotic strains, heavy fragrant air',
+  'hotel suite balcony at 2:00 AM, city lights blurred in the background, plush robes, room service table covered in gourmet snacks and high-end smoking accessories',
+  'retro 70s van interior converted into a mobile smoke lounge at midnight, shag carpeting, velvet walls, green and purple fairy lights, rolling tray between the front seats',
+  'private yacht deck docked at 1:00 AM, gentle ocean waves, glowing green and purple ambient deck lighting, cannabis fairy lights, hazy smoke drifting over the water',
+  'secluded beach bonfire at midnight, crashing ocean waves casting light, tiki torches, heavy smoke mixing with the salty ocean breeze',
+  'backyard gazebo at 2:30 AM draped in cannabis tapestries and fairy lights, comfortable cushioned seating, rolling trays, bongs, and backwoods on the table',
+  'historic brick courtyard at midnight, ivy-covered walls, string lights weaving through trees, outdoor table covered in smoking accessories and mason jars',
+  'cliffside ocean-view terrace at 1:00 AM, starry sky, glowing neon weed sign on the stone wall, comfortable lounge chairs, thick smoke rolling across the patio',
+  'countryside farmhouse porch at 3:00 AM, rocking chairs, green and purple porch lights, crickets chirping, rolling up a fresh blunt in the cool night air',
+  'abandoned urban rooftop hideout at midnight, city skyline in the distance, graffiti-covered walls, lawn chairs, fairy lights, and heavy smoke haze',
+];
+
+export const GLASS_COLORS = [
+  'vibrant neon green and purple accented',
+  'deep electric blue and black gradient',
+  'iridescent pink and gold shifting',
+  'glowing UV reactive neon green',
+  'translucent smoke gray with purple accents',
+  'custom tie-dye colored glass',
+  'classic crystal clear with gold lettering',
+];
+
+export const FLAVORED_WRAPS = [
+  'honey bourbon Backwoods',
+  'sweet aromatic Swisher Sweets',
+  'classic White Owl blunts',
+  'grape flavored blunt wraps',
+  'natural leaf Backwoods',
+  'strawberry fusion Swishers',
+  'russian cream Backwoods',
+  'tropical twist White Owls',
+  'banana flavored blunt wraps',
+];
+
+export const SMOKING_HARDWARE_PROPS: Array<() => string> = [
+  () => `rolling a joint with Raw papers and tips next to a massive ${getRandomItem(GLASS_COLORS)} beaker bong, with open packs of ${getRandomItem(FLAVORED_WRAPS)} and ${getRandomItem(FLAVORED_WRAPS)} on the table`,
+  () => `packing a fat ${getRandomItem(FLAVORED_WRAPS)} blunt while a sleek ${getRandomItem(GLASS_COLORS)} straight tube bong bubbles nearby, surrounded by loose ${getRandomItem(FLAVORED_WRAPS)} wrappers`,
+  () => `passing around a smooth-hitting ${getRandomItem(GLASS_COLORS)} bubbler filled with water, featuring a rotation of ${getRandomItem(FLAVORED_WRAPS)} and raw paper tips`,
+  () => `taking a dab out of a complex ${getRandomItem(GLASS_COLORS)} dab rig featuring an intricate spinning recycler perc, with an ashtray holding smoked ${getRandomItem(FLAVORED_WRAPS)} remnants`,
+  () => `smoking out of a heavy-duty ${getRandomItem(GLASS_COLORS)} hand pipe, surrounded by loose Raw papers, grinders, and open packs of ${getRandomItem(FLAVORED_WRAPS)} and ${getRandomItem(FLAVORED_WRAPS)}`,
+  () => `breaking down sticky bud on a tray next to ${getRandomItem(FLAVORED_WRAPS)} wrappers, a lighter, and a bubbling ${getRandomItem(GLASS_COLORS)} beaker bong`,
+];
+
+export const HIDDEN_TEAM_NO_LACKIN_ELEMENTS = [
+  'a vintage military-style canvas flag hanging on the wall clearly bearing the bold stenciled text "Team No Lackin"',
+  'a framed poster hanging in the background with clean typography reading "Team No Lackin"',
+  'spray-painted graffiti art on a wall or surface in the room clearly spelling out "Team No Lackin"',
+  'an embroidered decorative banner hanging across a shelf or mantelpiece with the words "Team No Lackin"',
+  'a glowing neon wall sign casting ambient light and spelling out "Team No Lackin"',
+  'a custom sticker slapped onto a rolling tray or storage box with legible text reading "Team No Lackin"',
+  'a handwritten sticky note stuck to a computer monitor or tabletop with bold marker writing saying "Team No Lackin"',
+  'a woven throw pillow on a couch featuring bold embroidered text that reads "Team No Lackin"',
+  'a custom matchbox sitting on the table with crisp vintage branding reading "Team No Lackin"',
+  'a brass plaque screwed onto a wooden shelf or box engraved with the words "Team No Lackin"',
+  'a screen-printed graphic on a skateboard deck leaned up against the wall reading "Team No Lackin"',
+  'chalkboard menu lettering on the wall cleanly written out to say "Team No Lackin"',
+  'a custom pin badge attached to a clothing collar or bag strap reading "Team No Lackin"',
+  'embossed metallic foil text stamped onto the cover of a rolling paper booklet reading "Team No Lackin"',
+  'a neon light-box decoration resting on a bookshelf spelling out "Team No Lackin"',
+];
+
+export const PET_INCLUSION_OPTIONS = [
+  'Crowley, a fat fluffy black cat with a distinctive little white soul patch, sitting nearby on a vintage rug, alongside Smokey, a fluffy medium-hair Russian Blue cat lounging comfortably on your shoulder',
+  'Crowley the chunky black cat with a white soul patch curled up on the furniture, and Smokey the Russian Blue cat riding proudly on your shoulder',
+  'fat black cat Crowley with his little white soul patch exploring the room, while Smokey the Russian Blue cat sits perched right on your shoulder',
+];
+
+export const CLOTHED_OUTFIT_OPTIONS = [
+  'wearing matching custom streetwear hoodies and sweatpants patterned with green cannabis leaf prints, gold cannabis leaf pendant chains',
+  'wearing casual loungewear with embroidered trichome-dusted cannabis patterns and snapback caps',
+  'wearing relaxed jersey shorts and t-shirts featuring classic cannabis culture graphics',
+  'wearing comfortable sleepwear decorated with weed leaf patterns and stoner graphics',
+];
+
+export const NUDE_BODY_DETAILS = [
+  'completely nude, showing intricate full-sleeve cannabis botanical tattoos and weed leaf body art across arms, chest, and torso',
+  'completely nude, showing full-sleeve cannabis botanical tattoos and weed leaf body art, natural body hair',
+  'artfully draped in giant, dew-kissed cannabis fan leaves instead of clothes, natural and raw aesthetic',
+];
+
+export const HAIR_DYE_OPTIONS = ['dyed vibrant neon green', 'dyed vibrant electric purple', 'with natural colored hair'];
+
+export const HUSBAND_GROOMING_OPTIONS = [
+  'chest hair artfully groomed and trimmed into the shape of a cannabis leaf',
+  'chest hair dyed vibrant neon green and styled into a weed leaf shape',
+  'chest hair dyed rich electric purple',
+  'cleanly shaved smooth pubic area framed by intricate cannabis vine and leaf tattoos wrapping around the groin',
+  'natural body hair with delicate weed-leaf botanical tattoos inked around the pelvic region',
+];
+
+export const WIFE_PUBIC_WEED_STYLES = [
+  'pubic hair neatly styled and trimmed into the precise shape of a cannabis leaf',
+  'cleanly shaven smooth pubic area adorned with intricate cannabis vine and leaf tattoos framing the vulva',
+  'natural full pubic bush dyed vibrant neon green',
+  'natural full pubic bush dyed rich electric purple',
+  'natural full pubic hair with a clean, sharply manicured cannabis leaf shape carved into the center',
+  'smooth shaved pubic area with delicate glowing cannabis leaf line-art tattoos framing the groin',
+];
+
+export function getRandomItem(arr: unknown[]): any {
+  const item = arr[Math.floor(Math.random() * arr.length)];
+  return typeof item === 'function' ? (item as () => unknown)() : item;
+}
+
+/** Guarantees the background matches the style medium. */
+export function harmonizeBackgroundToStyle(styleId: string, baseEnvironment: string): string {
+  const bucket = styleDefinition(styleId).bucket;
+
+  if (bucket === 'anime_2d_toon') {
+    return `, anime cel-shaded background featuring ${baseEnvironment}, clean ink outlines, vibrant 2d animation aesthetic`;
+  }
+  if (bucket === 'toy_3d_sculpt') {
+    return `, miniature toy diorama background of ${baseEnvironment}, plastic brick and stop-motion texture, macro product photography`;
+  }
+  if (bucket === 'fine_art_medium' || bucket === 'framed_card') {
+    return `, vintage etched fine art illustration background depicting ${baseEnvironment}, rich parchment paper texture, traditional ink and watercolor rendering`;
+  }
+  return `, photorealistic background environment: ${baseEnvironment}, cinematic lighting`;
+}
+
+export function generateFinalOpenCodePayload(
+  styleId: string,
+  subject: SubjectMode,
+  isNude: boolean,
+  includePets: boolean,
+  customBackground?: string
+) {
+  const style = STYLE_DEFINITIONS[styleId];
+  if (!style) throw new Error(`Unknown style: ${styleId}`);
+  const bucket = BUCKET_CONFIGS[style.bucket];
+
+  const rawEnv = customBackground?.trim() || getRandomItem(MASSIVE_AUTHENTIC_WEED_ENVIRONMENTS);
+  const styledEnv = harmonizeBackgroundToStyle(styleId, rawEnv);
+  const hardwareProp = getRandomItem(SMOKING_HARDWARE_PROPS);
+  const easterEgg = getRandomItem(HIDDEN_TEAM_NO_LACKIN_ELEMENTS);
+
+  const petPrompt = includePets ? `, ${getRandomItem(PET_INCLUSION_OPTIONS)}` : '';
+
+  let bodyDetailPrompt = '';
+  if (isNude) {
+    const nudeBody = getRandomItem(NUDE_BODY_DETAILS);
+    const hairDye = getRandomItem(HAIR_DYE_OPTIONS);
+    const husbandGrooming = getRandomItem(HUSBAND_GROOMING_OPTIONS);
+    const wifePubic = getRandomItem(WIFE_PUBIC_WEED_STYLES);
+    bodyDetailPrompt = `, ${nudeBody}, head hair ${hairDye}, husband ${husbandGrooming}, wife intimate styling: ${wifePubic}`;
+  } else {
+    bodyDetailPrompt = `, ${getRandomItem(CLOTHED_OUTFIT_OPTIONS)}`;
+  }
+
+  const positive = `${bucket.basePrefix}, ${SUBJECT_TAGS[subject]}, ${style.prompt}${styledEnv}${bodyDetailPrompt}, ${hardwareProp}, featuring ${easterEgg}${petPrompt}`;
+  const negative = bucket.baseNegative;
+
+  return {
+    checkpoint: bucket.checkpoint,
+    positive,
+    negative,
+    denoise: style.denoiseOverride ?? bucket.defaultDenoise,
+    cfg: bucket.defaultCfg,
+  };
 }

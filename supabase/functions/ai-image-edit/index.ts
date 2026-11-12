@@ -12,7 +12,13 @@ import {
   buildRipShirtWorkflow,
   InpaintMaskSource,
 } from './comfyWorkflow.ts';
-import { bucketConfig, bucketForStyle } from './styleBuckets.ts';
+import {
+  bucketConfig,
+  bucketForStyle,
+  generateFinalOpenCodePayload,
+  loraForSubject,
+  type SubjectMode,
+} from './styleBuckets.ts';
 import { buildBrushMaskPng } from './maskPng.ts';
 
 const corsHeaders = {
@@ -1730,22 +1736,26 @@ async function handleBenchmarkStart(
       .trim()
       .slice(0, 200);
 
-    const bucketPositive = [
-      PONY_QUALITY,
-      SUBJECT_TRIGGER,
-      styleTags ? `(${styleTags}:1.4)` : '',
-      cfg.stylePrefix,
-      '(curvy hourglass figure, full bust, natural soft waist, shapely hips and thighs:1.05)',
-      subjectTraits,
-      cfg.extraPositive,
-      STYLE_POSITIVE_NUDGES[styleMode],
-      backgroundPrompt,
-      'rating_explicit, explicit anatomical details',
-      'wide shot, full scene',
-    ]
+    const subject: SubjectMode =
+      body.subject === 'husband' || body.subject === 'couple' ? body.subject : 'wife';
+    const isNude = body.isNude === true || body.nude === true;
+    const includePets = body.includePets === true;
+
+    // The stoner payload owns the bucket prompts: harmonised background, rotating
+    // hardware, pet toggle, grooming rules and the Team No Lackin easter egg.
+    const payload = generateFinalOpenCodePayload(
+      styleMode,
+      subject,
+      isNude,
+      includePets,
+      backgroundPrompt
+    );
+    const bucketPositive = [PONY_QUALITY, payload.positive, subjectTraits]
       .filter(Boolean)
       .join(', ');
-    const bucketNegative = `${BASE_NEGATIVE}, ${cfg.negativeAdditions}, ${STYLE_NEGATIVE_GUARDRAILS[styleMode] ?? ''}, (skinny, anorexic, flat chest:1.15), (morbidly obese, bloated torso:1.25)`;
+    const bucketNegative = [BASE_NEGATIVE, payload.negative]
+      .filter(Boolean)
+      .join(', ');
     const baseEditPositive = [PONY_QUALITY, cfg.stylePrefix, styleTags, editPrompt]
       .filter(Boolean)
       .join(', ');
@@ -1837,7 +1847,9 @@ async function handleBenchmarkStart(
         faceIdEndAt: cfg.faceIdEndAt,
         initFromSource: cfg.initFromSource,
         padScale: cfg.padScale,
-        loraName: Deno.env.get('COMFY_SUBJECT_LORA') || 'ashley_v1_1200_steps_00001_.safetensors',
+        loraName:
+          loraForSubject(subject) ??
+          (Deno.env.get('COMFY_SUBJECT_LORA') || 'ashley_v1_1200_steps_00001_.safetensors'),
         loraStrength: cfg.loraStrength ?? 0.7,
         cfgScale: cfg.cfgScale,
         faceIdWeight: cfg.faceIdWeight,
