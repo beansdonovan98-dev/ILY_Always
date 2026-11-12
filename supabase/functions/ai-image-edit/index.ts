@@ -1149,13 +1149,18 @@ function withoutFaceId(prompt: unknown): Record<string, unknown> | null {
     delete workflow[nodeId];
   }
 
+  const loraNodeId = Object.keys(workflow).find((k) =>
+    ((workflow[k] as { class_type?: string })?.class_type || '').includes('Lora')
+  );
+  const modelFallback: [string, number] = loraNodeId ? [loraNodeId, 0] : ['72', 0];
+
   for (const node of Object.values(workflow)) {
     const inputs = (node as { inputs?: Record<string, unknown> })?.inputs;
     if (!inputs) continue;
     for (const key of ['model', 'positive', 'negative']) {
       const ref = inputs[key];
       if (Array.isArray(ref) && faceIdAppliers.has(String(ref[0]))) {
-        inputs[key] = ['72', 0];
+        inputs[key] = modelFallback;
       }
     }
   }

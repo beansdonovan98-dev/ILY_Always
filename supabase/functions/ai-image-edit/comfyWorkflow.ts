@@ -618,7 +618,7 @@ export function buildBucketStyleWorkflow(
   const checkpoint = options.checkpoint || 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors';
   const width = Math.max(512, Math.round(options.width / 8) * 8);
   const height = Math.max(512, Math.round(options.height / 8) * 8);
-  const blurRadius = options.blurRadius ?? 20;
+  const blurRadius = options.blurRadius ?? 0;
   const denoise = options.denoise ?? 0.86;
   const useBlurredBase = blurRadius > 0;
 

@@ -265,10 +265,10 @@ const CONTROL_NET_BY_BUCKET: Record<BucketId, BucketParams['controlNet']> = {
 const CONTROL_STRENGTH: Record<BucketId, { strength: number; end: number }> = {
   realism_composite: { strength: 0.4, end: 0.4 },
   realism_outfit_nsfw: { strength: 0.65, end: 0.6 },
-  anime_2d_toon: { strength: 0.75, end: 0.8 },
+  anime_2d_toon: { strength: 0.5, end: 0.55 },
   toy_3d_sculpt: { strength: 0.4, end: 0.4 },
-  fine_art_medium: { strength: 0.75, end: 0.8 },
-  framed_card: { strength: 0.75, end: 0.8 },
+  fine_art_medium: { strength: 0.5, end: 0.55 },
+  framed_card: { strength: 0.45, end: 0.5 },
   macro_object_embed: { strength: 0.4, end: 0.4 },
 };
 
