@@ -595,6 +595,13 @@ const FRAMING_BY_BUCKET: Record<BucketId, string> = {
 const WIDE_FRAMING =
   ', wide establishing shot, full room interior visible, subject standing to one side, environment prominent';
 
+/** Same as SUBJECT_TAGS without the body-weight nudges, used in pose mode. */
+export const SUBJECT_TAGS_PLAIN: Record<SubjectMode, string> = {
+  wife: 'ashley, long straight cherry red hair falling past the shoulders, round wireframe glasses',
+  husband: 'mbboi',
+  couple: 'ashley with long straight cherry red hair wearing glasses and mbboi',
+};
+
 /** Large pose pool. Pose mode is always randomized from this list. */
 export const POSE_OPTIONS = [
   'sitting cross-legged on a velvet couch, leaning forward, holding a glowing bong',
@@ -653,15 +660,22 @@ export const POSE_OPTIONS = [
   'kneeling on cushions with one hand in her hair, the other on her hip',
   'reclining on a pile of pillows, one knee up, ankle on the other knee',
   'sitting on a stool with her elbows on her knees, chin in her hands',
-  'sitting with her legs spread wide, one hand between her thighs, head tipped back',
-  'lying on her back with her legs spread, one hand between her legs, back arched',
-  'kneeling with her knees apart, one hand between her thighs, looking at the viewer',
-  'reclining with one leg raised and bent, her hand between her legs',
-  'sitting back on her heels with her thighs apart, fingers between her legs',
-  'lying on her side with her top leg raised, hand between her thighs',
-  'leaning back on one arm with her legs spread, the other hand between her legs',
-  'crouched with her knees wide apart, one hand between her thighs, looking up',
-  'sitting with one knee up and the other flat, her hand resting between her legs',
+  'sitting, spread legs, hand between thighs, masturbation, head tilted back',
+  'lying on back, spread legs, hand between legs, masturbation, back arched',
+  'kneeling, spread legs, hand between thighs, masturbation, looking at viewer',
+  'reclining, one leg up, hand between legs, masturbation',
+  'kneeling, spread legs, fingers between legs, masturbation',
+  'lying on side, one leg raised, hand between thighs, masturbation',
+  'leaning back, spread legs, masturbation, looking at viewer',
+  'crouching, spread legs, hand between thighs, masturbation, looking up',
+  'sitting, one knee up, hand between legs',
+  'sitting, spread legs, m legs, spreading pussy, two fingers, looking at viewer',
+  'lying on back, spread legs, m legs, fingers inside, masturbation, open mouth',
+  'kneeling, spread legs, spreading pussy, looking at viewer',
+  'reclining, one knee up, fingers between folds, masturbation',
+  'kneeling, hand between legs, masturbation, fingers slick',
+  'crouching, spread legs, spreading pussy, two fingers, head back',
+  'lying on back, spread legs, fingers inside, masturbation, one leg up',
 ];
 
 export function generateFinalOpenCodePayload(
@@ -723,12 +737,16 @@ export function generateFinalOpenCodePayload(
         ? '1man, solo, nude man'
         : '1girl, solo, nude woman'
     : SUBJECT_ANCHOR[subject];
+  const subjectTagText = pose
+    ? `${SUBJECT_TAGS_PLAIN[subject]}, proportional body, moderate bust`
+    : SUBJECT_TAGS[subject];
+  const poseLead = pose ? `(${pose}:1.25), ` : '';
   const framingText = pose
-    ? `, ${pose}, full scene, environment visible around her`
+    ? ', full scene, environment visible around her'
     : wide
       ? WIDE_FRAMING
       : FRAMING_BY_BUCKET[style.bucket];
-  const positive = `${SCORE_TAGS}, ${MEDIUM_FRONT[style.bucket]}, ${poseAnchor}, ${SUBJECT_TAGS[subject]}${traits ? `, ${traits}` : ''}${bodyDetailPrompt}, ${styleText}, ${hardwareProp}, surrounded by ${env}, featuring ${easterEgg}${framingText}`;
+  const positive = `${SCORE_TAGS}, ${MEDIUM_FRONT[style.bucket]}, ${poseLead}${poseAnchor}, ${subjectTagText}${traits ? `, ${traits}` : ''}${bodyDetailPrompt}, ${styleText}, ${hardwareProp}, surrounded by ${env}, featuring ${easterEgg}${framingText}`;
   const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only, plain background, gray background, simple background, freckles, freckled skin`;
 
   return {

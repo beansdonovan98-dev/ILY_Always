@@ -763,7 +763,11 @@ async function listRunpodPods(): Promise<Array<Record<string, unknown>>> {
   const key = podApiKey();
 
   const listPods = async (url: string): Promise<Array<Record<string, unknown>>> => {
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${key}` } });
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${key}` },
+      // A hung Runpod API call is what produced the 504s: fail fast instead.
+      signal: AbortSignal.timeout(15_000),
+    });
     const text = await res.text();
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
     const parsed = JSON.parse(text) as { pods?: Array<Record<string, unknown>> } | Array<Record<string, unknown>>;
@@ -971,7 +975,11 @@ async function uploadBytesToComfy(
   form.append('image', new Blob([bytes as unknown as BlobPart], { type: mimeType }), `${prefix}-${Date.now()}.${ext}`);
   form.append('overwrite', 'true');
 
-  const res = await fetch(`${await comfyBaseUrl()}/upload/image`, { method: 'POST', body: form });
+  const res = await fetch(`${await comfyBaseUrl()}/upload/image`, {
+    method: 'POST',
+    body: form,
+    signal: AbortSignal.timeout(60_000),
+  });
   const text = await res.text();
   if (!res.ok) {
     throw new Error(`ComfyUI upload failed (HTTP ${res.status}): ${text.slice(0, 500)}`);
@@ -1384,6 +1392,7 @@ async function handleStyleStart(
         prompt: applySubjectLora(workflow, subjectLoraName(), 0.7),
         client_id: crypto.randomUUID(),
       }),
+      signal: AbortSignal.timeout(60_000),
     });
     const promptText = await promptRes.text();
 
@@ -1495,6 +1504,7 @@ async function submitComfyWorkflow(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt: workflow, client_id: crypto.randomUUID() }),
+    signal: AbortSignal.timeout(60_000),
   });
   const promptText = await promptRes.text();
 
