@@ -486,6 +486,13 @@ export function getRandomItem(arr: unknown[]): any {
 }
 
 
+/** Subject anchor. Comes first so the model cannot fill the frame with scenery. */
+const SUBJECT_ANCHOR: Record<SubjectMode, string> = {
+  wife: '1girl, solo, nude woman, full body visible, standing, looking at viewer',
+  husband: '1man, solo, nude man, full body visible, standing, looking at viewer',
+  couple: '1girl and 1man, two people, nude couple, full body visible, standing',
+};
+
 /** Keeps the model from zooming into a body close-up. */
 const FRAMING_BY_BUCKET: Record<BucketId, string> = {
   realism_composite: ', medium shot, waist-up framing, room visible behind her',
@@ -532,12 +539,12 @@ export function generateFinalOpenCodePayload(
     bodyDetailPrompt = `, ${getRandomItem(CLOTHED_OUTFIT_OPTIONS)}`;
   }
 
-  // The easter egg sits immediately after the style tag so it lands inside the
-  // first 77-token CLIP chunk instead of being truncated at the tail.
-  const positive = `${bucket.basePrefix}, ${SUBJECT_TAGS[subject]}, ${style.prompt}, featuring ${easterEgg}${bodyDetailPrompt}, ${hardwareProp}${FRAMING_BY_BUCKET[style.bucket]}`;
+  // Subject first: with an empty latent the model will happily fill the frame
+  // with scenery if the medium tags lead, so she is anchored at the very start.
+  const positive = `${SUBJECT_ANCHOR[subject]}, ${SUBJECT_TAGS[subject]}, ${style.prompt}, ${bucket.basePrefix}, featuring ${easterEgg}${bodyDetailPrompt}, ${hardwareProp}${FRAMING_BY_BUCKET[style.bucket]}`;
   // The room is its own conditioning stream so it stops competing with her body.
   const backgroundPositive = `background environment: ${env}`;
-  const negative = bucket.baseNegative;
+  const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only`;
 
   return {
     checkpoint: bucket.checkpoint,
