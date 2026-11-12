@@ -1032,6 +1032,22 @@ function findWorkflowInPrompt(prompt: unknown): Record<string, unknown> | null {
  * into KSampler. Returns null when the prompt has no FaceID branch to remove.
  */
 /**
+ * Names the app uses for her. Only `ashley` is the LoRA trigger and the only one
+ * that belongs in an image prompt — the rest are app/chat aliases. Feeding
+ * "princess" or "kitten" to Pony would summon a crown or a cat, not her.
+ */
+const SUBJECT_ALIASES = [
+  'ashley',
+  'princess',
+  'budzie',
+  'mommy',
+  'wifey',
+  'good girl',
+  'kitten',
+];
+const SUBJECT_TRIGGER = 'ashley';
+
+/**
  * Per-style negative guardrails. These exist because a soft-gradient source image
  * plus a low denoise lets a style collapse into its neighbour: pointillism bleeds
  * into watercolour, stencil into poster art, and so on.
@@ -1041,7 +1057,7 @@ const STYLE_NEGATIVE_GUARDRAILS: Record<string, string> = {
   // flattened her face. v6 (no per-style guardrail) is the locked baseline.
 };
 
-/** Per-style positive nudges that a bucket-wide anchor cannot express. */
+  // Per-style positive nudges that a bucket-wide anchor cannot express.
 const STYLE_POSITIVE_NUDGES: Record<string, string> = {};
 
 function withoutFaceId(prompt: unknown): Record<string, unknown> | null {
@@ -1657,6 +1673,7 @@ async function handleBenchmarkStart(
 
     const bucketPositive = [
       PONY_QUALITY,
+      SUBJECT_TRIGGER,
       styleTags ? `(${styleTags}:1.4)` : '',
       cfg.stylePrefix,
       '(curvy hourglass figure, full bust, natural soft waist, shapely hips and thighs:1.05)',
@@ -1757,6 +1774,8 @@ async function handleBenchmarkStart(
         faceIdEndAt: cfg.faceIdEndAt,
         initFromSource: cfg.initFromSource,
         padScale: cfg.padScale,
+        loraName: Deno.env.get('COMFY_SUBJECT_LORA') || 'ashley_v1_1200_steps_00001_.safetensors',
+        loraStrength: 0.7,
         faceIdWeight: cfg.faceIdWeight,
         faceIdLoraStrength: cfg.faceIdLoraStrength,
         faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',

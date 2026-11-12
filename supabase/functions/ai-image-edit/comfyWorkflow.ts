@@ -579,6 +579,9 @@ export type BucketStyleWorkflowOptions = {
   initFromSource?: boolean;
   /** Scale for the subject when padded (0.7 leaves a 15% margin per side). */
   padScale?: number;
+  /** Trained subject LoRA (e.g. ashley_v1). */
+  loraName?: string;
+  loraStrength?: number;
   faceIdWeight: number;
   faceIdLoraStrength: number;
   faceIdProvider?: string;
@@ -696,6 +699,23 @@ export function buildBucketStyleWorkflow(
     '78': { class_type: 'VAEDecode', inputs: { samples: ['77', 0], vae: ['72', 2] } },
     '79': { class_type: 'SaveImage', inputs: { filename_prefix: options.filenamePrefix, images: ['78', 0] } },
   };
+
+  // Subject LoRA: her trained face/body, applied before CLIP skip and FaceID.
+  if (options.loraName) {
+    const loraStrength = options.loraStrength ?? 0.7;
+    workflow['71'] = {
+      class_type: 'LoraLoader',
+      inputs: {
+        model: ['72', 0],
+        clip: ['72', 1],
+        lora_name: options.loraName,
+        strength_model: loraStrength,
+        strength_clip: loraStrength,
+      },
+    };
+    (workflow['81'] as { inputs: Record<string, unknown> }).inputs.clip = ['71', 1];
+    (workflow['85'] as { inputs: Record<string, unknown> }).inputs.model = ['71', 0];
+  }
 
   if (options.initFromSource !== false) {
     // Stage A: build the style's scene from noise, lay her real cutout over it,
