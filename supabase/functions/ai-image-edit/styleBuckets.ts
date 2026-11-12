@@ -1,4 +1,4 @@
-export type SubjectMode = 'wife' | 'husband' | 'couple';
+﻿export type SubjectMode = 'wife' | 'husband' | 'couple';
 
 export type BucketId =
   | 'realism_composite'
@@ -428,6 +428,50 @@ export const MASSIVE_AUTHENTIC_WEED_ENVIRONMENTS = [
   'cliffside ocean-view terrace at 1:00 AM, starry sky, glowing neon weed sign on the stone wall, comfortable lounge chairs, thick smoke rolling across the patio',
   'countryside farmhouse porch at 3:00 AM, rocking chairs, green and purple porch lights, crickets chirping, rolling up a fresh blunt in the cool night air',
   'abandoned urban rooftop hideout at midnight, city skyline in the distance, graffiti-covered walls, lawn chairs, fairy lights, and heavy smoke haze',
+  'sunken living room in a 1970s split-level house, conversation pit with orange shag cushions, wood paneling, lava lamps, thick smoke drifting through a sunbeam from the skylight',
+  'converted industrial warehouse loft, exposed steel beams and ductwork, huge factory windows, industrial pendant lights, a heavy glass bong on a steel workbench',
+  'tiny Tokyo capsule apartment at 3 AM, neon signs bleeding through frosted glass, futon on the floor, manga stacked in corners, a small bong on a low tray',
+  'Parisian attic studio under a mansard roof, sloped ceiling, rainy skylight, unmade bed, wine bottle, rolling papers on a paint-stained table',
+  'Moroccan riad courtyard at midnight, mosaic tile fountain, lanterns casting patterned light, cannabis plants in clay pots, cushions around a low brass table',
+  'Airstream trailer parked in the desert at 2 AM, warm string lights inside, turquoise upholstery, a bong on the tiny dinette, stars through the windows',
+  'basement recording studio, acoustic foam walls, mixing desk lit by VU meters, thick smoke, a bong balanced on a monitor speaker',
+  'vintage bookshop back room at midnight, floor-to-ceiling shelves, rolling ladder, dusty lamp light, a hidden sesh corner with a leather armchair',
+  'art deco hotel suite, curved velvet sofa, brass fixtures, tall windows over a rainy boulevard, crystal ashtray and a glass bong on the marble table',
+  'submarine-style bunker lounge, riveted steel walls, amber emergency lighting, bolted metal table with a bong and scattered papers',
+  'Japanese ryokan room at night, tatami mats, shoji screens, low table with a bong and tea set, paper lantern glow',
+  'glass igloo in the Arctic, aurora through the dome, fur throws, a bong on a wooden crate, breath fogging in the cold air',
+  'greenhouse train car parked on abandoned tracks, overgrown vines through broken windows, moonlight, cannabis plants reclaiming the seats',
+  '1950s diner after closing, chrome stools, checkered floor, neon sign buzzing outside, a bong on the counter beside a half-finished milkshake',
+  'underground speakeasy behind a bookcase door, velvet booths, jazz posters, dim amber sconces, thick smoke and a glass bong on the bar',
+  'treehouse bar built into an oak canopy, rope bridges, lanterns, cannabis plants potted along the railing, a bong on the plank counter',
+  'snowed-in alpine chalet, stone hearth, drying firewood, wool blankets, a bong on the low table beside a mug of something hot',
+  'retro arcade back room, cabinet glow, sticky carpet, a bong on the stool beside a pinball machine, smoke catching the CRT light',
+  'floating houseboat cabin, gentle water sounds, brass portholes, a bong on the galley table, mist over the river outside',
+  'converted chapel studio, stained glass throwing colour across the floor, vaulted ceiling, a bong on a stone ledge',
+  'rooftop greenhouse in a city, glass panels fogged, tomato and cannabis plants in rows, a bong on a potting bench',
+  'private library with a rolling ladder, leather chairs, green banker lamps, a bong on the reading table beside an open book',
+  'desert airstream camp at dusk, fire pit, folding chairs, cannabis plants in buckets, a bong on a crate and smoke against the sunset',
+  'bohemian beach shack, driftwood walls, open window with ocean sound, sarongs drying, a bong on a crate beside shells',
+  'old cinema projection booth, film reels stacked, dust in the projector beam, a bong on the console',
+  'Victorian parlour, heavy drapes, patterned wallpaper, tarnished silver tray with a bong and a decanter',
+  'mountain fire lookout tower, 360-degree windows, storm outside, a bong on the narrow desk, radio crackling',
+  'fairy-light strung garden shed, potting tools, terracotta pots, cannabis seedlings under a grow bulb, a bong on the workbench',
+  'underground parking garage at 3 AM, sodium lights, concrete pillars, a car with its door open, a bong on the hood',
+  'Scandinavian cabin with a glass roof, snowy pines above, sheepskin rugs, a bong on a pale wood table',
+  'art studio with half-finished canvases, turpentine smell, paint-splattered floor, a bong on a stool beside the easel',
+  'converted lighthouse lantern room, sweeping beam outside, circular windows, a bong on the iron railing ledge',
+  'hidden karaoke room, red velvet walls, mirrored ceiling, a bong on the table between microphones',
+  'winterized camper in a snowy field, condensation on the windows, blankets, a bong on the fold-out table',
+  'rooftop pool deck at night, glowing water, loungers, cannabis plants in planters, a bong on a side table',
+  'old train station waiting room, wooden benches, dusty light through tall windows, a bong on the ticket counter',
+  'basement workshop with power tools, pegboard walls, sawdust, a bong on the bench beside a half-built shelf',
+  'greenhouse attached to a farmhouse, misting system, tomato vines, a bong on a stack of seed trays',
+  'secluded hot spring at night, steam rising, snow on the rocks, a bong on a flat stone beside folded towels',
+  'attic bedroom with sloped beams, string lights, record player, a bong on the floor beside a mattress',
+  'abandoned observatory dome, telescope silhouette, dust motes in moonlight, a bong on the control desk',
+  'tiki bar on a pier at midnight, torches, thatch roof, cannabis plants in barrels, a bong on the bamboo counter',
+  'converted bank vault lounge, steel door open, led lighting, a bong on the polished floor beside cushions',
+  'snowbound bus shelter on a mountain pass, glass walls, emergency light, a bong on the bench, snowfall outside',
 ];
 
 export const GLASS_COLORS = [
@@ -591,7 +635,7 @@ export function generateFinalOpenCodePayload(
     style.bucket === 'anime_2d_toon'
       ? style.prompt.replace(/glossy blushed skin,?\s*/gi, '')
       : style.prompt;
-  // Weed room and hardware sit early � before the easter egg � so they land inside
+  // Weed room and hardware sit early ï¿½ before the easter egg ï¿½ so they land inside
   // the first CLIP chunk instead of being buried at token 130.
   const traits = (subjectTraits ?? '').replace(/[\r\n\t]+/g, ' ').replace(/[{}]/g, '').trim().slice(0, 120);
   const positive = `${SCORE_TAGS}, ${MEDIUM_FRONT[style.bucket]}, ${SUBJECT_ANCHOR[subject]}, ${SUBJECT_TAGS[subject]}${traits ? `, ${traits}` : ''}${bodyDetailPrompt}, ${styleText}, ${hardwareProp}, surrounded by ${env}, featuring ${easterEgg}${FRAMING_BY_BUCKET[style.bucket]}`;
