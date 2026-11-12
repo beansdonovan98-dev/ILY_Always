@@ -542,9 +542,10 @@ export const HUSBAND_GROOMING_OPTIONS = [
   'chest hair artfully groomed and trimmed into the shape of a cannabis leaf',
   'chest hair dyed vibrant neon green and styled into a weed leaf shape',
   'chest hair dyed rich electric purple',
-  'cleanly shaved smooth pubic area framed by intricate cannabis vine and leaf tattoos wrapping around the groin',
-  'natural body hair with delicate weed-leaf botanical tattoos inked around the pelvic region',
 ];
+
+/** Shared pubic styling: both of them get the same weed-leaf options. */
+export const PUBIC_WEED_STYLES = WIFE_PUBIC_WEED_STYLES;
 
 export const WIFE_PUBIC_WEED_STYLES = [
   'pubic hair neatly styled and trimmed into the precise shape of a cannabis leaf',
@@ -624,7 +625,7 @@ export function generateFinalOpenCodePayload(
     if (subject === 'wife') {
       bodyDetailPrompt = `, ${nudeBody}, wife intimate styling: ${wifePubic}, pubic hair ${pubicDye}`;
     } else if (subject === 'husband') {
-      bodyDetailPrompt = `, completely nude man, natural body, husband ${husbandGrooming}`;
+      bodyDetailPrompt = `, completely nude man, natural body, husband ${husbandGrooming}, pubic styling: ${wifePubic}, pubic hair ${pubicDye}`;
     } else {
       bodyDetailPrompt = `, ${nudeBody}, husband ${husbandGrooming}, wife intimate styling: ${wifePubic}, pubic hair ${pubicDye}`;
     }
