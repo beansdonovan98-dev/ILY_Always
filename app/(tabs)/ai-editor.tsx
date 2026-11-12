@@ -139,6 +139,9 @@ export default function AIEditorScreen() {
   const [selectedStyle, setSelectedStyle] = useState('tarot-card');
   const [stylePickerOpen, setStylePickerOpen] = useState(false);
   const [styleSearch, setStyleSearch] = useState('');
+  const [subjectMode, setSubjectMode] = useState<'wife' | 'husband' | 'couple'>('wife');
+  const [nude, setNude] = useState(true);
+  const [poseUri, setPoseUri] = useState('');
   // Hard click lock: state updates are async, so two quick taps can both fire.
   const busyRef = useRef(false);
 
@@ -227,6 +230,17 @@ export default function AIEditorScreen() {
     setEditStrokes(EMPTY_STROKES);
   }, []);
 
+  const pickPose = useCallback(async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 1,
+    });
+    if (result.canceled) return;
+    setPoseUri(result.assets[0].uri);
+  }, []);
+
   const runEdit = useCallback(async () => {
     if (!sourceUri) return;
     if (busyRef.current) return; // ignore accidental double-taps
@@ -259,7 +273,12 @@ export default function AIEditorScreen() {
         activeEdits,
         coupleId,
         (message) => setStatus(message),
-        { skipStyle: Boolean(resultUri) }
+        {
+          skipStyle: Boolean(resultUri),
+          subject: subjectMode,
+          nude,
+          poseImageUrl: poseUri || undefined,
+        }
       );
       setResultUri(edited);
       setStatus(
@@ -276,7 +295,7 @@ export default function AIEditorScreen() {
       setEditBurn(0);
       void bongHaptic();
     }
-  }, [sourceUri, resultUri, editPrompts, editStrokes, selectedStyle]);
+  }, [sourceUri, resultUri, editPrompts, editStrokes, selectedStyle, subjectMode, nude, poseUri]);
 
   const openBrush = useCallback((target: EditTarget) => {
     setBrushTarget(target);
@@ -506,6 +525,92 @@ export default function AIEditorScreen() {
           </Text>
           <Text style={[styles.styleSelectChevron, { color: appTheme.textColor }]}>⌄</Text>
         </Pressable>
+
+        <View style={styles.styleHeader}>
+          <Text style={styles.label}>Direction</Text>
+          <Text style={styles.styleHint}>Who and how</Text>
+        </View>
+
+        <View style={styles.segmentRow}>
+          {(['wife', 'husband', 'couple'] as const).map((mode) => {
+            const active = subjectMode === mode;
+            return (
+              <Pressable
+                key={mode}
+                onPress={() => setSubjectMode(mode)}
+                style={[
+                  styles.segment,
+                  { borderColor: appTheme.borderColor },
+                  active && { backgroundColor: appTheme.accentSoft, borderColor: appTheme.accentColor },
+                ]}>
+                <Text
+                  style={[
+                    styles.segmentText,
+                    { fontFamily: font, color: appTheme.textColor },
+                    active && { color: appTheme.accentColor },
+                  ]}>
+                  {mode === 'wife' ? 'Her' : mode === 'husband' ? 'Him' : 'Both'}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <View style={styles.segmentRow}>
+          {([true, false] as const).map((isNude) => {
+            const active = nude === isNude;
+            return (
+              <Pressable
+                key={String(isNude)}
+                onPress={() => setNude(isNude)}
+                style={[
+                  styles.segment,
+                  { borderColor: appTheme.borderColor },
+                  active && { backgroundColor: appTheme.accentSoft, borderColor: appTheme.accentColor },
+                ]}>
+                <Text
+                  style={[
+                    styles.segmentText,
+                    { fontFamily: font, color: appTheme.textColor },
+                    active && { color: appTheme.accentColor },
+                  ]}>
+                  {isNude ? 'Nude' : 'Clothed'}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <View style={[styles.editRow, { borderColor: appTheme.borderColor }]}>
+          <View style={styles.editRowHeader}>
+            <Text style={[styles.editRowTitle, { fontFamily: font, color: appTheme.textColor }]}>Pose</Text>
+            <Text style={[styles.editRowHint, { color: appTheme.textColor }]}>
+              {poseUri ? 'Reference set ✓' : 'Optional'}
+            </Text>
+          </View>
+          <Text style={[styles.editIntro, { color: appTheme.subtitleColor }]}>
+            Pick a reference photo and her body copies that pose. Her face and the style stay.
+          </Text>
+          <View style={styles.editRowActions}>
+            <Pressable
+              onPress={pickPose}
+              style={[styles.miniPill, { borderColor: appTheme.borderColor }]}>
+              <Text style={[styles.miniPillText, { fontFamily: font, color: appTheme.textColor }]}>
+                {poseUri ? 'Change pose' : 'Pick pose'}
+              </Text>
+            </Pressable>
+            {poseUri ? (
+              <Pressable onPress={() => setPoseUri('')} style={styles.clearMask}>
+                <Text style={[styles.clearMaskText, { fontFamily: font }]}>Clear</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          {poseUri ? (
+            <View style={[styles.poseThumbWrap, { borderColor: appTheme.borderColor }]}>
+              <ExpoImage source={{ uri: poseUri }} style={styles.poseThumb} contentFit="cover" />
+            </View>
+          ) : null}
+        </View>
 
         <View style={styles.styleHeader}>
           <Text style={styles.label}>Edits</Text>
@@ -869,6 +974,25 @@ const styles = StyleSheet.create({
   },
   styleSelectText: { fontSize: 15, fontWeight: '700' },
   styleSelectChevron: { fontSize: 20, fontWeight: '700', marginTop: -2 },
+  segmentRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  segment: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  segmentText: { fontSize: 13, fontWeight: '800' },
+  poseThumbWrap: {
+    marginTop: 10,
+    width: 96,
+    height: 96,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+  },
+  poseThumb: { width: '100%', height: '100%' },
   styleModalRoot: { flex: 1, justifyContent: 'flex-end' },
   styleBackdrop: {
     position: 'absolute',

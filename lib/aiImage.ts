@@ -269,7 +269,14 @@ export async function editImageWithStyle(
   edits: AIEdit[],
   coupleId?: string,
   onProgress?: AIEditProgress,
-  options?: { skipStyle?: boolean }
+  options?: {
+    skipStyle?: boolean;
+    /** Reference image whose pose the body adopts (OpenPose). */
+    poseImageUrl?: string;
+    subject?: 'wife' | 'husband' | 'couple';
+    nude?: boolean;
+    backgroundPrompt?: string;
+  }
 ): Promise<string> {
   const active = edits.filter((edit) => edit.prompt.trim().length > 0);
 
@@ -280,17 +287,21 @@ export async function editImageWithStyle(
     const styleRequestId = createAIRequestId();
 
     onProgress?.('Applying style...');
-    current = await runComfyJob(
-      {
-        action: 'style_start',
-        request_id: styleRequestId,
-        couple_id: coupleId,
-        imageBase64,
-        styleMode,
-      },
-      'style_status',
-      styleRequestId
-    );
+    const styleBody: Record<string, unknown> = {
+      action: 'style_start',
+      request_id: styleRequestId,
+      couple_id: coupleId,
+      imageBase64,
+      styleMode,
+    };
+    if (options?.subject) styleBody.subject = options.subject;
+    if (options?.nude === false) styleBody.isNude = false;
+    if (options?.backgroundPrompt?.trim()) styleBody.backgroundPrompt = options.backgroundPrompt.trim();
+    if (options?.poseImageUrl) {
+      styleBody.poseImageBase64 = await prepareImageBase64(options.poseImageUrl);
+    }
+
+    current = await runComfyJob(styleBody, 'style_status', styleRequestId);
 
     // Styles like 20s Era / Walmart / Dungeon own their scene. Run the
     // subject-protected background pass automatically so the room changes

@@ -584,6 +584,8 @@ export type BucketStyleWorkflowOptions = {
   loraStrength?: number;
   /** Separate positive stream for the room, combined at reduced strength. */
   backgroundPositive?: string;
+  /** Optional pose reference image; drives OpenPose instead of her silhouette. */
+  poseImage?: string;
   /** Composite the Team No Lackin neon sign and blend it into the scene. */
   neonSign?: boolean;
   /** Sampler CFG from the bucket config. */
@@ -893,11 +895,21 @@ export function buildBucketStyleWorkflow(
   }
 
   if (options.controlNet === 'openpose') {
-    // Pose only: where her head/shoulders/hands are, with zero human flesh volume.
+    // Pose only: where head/shoulders/hands are, with zero human flesh volume.
+    // With a pose reference, the skeleton comes from that image instead of her.
+    let poseRef: [string, number] = subjectRef;
+    if (options.poseImage) {
+      workflow['160'] = { class_type: 'LoadImage', inputs: { image: options.poseImage } };
+      workflow['161'] = {
+        class_type: 'ImageScale',
+        inputs: { image: ['160', 0], upscale_method: 'lanczos', width, height, crop: 'center' },
+      };
+      poseRef = ['161', 0];
+    }
     workflow['106'] = {
       class_type: 'OpenposePreprocessor',
       inputs: {
-        image: subjectRef,
+        image: poseRef,
         detect_hand: 'enable',
         detect_body: 'enable',
         detect_face: 'enable',

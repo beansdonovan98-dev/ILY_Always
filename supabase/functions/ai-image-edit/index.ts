@@ -1169,7 +1169,15 @@ async function handleStyleStart(
   styleMode: string,
   userPrompt: string,
   coupleId: string,
-  overrides?: { denoise?: number; faceIdWeight?: number; depthStrength?: number }
+  overrides?: {
+    denoise?: number;
+    faceIdWeight?: number;
+    depthStrength?: number;
+    subject?: SubjectMode;
+    isNude?: boolean;
+    backgroundPrompt?: string;
+    poseImageBase64?: string;
+  }
 ): Promise<Response> {
   const db = getDb();
   if (!db) {
@@ -1243,7 +1251,18 @@ async function handleStyleStart(
     // The app path now runs the same 98-style bucket system as the benchmark,
     // instead of the legacy STYLE_PRESETS family config.
     const cfg = bucketConfig(styleMode);
-    const payload = generateFinalOpenCodePayload(styleMode, 'wife', true, effectivePrompt);
+    const subject: SubjectMode = overrides?.subject ?? 'wife';
+    const isNude = overrides?.isNude !== false;
+    const backgroundPrompt = (overrides?.backgroundPrompt ?? '').trim() || effectivePrompt;
+    const payload = generateFinalOpenCodePayload(styleMode, subject, isNude, backgroundPrompt);
+
+    // Optional pose reference: uploaded and fed to OpenPose so the body adopts
+    // that skeleton while the LoRA and style keep her face and the medium.
+    let poseImage: string | undefined;
+    if (overrides?.poseImageBase64) {
+      const poseCheck = validateInputImage(overrides.poseImageBase64);
+      if (poseCheck.ok) poseImage = await uploadImageToComfy(poseCheck.raw);
+    }
     const width = cfg.portrait ? 832 : 1024;
     const height = cfg.portrait ? 1216 : 1024;
     const positive = [PONY_QUALITY, payload.positive].filter(Boolean).join(', ');
@@ -1264,7 +1283,8 @@ async function handleStyleStart(
     if (cfg.initFromSource === false) {
       workflow = buildBucketStyleWorkflow({
         ...common,
-        controlNet: cfg.controlNet,
+        controlNet: poseImage ? 'openpose' : cfg.controlNet,
+        poseImage,
         controlNetStrength: cfg.controlNetStrength,
         controlNetEndPercent: cfg.controlNetEndPercent,
         lineartStrength: cfg.lineartStrength,
@@ -2121,6 +2141,12 @@ serve(async (req) => {
         denoise: Number(body.denoise),
         faceIdWeight: Number(body.faceIdWeight),
         depthStrength: Number(body.depthStrength),
+        subject:
+          body.subject === 'husband' || body.subject === 'couple' ? body.subject : 'wife',
+        isNude: body.isNude !== false,
+        backgroundPrompt: typeof body.backgroundPrompt === 'string' ? body.backgroundPrompt : undefined,
+        poseImageBase64:
+          typeof body.poseImageBase64 === 'string' ? body.poseImageBase64 : undefined,
       });
     }
 
