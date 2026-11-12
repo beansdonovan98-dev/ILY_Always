@@ -1240,24 +1240,52 @@ async function handleStyleStart(
   try {
     const imageName = await uploadImageToComfy(imageCheck.raw);
 
-    const workflow = buildComfyWorkflow({
+    // The app path now runs the same 98-style bucket system as the benchmark,
+    // instead of the legacy STYLE_PRESETS family config.
+    const cfg = bucketConfig(styleMode);
+    const payload = generateFinalOpenCodePayload(styleMode, 'wife', true, effectivePrompt);
+    const width = cfg.portrait ? 832 : 1024;
+    const height = cfg.portrait ? 1216 : 1024;
+    const positive = [PONY_QUALITY, payload.positive].filter(Boolean).join(', ');
+    const negative = [BASE_NEGATIVE, payload.negative].filter(Boolean).join(', ');
+
+    const common = {
       imageName,
-      positive: `${buildStylePrompt(preset.prefix, effectivePrompt, styleMode)}${stylePromptSuffix(styleMode)}, ${
-        configForStyle(styleMode).quality === 'anime' ? ANIME_FACE_TAGS : STYLE_FACE_TAGS
-      }`,
-      negative: negativeForStyle(styleMode),
-      denoise,
+      positive,
+      negative,
       seed: Math.floor(Math.random() * 2_147_483_647),
       filenamePrefix: `ily_${requestId}`,
-      checkpoint: checkpointForStyle(styleMode),
-      faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',
-      faceIdWeight,
-      useControlNet: configForStyle(styleMode).controlNet,
-      depthStrength: overrides?.depthStrength,
-      useFaceSwap: configForStyle(styleMode).faceSwap,
-      useFaceDetail: false,
-      useFaceComposite: false,
-    });
+      checkpoint: Deno.env.get('COMFY_CHECKPOINT') || undefined,
+      width,
+      height,
+    };
+
+    let workflow: Record<string, unknown>;
+    if (cfg.initFromSource === false) {
+      workflow = buildBucketStyleWorkflow({
+        ...common,
+        controlNet: cfg.controlNet,
+        controlNetStrength: cfg.controlNetStrength,
+        controlNetEndPercent: cfg.controlNetEndPercent,
+        lineartStrength: cfg.lineartStrength,
+        lineartEndPercent: cfg.lineartEndPercent,
+        faceIdWeight: cfg.faceIdWeight,
+        faceIdLoraStrength: cfg.faceIdLoraStrength,
+        faceIdEndAt: cfg.faceIdEndAt,
+        faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',
+        initFromSource: cfg.initFromSource,
+        denoise: cfg.denoise,
+        loraName: LORA_FILES.wife,
+        loraStrength: cfg.loraStrength,
+        cfgScale: cfg.cfgScale,
+        backgroundPositive: payload.backgroundPositive,
+        neonSign: (Deno.env.get('COMFY_EASTER_EGG') ?? '1') !== '0',
+      });
+    } else if (bucketForStyle(styleMode) === 'realism_outfit_nsfw') {
+      workflow = buildRealismOutfitWorkflow({ ...common, editPositive: payload.positive });
+    } else {
+      workflow = buildRealismCompositeWorkflow(common);
+    }
 
     const promptRes = await fetch(`${await comfyBaseUrl()}/prompt`, {
       method: 'POST',

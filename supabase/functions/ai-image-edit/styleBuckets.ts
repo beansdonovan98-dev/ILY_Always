@@ -506,9 +506,17 @@ export function generateFinalOpenCodePayload(
   if (isNude) {
     const nudeBody = getRandomItem(NUDE_BODY_DETAILS);
     const hairDye = getRandomItem(HAIR_DYE_OPTIONS);
-    const husbandGrooming = getRandomItem(HUSBAND_GROOMING_OPTIONS);
     const wifePubic = getRandomItem(WIFE_PUBIC_WEED_STYLES);
-    bodyDetailPrompt = `, ${nudeBody}, head hair ${hairDye}, husband ${husbandGrooming}, wife intimate styling: ${wifePubic}`;
+    const husbandGrooming = getRandomItem(HUSBAND_GROOMING_OPTIONS);
+
+    // Grooming is subject-specific: a wife-only render must not inherit his.
+    if (subject === 'wife') {
+      bodyDetailPrompt = `, ${nudeBody}, head hair ${hairDye}, wife intimate styling: ${wifePubic}`;
+    } else if (subject === 'husband') {
+      bodyDetailPrompt = `, completely nude man, natural body, husband ${husbandGrooming}`;
+    } else {
+      bodyDetailPrompt = `, ${nudeBody}, head hair ${hairDye}, husband ${husbandGrooming}, wife intimate styling: ${wifePubic}`;
+    }
   } else {
     bodyDetailPrompt = `, ${getRandomItem(CLOTHED_OUTFIT_OPTIONS)}`;
   }

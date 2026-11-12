@@ -61,7 +61,7 @@ export const AI_STYLE_KEYS = [
   'dungeon',
   'myspace-glitter',
   'negative-space-invasion',
-  'drawn-to life',
+  'drawn-to-life',
   'magazine-ransom-note',
   'stained-glass',
   'album-cover',
