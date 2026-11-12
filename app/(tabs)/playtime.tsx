@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { AppText as Text } from '@/components/AppText';
 import { LeafBorder } from '@/components/CannabisLeaf';
@@ -57,6 +57,8 @@ export default function PlaytimeScreen() {
   const [draftMessage, setDraftMessage] = useState('');
   const [uploadStatus, setUploadStatus] = useState('');
   const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const chatScrollRef = useRef<any>(null);
   const [coupleId, setCoupleId] = useState<string>('');
 
   // Every time you leave and come back, the area locks again — re-reveal required.
@@ -231,6 +233,29 @@ export default function PlaytimeScreen() {
     setOpenComments((prev) => ({ ...prev, [id]: !prev[id] }));
   }, []);
 
+  /** Inline comments: same feel as the chat, stored on the media row. */
+  const sendComment = useCallback(
+    async (mediaId: string) => {
+      const text = (commentDrafts[mediaId] || '').trim();
+      if (!text) return;
+      const target = media.find((m) => m.id === mediaId);
+      if (!target) return;
+      const comment = {
+        id: `${Date.now()}`,
+        author: activeUser,
+        text,
+        created_at: new Date().toISOString(),
+      };
+      const next = [...(target.comments || []), comment];
+      setMedia((prev) => prev.map((m) => (m.id === mediaId ? { ...m, comments: next } : m)));
+      setCommentDrafts((prev) => ({ ...prev, [mediaId]: '' }));
+      try {
+        await updateMediaComments(mediaId, next);
+      } catch {}
+    },
+    [commentDrafts, media, activeUser]
+  );
+
   if (consent === null) {
     return (
       <View style={styles.gate}>
@@ -272,22 +297,23 @@ export default function PlaytimeScreen() {
         <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>Chat Log 💬</Text>} hint="Whisper something filthy to me, darling 😏💋" defaultStrain="WEDDING CAKE" stampRight="THC: 23.5%">
         <LeafBorder color={appTheme.leafColor} />
           {(() => {
-          const today = localDateKey();
-          const todayMsgs = messages.filter(
-            (m) => (m.dateKey ?? localDateKey(new Date(m.timestamp))) === today
-          );
+          const thread = messages;
           return (
             <>
-              <ScrollView style={styles.chatScroll} showsVerticalScrollIndicator>
+              <ScrollView
+                style={styles.chatScroll}
+                showsVerticalScrollIndicator
+                ref={chatScrollRef}
+                onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: true })}>
                 <View style={styles.chatBox}>
-                  {todayMsgs.map((m) => (
+                  {thread.map((m) => (
                   <View key={m.id} style={[styles.chatMsg, { borderColor: appTheme.borderColor }]}>
                     <Text style={styles.chatAuthor}>{USERS[m.author].label}</Text>
                     <Text style={styles.chatText}>{m.text}</Text>
                     <Text style={styles.chatTime}>{new Date(m.timestamp).toLocaleString()}</Text>
                   </View>
       ))}
-                {todayMsgs.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No messages yet today — yesterday's are in The Days of Old 🧙‍♂️</Text>}
+                {thread.length === 0 && <Text style={[styles.muted, { fontFamily: font }]}>No messages yet — say something filthy 💋</Text>}
               </View>
               </ScrollView>
               <View style={styles.row}>
@@ -324,9 +350,39 @@ export default function PlaytimeScreen() {
               <Pressable onPress={() => router.push(`/media/${m.id}`)} style={styles.editCaptionBtn}>
                 <Text style={styles.editCaptionText}>Edit caption</Text>
               </Pressable>
-              <Pressable onPress={() => router.push(`/media/${m.id}`)} style={styles.commentHeader}>
-                <Text style={styles.commentHeaderText}>Comments ({(m.comments || []).length}) — tap to open</Text>
+              <Pressable onPress={() => toggleComments(m.id)} style={styles.commentHeader}>
+                <Text style={styles.commentHeaderText}>
+                  Comments ({(m.comments || []).length}) {openComments[m.id] ? '▾' : '▸'}
+                </Text>
               </Pressable>
+              {openComments[m.id] ? (
+                <View style={styles.commentsBox}>
+                  {(m.comments || []).map((c) => (
+                    <View key={c.id} style={[styles.comment, { borderColor: appTheme.borderColor }]}>
+                      <Text style={styles.chatAuthor}>
+                        {USERS[c.author as UserKey]?.label || c.author}
+                      </Text>
+                      <Text style={styles.chatText}>{c.text}</Text>
+                      <Text style={styles.chatTime}>{new Date(c.created_at).toLocaleString()}</Text>
+                    </View>
+                  ))}
+                  <View style={styles.row}>
+                    <TextInput
+                      value={commentDrafts[m.id] || ''}
+                      onChangeText={(value) =>
+                        setCommentDrafts((prev) => ({ ...prev, [m.id]: value }))
+                      }
+                      placeholder="Add a comment..."
+                      style={[styles.input, { flex: 1 }]}
+                    />
+                    <Pressable
+                      style={[styles.btn, appTheme.buttonStyle]}
+                      onPress={() => sendComment(m.id)}>
+                      <Text style={styles.btnText}>Send</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : null}
             </View>
             );
           })}
