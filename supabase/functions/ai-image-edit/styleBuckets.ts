@@ -136,8 +136,8 @@ export const STYLE_DEFINITIONS: Record<string, StyleDefinition> = {
 
   // 3. ANIME 2D TOON (14) - Locked to 0.50 denoise & 0.85 strength for likeness protection
   'comic-book': { id: 'comic-book', bucket: 'anime_2d_toon', prompt: 'modern American superhero comic book art, Jim Lee style heavy black ink crosshatching, bold dynamic outlines, vibrant cel-shaded coloring', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
-  anime: { id: 'anime', bucket: 'anime_2d_toon', prompt: 'modern seasonal key visual anime illustration, Makoto Shinkai lighting, detailed glossy anime eyes, clean cel-shading, ', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
-  'adult-anime': { id: 'adult-anime', bucket: 'anime_2d_toon', prompt: 'mature late-night anime aesthetic, seductive expression, glossy blushed skin, detailed adult anime proportions, ', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  anime: { id: 'anime', bucket: 'anime_2d_toon', prompt: 'modern seasonal key visual anime illustration, Makoto Shinkai lighting, detailed glossy anime eyes, clean cel-shading, cinematic sky backdrop', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  'adult-anime': { id: 'adult-anime', bucket: 'anime_2d_toon', prompt: 'mature late-night anime aesthetic, seductive expression, glossy blushed skin, detailed adult anime proportions, moody bedroom lighting', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
   cartoon: { id: 'cartoon', bucket: 'anime_2d_toon', prompt: 'Saturday morning 2D Western cartoon character design, expressive bold outlines, flat vibrant vector colors, playful exaggerated proportions', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
   'powerpuff-girls': { id: 'powerpuff-girls', bucket: 'anime_2d_toon', prompt: 'Powerpuff Girls Craig McCracken 1998 cartoon style, chibi proportions, giant oval eyes, thick black vector outlines, pastel heart background', denoiseOverride: 0.72, loraStrengthOverride: 0.45 },
   'sticker-pack': { id: 'sticker-pack', bucket: 'anime_2d_toon', prompt: 'die-cut vinyl kiss-cut sticker design, thick white offset border around character, glossy vector chibi illustration, simple solid background', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
@@ -306,7 +306,7 @@ const PORTRAIT_BUCKETS: ReadonlySet<BucketId> = new Set<BucketId>([
 const FACE_ID_BY_BUCKET: Record<BucketId, { weight: number; lora: number; endAt: number }> = {
   realism_composite: { weight: 0.85, lora: 0.65, endAt: 0.85 },
   realism_outfit_nsfw: { weight: 0.85, lora: 0.65, endAt: 0.85 },
-  anime_2d_toon: { weight: 0.5, lora: 0.45, endAt: 0.5 },
+  anime_2d_toon: { weight: 0.35, lora: 0.35, endAt: 0.4 },
   toy_3d_sculpt: { weight: 0.35, lora: 0.35, endAt: 0.4 },
   fine_art_medium: { weight: 0.35, lora: 0.35, endAt: 0.4 },
   framed_card: { weight: 0.35, lora: 0.35, endAt: 0.4 },
@@ -374,7 +374,7 @@ export function loraForSubject(subject: SubjectMode): string | null {
 
 /** Trigger tokens. Only these go into the image prompt. */
 export const SUBJECT_TAGS: Record<SubjectMode, string> = {
-  wife: 'ashley, cherry red hair, vibrant red hair, wearing eyeglasses, wire-rim glasses',
+  wife: 'ashley, straight red hair, round wireframe glasses',
   husband: 'mbboi',
   couple: 'ashley with cherry red hair wearing glasses and mbboi',
 };
@@ -519,7 +519,7 @@ export function getRandomItem(arr: unknown[]): any {
 
 /** Subject anchor. Comes first so the model cannot fill the frame with scenery. */
 const SUBJECT_ANCHOR: Record<SubjectMode, string> = {
-  wife: '1girl, solo, nude woman, upper body, portrait, looking at viewer',
+  wife: '1girl, solo, nude woman, full body visible, standing, looking at viewer',
   husband: '1man, solo, nude man, upper body, portrait, looking at viewer',
   couple: '1girl and 1man, two people, nude couple, upper body, portrait',
 };
