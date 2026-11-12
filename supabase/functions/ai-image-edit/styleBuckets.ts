@@ -19,6 +19,10 @@ export type BucketParams = {
   faceIdEndAt?: number;
   /** true = img2img from her gray-replaced cutout. */
   initFromSource?: boolean;
+  /** Render at portrait 832x1216 instead of the source aspect. */
+  portrait?: boolean;
+  /** Subject LoRA strength override. */
+  loraStrength?: number;
   /** Scale for the subject when padded (0.7 leaves a 15% margin per side). */
   padScale?: number;
   faceIdWeight: number;
@@ -61,33 +65,37 @@ export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
   },
   anime_2d_toon: {
     checkpoint: 'pony',
-    controlNet: 'depth_line',
-    controlNetStrength: 0.3,
+    controlNet: 'anime_line',
+    controlNetStrength: 0.4,
     controlNetEndPercent: 0.4,
-    lineartStrength: 0.55,
-    lineartEndPercent: 0.6,
-    faceIdWeight: 0.65,
-    faceIdLoraStrength: 0.5,
-    faceIdEndAt: 0.65,
+    faceIdWeight: 0.35,
+    faceIdLoraStrength: 0.35,
+    faceIdEndAt: 0.4,
+    loraStrength: 0.85,
+    portrait: true,
     stylePrefix: 'source_anime, anime screencap, cel shading, vibrant saturated colors, bold flat color fill, clean 2d linework',
     negativeAdditions:
       'photorealistic, 35mm photograph, detailed skin pores, real person, 3d render, photograph, washed out, desaturated',
+    initFromSource: false,
     blurRadius: 0,
-    denoise: 0.5,
+    denoise: 1.0,
   },
   toy_3d_sculpt: {
     checkpoint: 'pony',
     controlNet: 'none',
     controlNetStrength: 0,
     controlNetEndPercent: 0,
-    faceIdWeight: 0.45,
+    faceIdWeight: 0.35,
     faceIdLoraStrength: 0.35,
-    faceIdEndAt: 0.5,
+    faceIdEndAt: 0.4,
+    loraStrength: 0.85,
+    portrait: true,
     stylePrefix: '3d render, macro collectible figure photography, stylized proportions',
     negativeAdditions: 'real human skin pores, 35mm photograph, flat 2d drawing',
     extraPositive: '(anatomically correct adult collectible figure, explicit nude anatomy:1.15)',
+    initFromSource: false,
     blurRadius: 0,
-    denoise: 0.5,
+    denoise: 1.0,
   },
   fine_art_medium: {
     checkpoint: 'pony',
@@ -110,28 +118,31 @@ export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
     controlNet: 'none',
     controlNetStrength: 0,
     controlNetEndPercent: 0,
-    faceIdWeight: 0.8,
-    faceIdLoraStrength: 0.6,
-    faceIdEndAt: 0.75,
+    faceIdWeight: 0.35,
+    faceIdLoraStrength: 0.35,
+    faceIdEndAt: 0.4,
+    loraStrength: 0.85,
+    portrait: true,
     stylePrefix: 'centered framed graphic design layout, ornate border composition',
     negativeAdditions: 'cropped border, cut off frame',
-    padSubject: true,
-    padScale: 0.5,
+    initFromSource: false,
     blurRadius: 0,
-    denoise: 0.5,
+    denoise: 1.0,
   },
   macro_object_embed: {
     checkpoint: 'pony',
     controlNet: 'none',
     controlNetStrength: 0,
     controlNetEndPercent: 0,
-    faceIdWeight: 0.65,
-    faceIdLoraStrength: 0.5,
-    faceIdEndAt: 0.65,
+    faceIdWeight: 0.35,
+    faceIdLoraStrength: 0.35,
+    faceIdEndAt: 0.4,
+    loraStrength: 0.85,
     stylePrefix: 'wide angle macro scene, high detail object composition',
     negativeAdditions: 'close-up selfie, cropped frame',
+    initFromSource: false,
     blurRadius: 0,
-    denoise: 0.55,
+    denoise: 1.0,
   },
 };
 

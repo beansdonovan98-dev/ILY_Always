@@ -1696,6 +1696,10 @@ async function handleBenchmarkStart(
     const scale = Math.min(1, 1024 / Math.max(srcW, srcH));
     const width = Math.max(512, Math.round((srcW * scale) / 8) * 8);
     const height = Math.max(512, Math.round((srcH * scale) / 8) * 8);
+    // Stylized buckets render portrait so the scene has room around her instead of
+    // being a pasted close-up filling 85% of the frame.
+    const outWidth = cfg.portrait ? 832 : width;
+    const outHeight = cfg.portrait ? 1216 : height;
 
     const common = {
       imageName,
@@ -1704,8 +1708,8 @@ async function handleBenchmarkStart(
       seed: Math.floor(Math.random() * 2_147_483_647),
       filenamePrefix: `ily_bench_${requestId.slice(-8)}`,
       checkpoint: Deno.env.get('COMFY_CHECKPOINT') || undefined,
-      width,
-      height,
+      width: outWidth,
+      height: outHeight,
     };
 
     let workflow: Record<string, unknown>;
@@ -1775,7 +1779,7 @@ async function handleBenchmarkStart(
         initFromSource: cfg.initFromSource,
         padScale: cfg.padScale,
         loraName: Deno.env.get('COMFY_SUBJECT_LORA') || 'ashley_v1_1200_steps_00001_.safetensors',
-        loraStrength: 0.7,
+        loraStrength: cfg.loraStrength ?? 0.7,
         faceIdWeight: cfg.faceIdWeight,
         faceIdLoraStrength: cfg.faceIdLoraStrength,
         faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',
