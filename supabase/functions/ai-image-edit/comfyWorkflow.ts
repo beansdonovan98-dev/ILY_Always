@@ -887,7 +887,9 @@ export function buildBucketStyleWorkflow(
   if (options.controlNet === 'anime_line' || options.controlNet === 'depth_line') {
     // Lineart is traced from the RMBG cutout on pure black, so it outlines her
     // body only. Tracing the raw photo made the sampler rebuild her real bedroom.
-    workflow['103'] = { class_type: 'AnimeLineArtPreprocessor', inputs: { image: ['84', 0] } };
+    workflow['103'] = { class_type: 'AnimeLineArtPreprocessor', inputs: { image: ['87', 0] } };
+    // AnimeLineArt emits BLACK lines on WHITE; Canny expects WHITE on BLACK.
+    workflow['180'] = { class_type: 'ImageInvert', inputs: { image: ['103', 0] } };
     workflow['104'] = {
       class_type: 'ControlNetLoader',
       inputs: { control_net_name: 'diffusers_xl_canny_full.safetensors' },
@@ -898,7 +900,7 @@ export function buildBucketStyleWorkflow(
         positive: posRef,
         negative: negRef,
         control_net: ['104', 0],
-        image: ['103', 0],
+        image: ['180', 0],
         strength: options.controlNet === 'anime_line' ? options.controlNetStrength : options.lineartStrength ?? 0.55,
         start_percent: 0,
         end_percent: options.controlNet === 'anime_line' ? options.controlNetEndPercent : options.lineartEndPercent ?? 0.65,
