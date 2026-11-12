@@ -964,7 +964,10 @@ export function buildBucketStyleWorkflow(
         sampler_name: 'dpmpp_2m',
         scheduler: 'karras',
         denoise: 0.05,
-        model: ['86', 0],
+        model:
+          options.useFaceId === false
+            ? (options.loraName ? ['71', 0] : ['72', 0])
+            : ['86', 0],
         positive: posRef,
         negative: negRef,
         latent_image: ['150', 0],
