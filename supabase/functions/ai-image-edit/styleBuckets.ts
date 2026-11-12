@@ -549,8 +549,8 @@ export const HUSBAND_GROOMING_OPTIONS = [
 export const WIFE_PUBIC_WEED_STYLES = [
   'pubic hair neatly styled and trimmed into the precise shape of a cannabis leaf',
   'cleanly shaven smooth pubic area adorned with intricate cannabis vine and leaf tattoos framing the vulva',
-  'natural full pubic bush dyed vibrant neon green',
-  'natural full pubic bush dyed rich electric purple',
+  'natural full pubic bush dyed vibrant neon green, trimmed into a cannabis leaf shape',
+  'natural full pubic bush dyed rich electric purple, trimmed into a cannabis leaf shape',
   'natural full pubic hair with a clean, sharply manicured cannabis leaf shape carved into the center',
   'smooth shaved pubic area with delicate glowing cannabis leaf line-art tattoos framing the groin',
 ];
@@ -614,17 +614,19 @@ export function generateFinalOpenCodePayload(
   let bodyDetailPrompt = '';
   if (isNude) {
     const nudeBody = getRandomItem(NUDE_BODY_DETAILS);
-    const hairDye = getRandomItem(HAIR_DYE_OPTIONS);
+    const pubicDye = getRandomItem(HAIR_DYE_OPTIONS);
     const wifePubic = getRandomItem(WIFE_PUBIC_WEED_STYLES);
     const husbandGrooming = getRandomItem(HUSBAND_GROOMING_OPTIONS);
 
     // Grooming is subject-specific: a wife-only render must not inherit his.
+    // The dye belongs to the pubic styling only — head hair stays cherry red
+    // from SUBJECT_TAGS.
     if (subject === 'wife') {
-      bodyDetailPrompt = `, ${nudeBody}, head hair ${hairDye}, wife intimate styling: ${wifePubic}`;
+      bodyDetailPrompt = `, ${nudeBody}, wife intimate styling: ${wifePubic}, pubic hair ${pubicDye}`;
     } else if (subject === 'husband') {
       bodyDetailPrompt = `, completely nude man, natural body, husband ${husbandGrooming}`;
     } else {
-      bodyDetailPrompt = `, ${nudeBody}, head hair ${hairDye}, husband ${husbandGrooming}, wife intimate styling: ${wifePubic}`;
+      bodyDetailPrompt = `, ${nudeBody}, husband ${husbandGrooming}, wife intimate styling: ${wifePubic}, pubic hair ${pubicDye}`;
     }
   } else {
     bodyDetailPrompt = `, ${getRandomItem(CLOTHED_OUTFIT_OPTIONS)}`;
