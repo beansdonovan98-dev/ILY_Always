@@ -336,6 +336,521 @@ export function buildComfyWorkflow(options: ComfyWorkflowOptions): Record<string
   return workflow;
 }
 
+export type RealismWorkflowOptions = {
+  imageName: string;
+  positive: string;
+  negative: string;
+  editPositive?: string;
+  seed: number;
+  filenamePrefix: string;
+  checkpoint?: string;
+  width: number;
+  height: number;
+};
+
+function realismBase(options: RealismWorkflowOptions): Record<string, unknown> {
+  const checkpoint = options.checkpoint || 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors';
+  const width = Math.max(512, Math.round(options.width / 8) * 8);
+  const height = Math.max(512, Math.round(options.height / 8) * 8);
+
+  return {
+    '72': { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: checkpoint } },
+    '81': { class_type: 'CLIPSetLastLayer', inputs: { stop_at_clip_layer: -2, clip: ['72', 1] } },
+    '73': { class_type: 'CLIPTextEncode', inputs: { text: options.positive, clip: ['81', 0] } },
+    '74': { class_type: 'CLIPTextEncode', inputs: { text: options.negative, clip: ['81', 0] } },
+    '75': { class_type: 'LoadImage', inputs: { image: options.imageName } },
+    '80': {
+      class_type: 'ImageScaleToMaxDimension',
+      inputs: { upscale_method: 'area', largest_size: 1536, image: ['75', 0] },
+    },
+    '200': {
+      class_type: 'ImageScale',
+      inputs: { image: ['75', 0], upscale_method: 'lanczos', width, height, crop: 'disabled' },
+    },
+    '84': {
+      class_type: 'RMBG',
+      inputs: {
+        image: ['200', 0],
+        model: 'RMBG-2.0',
+        sensitivity: 1.0,
+        process_res: 1024,
+        mask_blur: 0,
+        mask_offset: 0,
+        invert_output: false,
+        refine_foreground: true,
+        background: 'Alpha',
+        background_color: '#222222',
+      },
+    },
+    '95': { class_type: 'GrowMask', inputs: { mask: ['84', 1], expand: 4, tapered_corners: true } },
+    '96': {
+      class_type: 'ImpactGaussianBlurMask',
+      inputs: { mask: ['95', 0], kernel_size: 12, sigma: 6 },
+    },
+    '201': { class_type: 'EmptyLatentImage', inputs: { width, height, batch_size: 1 } },
+    '202': {
+      class_type: 'KSampler',
+      inputs: {
+        seed: options.seed,
+        steps: 30,
+        cfg: 5.5,
+        sampler_name: 'dpmpp_2m',
+        scheduler: 'karras',
+        denoise: 1.0,
+        model: ['72', 0],
+        positive: ['73', 0],
+        negative: ['74', 0],
+        latent_image: ['201', 0],
+      },
+    },
+    '203': { class_type: 'VAEDecode', inputs: { samples: ['202', 0], vae: ['72', 2] } },
+    '204': {
+      class_type: 'ImageCompositeMasked',
+      inputs: {
+        destination: ['203', 0],
+        source: ['200', 0],
+        x: 0,
+        y: 0,
+        resize_source: false,
+        mask: ['96', 0],
+      },
+    },
+    // Face mask from the original subject; used to exclude the face from
+    // harmonization and body edits.
+    '113': {
+      class_type: 'MediaPipeFaceMeshToSEGS',
+      inputs: {
+        image: ['200', 0],
+        crop_factor: 3.0,
+        bbox_fill: false,
+        crop_min_size: 50,
+        drop_size: 1,
+        dilation: 0,
+        face: true,
+        mouth: false,
+        left_eyebrow: false,
+        left_eye: false,
+        left_pupil: false,
+        right_eyebrow: false,
+        right_eye: false,
+        right_pupil: false,
+      },
+    },
+    '122': {
+      class_type: 'ImpactSEGSOrderedFilter',
+      inputs: { segs: ['113', 0], target: 'area(=w*h)', order: true, take_start: 0, take_count: 1 },
+    },
+    '116': { class_type: 'SegsToCombinedMask', inputs: { segs: ['122', 0] } },
+    '117': { class_type: 'GrowMask', inputs: { mask: ['116', 0], expand: 0, tapered_corners: true } },
+    '118': { class_type: 'SolidMask', inputs: { value: 1.0, width, height } },
+    '119': {
+      class_type: 'MaskComposite',
+      inputs: { destination: ['118', 0], source: ['117', 0], x: 0, y: 0, operation: 'subtract' },
+    },
+    '120': {
+      class_type: 'ImpactGaussianBlurMask',
+      inputs: { mask: ['119', 0], kernel_size: 10, sigma: 5 },
+    },
+    '124': {
+      class_type: 'CLIPTextEncode',
+      inputs: { text: HARMONIZE_POSITIVE, clip: ['81', 0] },
+    },
+  };
+}
+
+/** Mode 1A: new background + exact subject composite + face-protected blend. */
+export function buildRealismCompositeWorkflow(
+  options: RealismWorkflowOptions
+): Record<string, unknown> {
+  const workflow = realismBase(options);
+  workflow['205'] = { class_type: 'VAEEncode', inputs: { pixels: ['204', 0], vae: ['72', 2] } };
+  workflow['206'] = {
+    class_type: 'SetLatentNoiseMask',
+    inputs: { samples: ['205', 0], mask: ['120', 0] },
+  };
+  workflow['207'] = {
+    class_type: 'KSampler',
+    inputs: {
+      seed: options.seed + 1,
+      steps: 12,
+      cfg: 5.0,
+      sampler_name: 'dpmpp_2m',
+      scheduler: 'karras',
+      denoise: 0.16,
+      model: ['72', 0],
+      positive: ['124', 0],
+      negative: ['74', 0],
+      latent_image: ['206', 0],
+    },
+  };
+  workflow['208'] = { class_type: 'VAEDecode', inputs: { samples: ['207', 0], vae: ['72', 2] } };
+  workflow['79'] = {
+    class_type: 'SaveImage',
+    inputs: { filename_prefix: options.filenamePrefix, images: ['208', 0] },
+  };
+  return workflow;
+}
+
+/** Mode 1B: new background + body/outfit edit with face fully excluded. */
+export function buildRealismOutfitWorkflow(
+  options: RealismWorkflowOptions
+): Record<string, unknown> {
+  const workflow = realismBase(options);
+  // Body mask = foreground minus face. Background and face stay untouched.
+  workflow['121'] = {
+    class_type: 'MaskComposite',
+    inputs: { destination: ['95', 0], source: ['117', 0], x: 0, y: 0, operation: 'subtract' },
+  };
+  workflow['123'] = {
+    class_type: 'ImpactGaussianBlurMask',
+    inputs: { mask: ['121', 0], kernel_size: 10, sigma: 5 },
+  };
+  workflow['209'] = {
+    class_type: 'CLIPTextEncode',
+    inputs: { text: options.editPositive || options.positive, clip: ['81', 0] },
+  };
+  workflow['210'] = { class_type: 'VAEEncode', inputs: { pixels: ['204', 0], vae: ['72', 2] } };
+  workflow['211'] = {
+    class_type: 'SetLatentNoiseMask',
+    inputs: { samples: ['210', 0], mask: ['123', 0] },
+  };
+  workflow['212'] = {
+    class_type: 'KSampler',
+    inputs: {
+      seed: options.seed + 2,
+      steps: 24,
+      cfg: 5.5,
+      sampler_name: 'dpmpp_2m',
+      scheduler: 'karras',
+      denoise: 0.6,
+      model: ['72', 0],
+      positive: ['209', 0],
+      negative: ['74', 0],
+      latent_image: ['211', 0],
+    },
+  };
+  workflow['213'] = { class_type: 'VAEDecode', inputs: { samples: ['212', 0], vae: ['72', 2] } };
+  workflow['205'] = { class_type: 'VAEEncode', inputs: { pixels: ['213', 0], vae: ['72', 2] } };
+  workflow['206'] = {
+    class_type: 'SetLatentNoiseMask',
+    inputs: { samples: ['205', 0], mask: ['120', 0] },
+  };
+  workflow['207'] = {
+    class_type: 'KSampler',
+    inputs: {
+      seed: options.seed + 3,
+      steps: 12,
+      cfg: 5.0,
+      sampler_name: 'dpmpp_2m',
+      scheduler: 'karras',
+      denoise: 0.16,
+      model: ['72', 0],
+      positive: ['124', 0],
+      negative: ['74', 0],
+      latent_image: ['206', 0],
+    },
+  };
+  workflow['208'] = { class_type: 'VAEDecode', inputs: { samples: ['207', 0], vae: ['72', 2] } };
+  workflow['79'] = {
+    class_type: 'SaveImage',
+    inputs: { filename_prefix: options.filenamePrefix, images: ['208', 0] },
+  };
+  return workflow;
+}
+
+export type BucketStyleWorkflowOptions = {
+  imageName: string;
+  positive: string;
+  negative: string;
+  seed: number;
+  filenamePrefix: string;
+  checkpoint?: string;
+  width: number;
+  height: number;
+  controlNet: 'depth' | 'anime_line' | 'none';
+  controlNetStrength: number;
+  controlNetEndPercent: number;
+  faceIdWeight: number;
+  faceIdLoraStrength: number;
+  faceIdProvider?: string;
+};
+
+/** EmptyLatent style pass for anime/toy/fine-art/framed/macro buckets. */
+export function buildBucketStyleWorkflow(
+  options: BucketStyleWorkflowOptions
+): Record<string, unknown> {
+  const checkpoint = options.checkpoint || 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors';
+  const width = Math.max(512, Math.round(options.width / 8) * 8);
+  const height = Math.max(512, Math.round(options.height / 8) * 8);
+
+  const workflow: Record<string, unknown> = {
+    '72': { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: checkpoint } },
+    '81': { class_type: 'CLIPSetLastLayer', inputs: { stop_at_clip_layer: -2, clip: ['72', 1] } },
+    '73': { class_type: 'CLIPTextEncode', inputs: { text: options.positive, clip: ['81', 0] } },
+    '74': { class_type: 'CLIPTextEncode', inputs: { text: options.negative, clip: ['81', 0] } },
+    '75': { class_type: 'LoadImage', inputs: { image: options.imageName } },
+    '80': {
+      class_type: 'ImageScaleToMaxDimension',
+      inputs: { upscale_method: 'area', largest_size: 1536, image: ['75', 0] },
+    },
+    '84': {
+      class_type: 'RMBG',
+      inputs: {
+        image: ['80', 0],
+        model: 'RMBG-2.0',
+        sensitivity: 1.0,
+        process_res: 1024,
+        mask_blur: 0,
+        mask_offset: 0,
+        invert_output: false,
+        refine_foreground: true,
+        background: 'Alpha',
+        background_color: '#222222',
+      },
+    },
+    '85': {
+      class_type: 'IPAdapterUnifiedLoaderFaceID',
+      inputs: {
+        preset: 'FACEID',
+        lora_strength: options.faceIdLoraStrength,
+        provider: options.faceIdProvider || 'CPU',
+        model: ['72', 0],
+      },
+    },
+    '86': {
+      class_type: 'IPAdapterFaceID',
+      inputs: {
+        weight: options.faceIdWeight,
+        weight_faceidv2: 1,
+        weight_type: 'linear',
+        combine_embeds: 'concat',
+        start_at: 0,
+        end_at: 1,
+        embeds_scaling: 'V only',
+        model: ['85', 0],
+        ipadapter: ['85', 1],
+        image: ['80', 0],
+      },
+    },
+    '201': { class_type: 'EmptyLatentImage', inputs: { width, height, batch_size: 1 } },
+    '77': {
+      class_type: 'KSampler',
+      inputs: {
+        seed: options.seed,
+        steps: 30,
+        cfg: 5.5,
+        sampler_name: 'dpmpp_2m',
+        scheduler: 'karras',
+        denoise: 1.0,
+        model: ['86', 0],
+        positive: ['73', 0],
+        negative: ['74', 0],
+        latent_image: ['201', 0],
+      },
+    },
+    '78': { class_type: 'VAEDecode', inputs: { samples: ['77', 0], vae: ['72', 2] } },
+    '79': { class_type: 'SaveImage', inputs: { filename_prefix: options.filenamePrefix, images: ['78', 0] } },
+  };
+
+  if (options.controlNet !== 'none' && options.controlNetStrength > 0) {
+    if (options.controlNet === 'depth') {
+      workflow['102'] = { class_type: 'Zoe-DepthMapPreprocessor', inputs: { image: ['84', 0] } };
+      workflow['103'] = {
+        class_type: 'ControlNetLoader',
+        inputs: { control_net_name: 'SDXL/depth-zoe-xl-v1.0-controlnet.safetensors' },
+      };
+    } else {
+      // AnimeLineArt outputs clean lines; the Canny ControlNet accepts them.
+      workflow['102'] = { class_type: 'AnimeLineArtPreprocessor', inputs: { image: ['84', 0] } };
+      workflow['103'] = {
+        class_type: 'ControlNetLoader',
+        inputs: { control_net_name: 'diffusers_xl_canny_full.safetensors' },
+      };
+    }
+    workflow['104'] = {
+      class_type: 'ControlNetApplyAdvanced',
+      inputs: {
+        positive: ['73', 0],
+        negative: ['74', 0],
+        control_net: ['103', 0],
+        image: ['102', 0],
+        strength: options.controlNetStrength,
+        start_percent: 0,
+        end_percent: options.controlNetEndPercent,
+      },
+    };
+    (workflow['77'] as { inputs: Record<string, unknown> }).inputs.positive = ['104', 0];
+    (workflow['77'] as { inputs: Record<string, unknown> }).inputs.negative = ['104', 1];
+  }
+
+  return workflow;
+}
+
+export type RipShirtWorkflowOptions = {
+  imageName: string;
+  hostPositive: string;
+  portraitPositive: string;
+  negative: string;
+  seed: number;
+  filenamePrefix: string;
+  checkpoint?: string;
+  width: number;
+  height: number;
+  faceIdWeight: number;
+  faceIdLoraStrength: number;
+  faceIdProvider?: string;
+};
+
+/** Two-pass macro: King Von in a blank tee + her portrait printed on the chest. */
+export function buildRipShirtWorkflow(
+  options: RipShirtWorkflowOptions
+): Record<string, unknown> {
+  const checkpoint = options.checkpoint || 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors';
+  const width = Math.max(512, Math.round(options.width / 8) * 8);
+  const height = Math.max(512, Math.round(options.height / 8) * 8);
+  const chestX = Math.round(width * 0.34);
+  const chestY = Math.round(height * 0.30);
+  const chestW = Math.round(width * 0.32);
+  const chestH = Math.round(height * 0.32);
+
+  return {
+    '72': { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: checkpoint } },
+    '81': { class_type: 'CLIPSetLastLayer', inputs: { stop_at_clip_layer: -2, clip: ['72', 1] } },
+    '73': { class_type: 'CLIPTextEncode', inputs: { text: options.hostPositive, clip: ['81', 0] } },
+    '74': { class_type: 'CLIPTextEncode', inputs: { text: options.negative, clip: ['81', 0] } },
+    // Host: King Von in a blank black tee.
+    '201': { class_type: 'EmptyLatentImage', inputs: { width, height, batch_size: 1 } },
+    '202': {
+      class_type: 'KSampler',
+      inputs: {
+        seed: options.seed,
+        steps: 30,
+        cfg: 5.5,
+        sampler_name: 'dpmpp_2m',
+        scheduler: 'karras',
+        denoise: 1.0,
+        model: ['72', 0],
+        positive: ['73', 0],
+        negative: ['74', 0],
+        latent_image: ['201', 0],
+      },
+    },
+    '203': { class_type: 'VAEDecode', inputs: { samples: ['202', 0], vae: ['72', 2] } },
+    // Portrait branch: her likeness on a clean graphic.
+    '75': { class_type: 'LoadImage', inputs: { image: options.imageName } },
+    '80': {
+      class_type: 'ImageScaleToMaxDimension',
+      inputs: { upscale_method: 'area', largest_size: 1536, image: ['75', 0] },
+    },
+    '85': {
+      class_type: 'IPAdapterUnifiedLoaderFaceID',
+      inputs: {
+        preset: 'FACEID',
+        lora_strength: options.faceIdLoraStrength,
+        provider: options.faceIdProvider || 'CPU',
+        model: ['72', 0],
+      },
+    },
+    '86': {
+      class_type: 'IPAdapterFaceID',
+      inputs: {
+        weight: options.faceIdWeight,
+        weight_faceidv2: 1,
+        weight_type: 'linear',
+        combine_embeds: 'concat',
+        start_at: 0,
+        end_at: 1,
+        embeds_scaling: 'V only',
+        model: ['85', 0],
+        ipadapter: ['85', 1],
+        image: ['80', 0],
+      },
+    },
+    '206': {
+      class_type: 'CLIPTextEncode',
+      inputs: { text: options.portraitPositive, clip: ['81', 0] },
+    },
+    '204': { class_type: 'EmptyLatentImage', inputs: { width, height, batch_size: 1 } },
+    '205': {
+      class_type: 'KSampler',
+      inputs: {
+        seed: options.seed + 1,
+        steps: 30,
+        cfg: 5.5,
+        sampler_name: 'dpmpp_2m',
+        scheduler: 'karras',
+        denoise: 1.0,
+        model: ['86', 0],
+        positive: ['206', 0],
+        negative: ['74', 0],
+        latent_image: ['204', 0],
+      },
+    },
+    '207': { class_type: 'VAEDecode', inputs: { samples: ['205', 0], vae: ['72', 2] } },
+    // Cover-fit the portrait to the full canvas, then mask only the chest.
+    '208': {
+      class_type: 'ImageScale',
+      inputs: {
+        image: ['207', 0],
+        upscale_method: 'lanczos',
+        width,
+        height,
+        crop: 'center',
+      },
+    },
+    '209': { class_type: 'SolidMask', inputs: { value: 0.0, width, height } },
+    '210': { class_type: 'SolidMask', inputs: { value: 1.0, width: chestW, height: chestH } },
+    '211': {
+      class_type: 'MaskComposite',
+      inputs: {
+        destination: ['209', 0],
+        source: ['210', 0],
+        x: chestX,
+        y: chestY,
+        operation: 'add',
+      },
+    },
+    '212': {
+      class_type: 'ImpactGaussianBlurMask',
+      inputs: { mask: ['211', 0], kernel_size: 8, sigma: 4 },
+    },
+    '213': {
+      class_type: 'ImageCompositeMasked',
+      inputs: {
+        destination: ['203', 0],
+        source: ['208', 0],
+        x: 0,
+        y: 0,
+        resize_source: false,
+        mask: ['212', 0],
+      },
+    },
+    // Light print/fabric blend only inside the chest area.
+    '214': { class_type: 'VAEEncode', inputs: { pixels: ['213', 0], vae: ['72', 2] } },
+    '215': {
+      class_type: 'SetLatentNoiseMask',
+      inputs: { samples: ['214', 0], mask: ['212', 0] },
+    },
+    '216': {
+      class_type: 'KSampler',
+      inputs: {
+        seed: options.seed + 2,
+        steps: 16,
+        cfg: 5.0,
+        sampler_name: 'dpmpp_2m',
+        scheduler: 'karras',
+        denoise: 0.25,
+        model: ['72', 0],
+        positive: ['73', 0],
+        negative: ['74', 0],
+        latent_image: ['215', 0],
+      },
+    },
+    '217': { class_type: 'VAEDecode', inputs: { samples: ['216', 0], vae: ['72', 2] } },
+    '79': { class_type: 'SaveImage', inputs: { filename_prefix: options.filenamePrefix, images: ['217', 0] } },
+  };
+}
+
 export type GeneratedBackgroundOptions = {
   imageName: string;
   positive: string;

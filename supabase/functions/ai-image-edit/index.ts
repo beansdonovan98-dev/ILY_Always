@@ -6,8 +6,13 @@ import {
   buildComfyWorkflow,
   buildGeneratedBackgroundWorkflow,
   buildInpaintWorkflow,
+  buildBucketStyleWorkflow,
+  buildRealismCompositeWorkflow,
+  buildRealismOutfitWorkflow,
+  buildRipShirtWorkflow,
   InpaintMaskSource,
 } from './comfyWorkflow.ts';
+import { bucketConfig, bucketForStyle } from './styleBuckets.ts';
 import { buildBrushMaskPng } from './maskPng.ts';
 
 const corsHeaders = {
@@ -1543,6 +1548,177 @@ async function handleBackgroundGenerate(
   }
 }
 
+/** Benchmark router for the two realism modes (1A composite, 1B outfit/NSFW). */
+async function handleBenchmarkStart(
+  body: Record<string, unknown>,
+  requestId: string,
+  coupleId: string
+): Promise<Response> {
+  const db = getDb();
+  if (!db) {
+    return json(500, { error: 'SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not available.' });
+  }
+
+  const styleMode = String(body.styleMode ?? '').trim();
+  const bucket = bucketForStyle(styleMode);
+  if (bucket !== 'realism_composite' && bucket !== 'realism_outfit_nsfw') {
+    return json(400, { error: `Benchmark route not implemented for bucket "${bucket}".` });
+  }
+
+  let source: ResolvedImage;
+  try {
+    source = await resolveSourceImage(body);
+  } catch (e) {
+    return json(400, { error: e instanceof Error ? e.message : String(e) });
+  }
+  const imageCheck = validateImageBytes(source.bytes);
+  if (!imageCheck.ok) return json(400, { error: imageCheck.error });
+
+  const { data: inserted, error: insertError } = await db
+    .from('ai_image_jobs')
+    .insert({ request_id: requestId, status: 'PENDING', couple_id: coupleId || null })
+    .select('*')
+    .maybeSingle();
+  let row = (inserted as JobRow | null) ?? null;
+  if (insertError && insertError.code !== '23505') {
+    return json(500, { error: `Could not create AI job: ${insertError.message}` });
+  }
+  if (!row) {
+    row = await getJobRow(db, requestId);
+    if (!row) return json(500, { error: 'AI job disappeared while being created.' });
+    if (row.job_id || row.status === 'COMPLETED' || isFailedStatus(row.status)) {
+      return json(200, { requestId, jobId: row.job_id, status: row.status, error: row.error });
+    }
+    const updatedAt = Date.parse(row.updated_at || row.created_at);
+    const stale = !Number.isFinite(updatedAt) || Date.now() - updatedAt > STALE_PENDING_MS;
+    if (!stale) return json(200, { requestId, status: 'PENDING' });
+    await db
+      .from('ai_image_jobs')
+      .update({ status: 'PENDING', error: null, updated_at: new Date().toISOString() })
+      .eq('request_id', requestId);
+  }
+
+  try {
+    const imageName = await uploadBytesToComfy(source.bytes, source.mimeType, 'bench');
+    const cfg = bucketConfig(styleMode);
+    const styleTags = styleTagsForEdit(styleMode);
+    const backgroundPrompt =
+      String(body.backgroundPrompt ?? body.prompt ?? '').trim() ||
+      'detailed background, scenery, environment';
+    const editPrompt = String(body.editPrompt ?? '').trim();
+
+    const realismPositive = [
+      PONY_QUALITY,
+      cfg.stylePrefix,
+      styleTags,
+      backgroundPrompt,
+      'wide establishing shot, full environment, detailed scenery, cinematic lighting, no people',
+    ]
+      .filter(Boolean)
+      .join(', ');
+    const realismNegative = `${BASE_NEGATIVE}, ${cfg.negativeAdditions}, people, person, human, body parts, limbs, hands, feet, text, watermark`;
+
+    const bucketPositive = [
+      PONY_QUALITY,
+      cfg.stylePrefix,
+      styleTags,
+      backgroundPrompt,
+      'curvy body, large breasts, long red hair, eyeglasses',
+      'rating_explicit, explicit anatomical details',
+      'wide shot, full scene',
+    ]
+      .filter(Boolean)
+      .join(', ');
+    const bucketNegative = `${BASE_NEGATIVE}, ${cfg.negativeAdditions}`;
+    const baseEditPositive = [PONY_QUALITY, cfg.stylePrefix, styleTags, editPrompt]
+      .filter(Boolean)
+      .join(', ');
+
+    const srcW = source.width || 1024;
+    const srcH = source.height || 1216;
+    const scale = Math.min(1, 1024 / Math.max(srcW, srcH));
+    const width = Math.max(512, Math.round((srcW * scale) / 8) * 8);
+    const height = Math.max(512, Math.round((srcH * scale) / 8) * 8);
+
+    const common = {
+      imageName,
+      positive: realismPositive,
+      negative: realismNegative,
+      seed: Math.floor(Math.random() * 2_147_483_647),
+      filenamePrefix: `ily_bench_${requestId.slice(-8)}`,
+      checkpoint: Deno.env.get('COMFY_CHECKPOINT') || undefined,
+      width,
+      height,
+    };
+
+    let workflow: Record<string, unknown>;
+    if (bucket === 'realism_outfit_nsfw') {
+      workflow = buildRealismOutfitWorkflow({ ...common, editPositive: baseEditPositive });
+    } else if (bucket === 'realism_composite') {
+      workflow = buildRealismCompositeWorkflow(common);
+    } else if (styleMode === 'rip-shirt') {
+      // Two-pass macro: King Von in a blank tee, then her portrait printed on it.
+      const hostPositive = [
+        PONY_QUALITY,
+        'photorealistic, raw photo, 35mm photograph',
+        'King Von the rapper, black man, short hair, beard, standing, front view, upper body, torso visible',
+        'wearing a plain blank black T-shirt, no print, no logo, smooth black cotton fabric, large empty chest area',
+        backgroundPrompt,
+        'centered composition, sharp focus',
+      ]
+        .filter(Boolean)
+        .join(', ');
+      const portraitPositive = [
+        PONY_QUALITY,
+        'sticker graphic, printed portrait, head and shoulders portrait',
+        'curvy body, large breasts, long red hair, eyeglasses',
+        'rating_explicit, explicit anatomical details',
+        'bold flat lighting, centered subject, clean simple backdrop',
+      ]
+        .filter(Boolean)
+        .join(', ');
+      const hostNegative = `${BASE_NEGATIVE}, anime, cartoon, 2d, sketch, drawing, painting, doll, plastic skin, text, watermark, logo, graphic print on shirt`;
+      workflow = buildRipShirtWorkflow({
+        imageName,
+        hostPositive,
+        portraitPositive,
+        negative: hostNegative,
+        seed: common.seed,
+        filenamePrefix: common.filenamePrefix,
+        checkpoint: common.checkpoint,
+        width,
+        height,
+        faceIdWeight: cfg.faceIdWeight,
+        faceIdLoraStrength: cfg.faceIdLoraStrength,
+        faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',
+      });
+    } else {
+      workflow = buildBucketStyleWorkflow({
+        ...common,
+        positive: bucketPositive,
+        negative: bucketNegative,
+        controlNet:
+          cfg.controlNet === 'anime_line' ? 'anime_line' : cfg.controlNet === 'depth' ? 'depth' : 'none',
+        controlNetStrength: cfg.controlNetStrength,
+        controlNetEndPercent: cfg.controlNetEndPercent,
+        faceIdWeight: cfg.faceIdWeight,
+        faceIdLoraStrength: cfg.faceIdLoraStrength,
+        faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',
+      });
+    }
+
+    const jobId = await submitComfyWorkflow(db, requestId, workflow);
+    return json(200, { requestId, jobId, status: 'IN_PROGRESS', bucket });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    await db
+      .from('ai_image_jobs')
+      .update({ status: 'FAILED', error: message, updated_at: new Date().toISOString() })
+      .eq('request_id', requestId);
+    return json(502, { requestId, status: 'FAILED', error: message });
+  }
+}
+
 async function handleStyleStatus(requestId: string): Promise<Response> {
   const db = getDb();
   if (!db) {
@@ -1787,6 +1963,13 @@ serve(async (req) => {
         return json(400, { error: 'Missing or invalid request_id.' });
       }
       return await handleBackgroundGenerate(body, requestId, coupleId);
+    }
+
+    if (actionRaw === 'benchmark_start') {
+      if (!requestId || requestId.length > 160) {
+        return json(400, { error: 'Missing or invalid request_id.' });
+      }
+      return await handleBenchmarkStart(body, requestId, coupleId);
     }
 
     // In-app pod kill switch: status / stop / start. No image job is created.
