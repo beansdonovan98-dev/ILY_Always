@@ -61,7 +61,7 @@ export const BUCKET_CONFIGS: Record<BucketId, BucketConfig> = {
     id: 'anime_2d_toon',
     checkpoint: 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors',
     basePrefix: `${COMMON_EXPLICIT_POS}, source_anime, 2d illustration, clean bold lineart, vibrant colors, expressive eyes, stylized proportions`,
-    baseNegative: `${COMMON_EXPLICIT_NEG}, photorealistic, raw photo, 35mm photograph, real human skin pores, 3d render, cgi, messy lines`,
+    baseNegative: `${COMMON_EXPLICIT_NEG}, photorealistic, raw photo, 35mm photograph, real human skin pores, real skin texture, 3d render, cgi, messy lines`,
     defaultDenoise: 0.5, // Capped to preserve facial geometry for anime styles
     defaultCfg: 6.5,
     loraModelStrength: 0.85,
@@ -257,8 +257,19 @@ const CONTROL_NET_BY_BUCKET: Record<BucketId, BucketParams['controlNet']> = {
   anime_2d_toon: 'anime_line',
   toy_3d_sculpt: 'none',
   fine_art_medium: 'anime_line',
-  framed_card: 'none',
+  framed_card: 'anime_line',
   macro_object_embed: 'none',
+};
+
+/** Lineart is the composition anchor for stylized buckets. */
+const CONTROL_STRENGTH: Record<BucketId, { strength: number; end: number }> = {
+  realism_composite: { strength: 0.4, end: 0.4 },
+  realism_outfit_nsfw: { strength: 0.4, end: 0.4 },
+  anime_2d_toon: { strength: 0.75, end: 0.8 },
+  toy_3d_sculpt: { strength: 0.4, end: 0.4 },
+  fine_art_medium: { strength: 0.75, end: 0.8 },
+  framed_card: { strength: 0.75, end: 0.8 },
+  macro_object_embed: { strength: 0.4, end: 0.4 },
 };
 
 /** Portrait canvas for the buckets that need room around her. */
@@ -296,10 +307,6 @@ export function bucketForStyle(style: string): BucketId {
 const IMG2IMG_BUCKETS: ReadonlySet<BucketId> = new Set<BucketId>([
   'realism_composite',
   'realism_outfit_nsfw',
-  'anime_2d_toon',
-  'toy_3d_sculpt',
-  'fine_art_medium',
-  'framed_card',
 ]);
 
 export function bucketConfig(style: string): BucketParams {
@@ -311,8 +318,8 @@ export function bucketConfig(style: string): BucketParams {
   return {
     checkpoint: 'pony',
     controlNet: CONTROL_NET_BY_BUCKET[def.bucket],
-    controlNetStrength: 0.4,
-    controlNetEndPercent: 0.4,
+    controlNetStrength: CONTROL_STRENGTH[def.bucket].strength,
+    controlNetEndPercent: CONTROL_STRENGTH[def.bucket].end,
     lineartStrength: 0.55,
     lineartEndPercent: 0.6,
     faceIdWeight: faceId.weight,
@@ -562,15 +569,12 @@ export function generateFinalOpenCodePayload(
     style.bucket === 'anime_2d_toon'
       ? style.prompt.replace(/glossy blushed skin,?\s*/gi, '')
       : style.prompt;
-  const positive = `${SCORE_TAGS}, ${MEDIUM_FRONT[style.bucket]}, ${SUBJECT_ANCHOR[subject]}, ${SUBJECT_TAGS[subject]}, ${styleText}, featuring ${easterEgg}${bodyDetailPrompt}, ${hardwareProp}${FRAMING_BY_BUCKET[style.bucket]}`;
-  // The room is its own conditioning stream so it stops competing with her body.
-  const backgroundPositive = `background environment: ${env}`;
+  const positive = `${SCORE_TAGS}, ${MEDIUM_FRONT[style.bucket]}, ${SUBJECT_ANCHOR[subject]}, ${SUBJECT_TAGS[subject]}, ${styleText}, featuring ${easterEgg}${bodyDetailPrompt}, ${hardwareProp}, background environment: ${env}${FRAMING_BY_BUCKET[style.bucket]}`;
   const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only`;
 
   return {
     checkpoint: bucket.checkpoint,
     positive,
-    backgroundPositive,
     negative,
     denoise: style.denoiseOverride ?? bucket.defaultDenoise,
     cfg: bucket.defaultCfg,

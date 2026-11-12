@@ -936,8 +936,12 @@ export function buildBucketStyleWorkflow(
   }
 
   if (options.controlNet === 'anime_line' || options.controlNet === 'depth_line') {
+    // Stylized buckets have no latent from her photo, so the lineart itself is the
+    // composition anchor: it is traced from the scaled source image.
+    const lineartSource: [string, number] =
+      options.initFromSource === false ? ['87', 0] : subjectRef;
     // AnimeLineArt draws clean lines; the Canny ControlNet accepts them.
-    workflow['103'] = { class_type: 'AnimeLineArtPreprocessor', inputs: { image: subjectRef } };
+    workflow['103'] = { class_type: 'AnimeLineArtPreprocessor', inputs: { image: lineartSource } };
     workflow['104'] = {
       class_type: 'ControlNetLoader',
       inputs: { control_net_name: 'diffusers_xl_canny_full.safetensors' },
@@ -1013,7 +1017,7 @@ export function buildBucketStyleWorkflow(
         cfg: options.cfgScale ?? 6,
         sampler_name: 'dpmpp_2m',
         scheduler: 'karras',
-        denoise: 0.18,
+        denoise: 0.05,
         model: ['86', 0],
         positive: posRef,
         negative: negRef,

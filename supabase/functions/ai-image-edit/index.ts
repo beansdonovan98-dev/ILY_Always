@@ -1307,7 +1307,6 @@ async function handleStyleStart(
         loraName: LORA_FILES.wife,
         loraStrength: cfg.loraStrength,
         cfgScale: cfg.cfgScale,
-        backgroundPositive: payload.backgroundPositive,
         neonSign: (Deno.env.get('COMFY_EASTER_EGG') ?? '1') !== '0',
       });
     } else if (bucketForStyle(styleMode) === 'realism_outfit_nsfw') {
@@ -1900,7 +1899,6 @@ async function handleBenchmarkStart(
         ...common,
         positive: bucketPositive,
         negative: bucketNegative,
-        backgroundPositive: payload.backgroundPositive,
         neonSign: (Deno.env.get('COMFY_EASTER_EGG') ?? '1') !== '0',
         controlNet:
           cfg.controlNet === 'depth_line'
