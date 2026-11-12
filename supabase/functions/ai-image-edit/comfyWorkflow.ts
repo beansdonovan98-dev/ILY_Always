@@ -584,6 +584,8 @@ export type BucketStyleWorkflowOptions = {
   loraStrength?: number;
   /** Separate positive stream for the room, combined at reduced strength. */
   backgroundPositive?: string;
+  /** Composite the Team No Lackin neon sign and blend it into the scene. */
+  neonSign?: boolean;
   /** Sampler CFG from the bucket config. */
   cfgScale?: number;
   faceIdWeight: number;
@@ -948,6 +950,66 @@ export function buildBucketStyleWorkflow(
 
   (workflow['77'] as { inputs: Record<string, unknown> }).inputs.positive = posRef;
   (workflow['77'] as { inputs: Record<string, unknown> }).inputs.negative = negRef;
+
+  // Team No Lackin neon sign: composited from a real asset so the text is always
+  // legible, then a masked 0.18 pass pulls the tube glow into the wall lighting.
+  if (options.neonSign) {
+    const signW = Math.round(width * 0.34);
+    const signH = Math.round(signW * 0.3125);
+    workflow['140'] = { class_type: 'LoadImage', inputs: { image: 'team_no_lackin_neon.png' } };
+    workflow['141'] = {
+      class_type: 'ImageScale',
+      inputs: { image: ['140', 0], upscale_method: 'lanczos', width: signW, height: signH, crop: 'disabled' },
+    };
+    workflow['142'] = { class_type: 'MaskToImage', inputs: { mask: ['140', 1] } };
+    workflow['143'] = {
+      class_type: 'ImageScale',
+      inputs: { image: ['142', 0], upscale_method: 'lanczos', width: signW, height: signH, crop: 'disabled' },
+    };
+    workflow['144'] = { class_type: 'ImageToMask', inputs: { image: ['143', 0], channel: 'red' } };
+    workflow['145'] = {
+      class_type: 'ImpactGaussianBlurMask',
+      inputs: { mask: ['144', 0], kernel_size: 6, sigma: 3 },
+    };
+    workflow['146'] = {
+      class_type: 'ImageCompositeMasked',
+      inputs: {
+        destination: ['78', 0],
+        source: ['141', 0],
+        x: Math.round(width * 0.06),
+        y: Math.round(height * 0.07),
+        resize_source: false,
+        mask: ['145', 0],
+      },
+    };
+    workflow['147'] = { class_type: 'GrowMask', inputs: { mask: ['145', 0], expand: 48, tapered_corners: true } };
+    workflow['148'] = {
+      class_type: 'ImpactGaussianBlurMask',
+      inputs: { mask: ['147', 0], kernel_size: 32, sigma: 16 },
+    };
+    workflow['149'] = { class_type: 'VAEEncode', inputs: { pixels: ['146', 0], vae: ['72', 2] } };
+    workflow['150'] = {
+      class_type: 'SetLatentNoiseMask',
+      inputs: { samples: ['149', 0], mask: ['148', 0] },
+    };
+    workflow['151'] = {
+      class_type: 'KSampler',
+      inputs: {
+        seed: options.seed + 3,
+        steps: 18,
+        cfg: options.cfgScale ?? 6,
+        sampler_name: 'dpmpp_2m',
+        scheduler: 'karras',
+        denoise: 0.18,
+        model: ['86', 0],
+        positive: posRef,
+        negative: negRef,
+        latent_image: ['150', 0],
+      },
+    };
+    workflow['152'] = { class_type: 'VAEDecode', inputs: { samples: ['151', 0], vae: ['72', 2] } };
+    (workflow['79'] as { inputs: Record<string, unknown> }).inputs.images = ['152', 0];
+  }
 
   return workflow;
 }

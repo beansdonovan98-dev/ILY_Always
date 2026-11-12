@@ -1844,6 +1844,7 @@ async function handleBenchmarkStart(
         positive: bucketPositive,
         negative: bucketNegative,
         backgroundPositive: payload.backgroundPositive,
+        neonSign: (Deno.env.get('COMFY_EASTER_EGG') ?? '1') !== '0',
         controlNet:
           cfg.controlNet === 'depth_line'
             ? 'depth_line'
