@@ -1056,6 +1056,17 @@ const SUBJECT_ALIASES = [
 const SUBJECT_TRIGGER = 'ashley';
 
 /**
+ * Fallback physical traits when the client sends none. The LoRA was trained on
+ * both glasses and no-glasses photos, so the glasses only appear if they are in
+ * the prompt — nothing about them is baked into the weights.
+ */
+const DEFAULT_SUBJECT_TRAITS: Record<SubjectMode, string> = {
+  wife: 'long wavy burgundy red hair, round wireframe glasses',
+  husband: 'long dark brown hair',
+  couple: 'long wavy burgundy red hair, round wireframe glasses',
+};
+
+/**
  * Per-style negative guardrails. These exist because a soft-gradient source image
  * plus a low denoise lets a style collapse into its neighbour: pointillism bleeds
  * into watercolour, stencil into poster art, and so on.
@@ -1182,6 +1193,7 @@ async function handleStyleStart(
     isNude?: boolean;
     backgroundPrompt?: string;
     poseImageBase64?: string;
+    subjectTraits?: string;
   }
 ): Promise<Response> {
   const db = getDb();
@@ -1259,7 +1271,15 @@ async function handleStyleStart(
     const subject: SubjectMode = overrides?.subject ?? 'wife';
     const isNude = overrides?.isNude !== false;
     const backgroundPrompt = (overrides?.backgroundPrompt ?? '').trim() || effectivePrompt;
-    const payload = generateFinalOpenCodePayload(styleMode, subject, isNude, backgroundPrompt);
+    const subjectTraits =
+      (overrides?.subjectTraits ?? '').trim() || DEFAULT_SUBJECT_TRAITS[subject];
+    const payload = generateFinalOpenCodePayload(
+      styleMode,
+      subject,
+      isNude,
+      backgroundPrompt,
+      subjectTraits
+    );
 
     // Optional pose reference: uploaded and fed to OpenPose so the body adopts
     // that skeleton while the LoRA and style keep her face and the medium.
@@ -1308,6 +1328,8 @@ async function handleStyleStart(
         denoise: cfg.denoise,
         loraName: LORA_FILES.wife,
         loraStrength: cfg.loraStrength,
+        loraClipStrength: cfg.loraClipStrength,
+        useFaceId: cfg.useFaceId,
         cfgScale: cfg.cfgScale,
         neonSign: (Deno.env.get('COMFY_EASTER_EGG') ?? '1') !== '0',
       });
@@ -1921,6 +1943,8 @@ async function handleBenchmarkStart(
           loraForSubject(subject) ??
           (Deno.env.get('COMFY_SUBJECT_LORA') || 'ashley_v1_1200_steps_00001_.safetensors'),
         loraStrength: cfg.loraStrength ?? 0.7,
+        loraClipStrength: cfg.loraClipStrength,
+        useFaceId: cfg.useFaceId,
         cfgScale: cfg.cfgScale,
         faceIdWeight: cfg.faceIdWeight,
         faceIdLoraStrength: cfg.faceIdLoraStrength,
@@ -2154,6 +2178,7 @@ serve(async (req) => {
         backgroundPrompt: typeof body.backgroundPrompt === 'string' ? body.backgroundPrompt : undefined,
         poseImageBase64:
           typeof body.poseImageBase64 === 'string' ? body.poseImageBase64 : undefined,
+        subjectTraits: typeof body.subjectTraits === 'string' ? body.subjectTraits : undefined,
       });
     }
 

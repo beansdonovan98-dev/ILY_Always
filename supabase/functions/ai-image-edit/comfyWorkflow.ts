@@ -579,9 +579,13 @@ export type BucketStyleWorkflowOptions = {
   initFromSource?: boolean;
   /** Scale for the subject when padded (0.7 leaves a 15% margin per side). */
   padScale?: number;
-  /** Trained subject LoRA (e.g. ashley_v1). */
+  /** LoRA strength applied to the model. */
   loraName?: string;
   loraStrength?: number;
+  /** LoRA strength applied to the CLIP side. */
+  loraClipStrength?: number;
+  /** FaceID is redundant once the LoRA is trained; off for stylized buckets. */
+  useFaceId?: boolean;
   /** Separate positive stream for the room, combined at reduced strength. */
   backgroundPositive?: string;
   /** Optional pose reference image; drives OpenPose instead of her silhouette. */
@@ -645,26 +649,18 @@ export function buildBucketStyleWorkflow(
         invert_output: false,
         refine_foreground: true,
         background: 'Color',
-        background_color: '#808080',
+        background_color: '#000000',
       },
     },
-    // Deterministic head-and-shoulders crop for FaceID. MediaPipe returns empty
-    // SEGS on this pod, so this is fixed geometry — keep it generous (full width,
-    // top 62%) or a differently-framed upload puts her face outside the crop and
-    // InsightFace reports "No face detected".
+    // FaceID gets the whole photo, aspect preserved. Any fixed crop eventually
+    // misses her head on some framing, and a miss drops identity entirely.
     '93': {
-      class_type: 'ImageCrop',
-      inputs: {
-        image: ['87', 0],
-        width,
-        height: Math.round(height * 0.62),
-        x: 0,
-        y: 0,
-      },
+      class_type: 'ImageScaleToMaxDimension',
+      inputs: { upscale_method: 'lanczos', largest_size: 1024, image: ['75', 0] },
     },
     '94': {
       class_type: 'ImageScale',
-      inputs: { image: ['93', 0], upscale_method: 'lanczos', width: 1024, height: 1024, crop: 'center' },
+      inputs: { image: ['93', 0], upscale_method: 'lanczos', width: 1024, height: 1024, crop: 'disabled' },
     },
     '85': {
       class_type: 'IPAdapterUnifiedLoaderFaceID',
@@ -720,11 +716,23 @@ export function buildBucketStyleWorkflow(
         clip: ['72', 1],
         lora_name: options.loraName,
         strength_model: loraStrength,
-        strength_clip: loraStrength,
+        strength_clip: options.loraClipStrength ?? loraStrength,
       },
     };
     (workflow['81'] as { inputs: Record<string, unknown> }).inputs.clip = ['71', 1];
     (workflow['85'] as { inputs: Record<string, unknown> }).inputs.model = ['71', 0];
+  }
+
+  // Stylized buckets: the LoRA already carries her face, so FaceID is dropped.
+  // Stacking a raw photographic face embedding here is what forced photo skin
+  // onto 2D styles and warped the glasses.
+  if (options.useFaceId === false) {
+    const modelRef: [string, number] = options.loraName ? ['71', 0] : ['72', 0];
+    for (const nodeId of ['77', '151']) {
+      const node = workflow[nodeId] as { inputs?: Record<string, unknown> } | undefined;
+      if (node?.inputs) node.inputs.model = modelRef;
+    }
+    for (const nodeId of ['85', '86', '93', '94']) delete workflow[nodeId];
   }
 
   // Bucket CFG applies to every sampler in this graph.
@@ -743,78 +751,19 @@ export function buildBucketStyleWorkflow(
   } else if (useBlurredBase) {
     workflow['88'] = {
       class_type: 'ImageBlur',
-      inputs: { image: ['116', 0], blur_radius: blurRadius, sigma: blurRadius / 2 },
+      inputs: { image: ['84', 0], blur_radius: blurRadius, sigma: blurRadius / 2 },
     };
     workflow['201'] = { class_type: 'VAEEncode', inputs: { pixels: ['88', 0], vae: ['72', 2] } };
   } else if (options.initFromSource !== false) {
     // Straight img2img on her gray-replaced cutout: keeps her real face and
     // body weight under the style instead of inventing them from noise.
-    workflow['201'] = { class_type: 'VAEEncode', inputs: { pixels: ['116', 0], vae: ['72', 2] } };
+    workflow['201'] = { class_type: 'VAEEncode', inputs: { pixels: ['84', 0], vae: ['72', 2] } };
   } else {
     workflow['201'] = { class_type: 'EmptyLatentImage', inputs: { width, height, batch_size: 1 } };
   }
 
-  // Background regeneration: the RMBG subject mask now drives the latent. The
-  // background region is fully noised so the campsite can actually generate,
-  // while her pixels stay at the low denoise.
-  if (options.initFromSource !== false) {
-    workflow['170'] = { class_type: 'SolidMask', inputs: { value: 1, width, height } };
-    workflow['171'] = {
-      class_type: 'MaskComposite',
-      inputs: { destination: ['170', 0], source: ['112', 0], x: 0, y: 0, operation: 'subtract' },
-    };
-    workflow['172'] = {
-      class_type: 'GrowMask',
-      inputs: { mask: ['171', 0], expand: 8, tapered_corners: true },
-    };
-    workflow['173'] = {
-      class_type: 'ImpactGaussianBlurMask',
-      inputs: { mask: ['172', 0], kernel_size: 24, sigma: 12 },
-    };
-    workflow['174'] = {
-      class_type: 'SetLatentNoiseMask',
-      inputs: { samples: ['201', 0], mask: ['173', 0] },
-    };
-    (workflow['77'] as { inputs: Record<string, unknown> }).inputs.latent_image = ['174', 0];
-  }
-
   // ControlNets stack on the masked subject, not on the raw photo.
   let subjectRef: [string, number] = ['84', 0];
-
-  // Mirror selfies make RMBG keep the reflection as a second blob. Keep only the
-  // largest connected component so nothing but her reaches ControlNet or FaceID.
-  workflow['110'] = {
-    class_type: 'MaskToSEGS',
-    inputs: {
-      mask: ['84', 1],
-      combined: false,
-      crop_factor: 1.0,
-      bbox_fill: false,
-      drop_size: 1,
-      contour_fill: false,
-    },
-  };
-  workflow['111'] = {
-    class_type: 'ImpactSEGSOrderedFilter',
-    inputs: { segs: ['110', 0], target: 'area(=w*h)', order: true, take_start: 0, take_count: 1 },
-  };
-  workflow['112'] = { class_type: 'SegsToCombinedMask', inputs: { segs: ['111', 0] } };
-  workflow['115'] = {
-    class_type: 'EmptyImage',
-    inputs: { width, height, batch_size: 1, color: 8421504 },
-  };
-  workflow['116'] = {
-    class_type: 'ImageCompositeMasked',
-    inputs: {
-      destination: ['115', 0],
-      source: ['84', 0],
-      x: 0,
-      y: 0,
-      resize_source: false,
-      mask: ['112', 0],
-    },
-  };
-  subjectRef = ['116', 0];
 
   if (options.padSubject) {
     // Shrink her and center her on gray so a container or card border can form around her.
@@ -936,12 +885,9 @@ export function buildBucketStyleWorkflow(
   }
 
   if (options.controlNet === 'anime_line' || options.controlNet === 'depth_line') {
-    // Stylized buckets have no latent from her photo, so the lineart itself is the
-    // composition anchor: it is traced from the scaled source image.
-    const lineartSource: [string, number] =
-      options.initFromSource === false ? ['87', 0] : subjectRef;
-    // AnimeLineArt draws clean lines; the Canny ControlNet accepts them.
-    workflow['103'] = { class_type: 'AnimeLineArtPreprocessor', inputs: { image: lineartSource } };
+    // Lineart is traced from the RMBG cutout on pure black, so it outlines her
+    // body only. Tracing the raw photo made the sampler rebuild her real bedroom.
+    workflow['103'] = { class_type: 'AnimeLineArtPreprocessor', inputs: { image: ['84', 0] } };
     workflow['104'] = {
       class_type: 'ControlNetLoader',
       inputs: { control_net_name: 'diffusers_xl_canny_full.safetensors' },
