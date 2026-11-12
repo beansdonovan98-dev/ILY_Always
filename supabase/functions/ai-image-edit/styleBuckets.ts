@@ -491,20 +491,108 @@ export function getRandomItem(arr: unknown[]): any {
   return typeof item === 'function' ? (item as () => unknown)() : item;
 }
 
+/**
+ * Environments written natively for each medium. A tarot card must be set in a
+ * card's world, not a photoreal apartment rendered as an etching, and a LEGO
+ * scene must be built from bricks rather than described as a "toy diorama".
+ */
+export const ENVIRONMENTS_BY_BUCKET: Record<BucketId, string[]> = {
+  realism_composite: MASSIVE_AUTHENTIC_WEED_ENVIRONMENTS,
+  realism_outfit_nsfw: MASSIVE_AUTHENTIC_WEED_ENVIRONMENTS,
+  anime_2d_toon: [
+    'a cozy anime bedroom at golden hour, warm sunlight through sheer curtains, low bed with plush cushions, potted plants, a cel-shaded glass bong on the nightstand, soft bokeh city skyline outside the window',
+    'an anime balcony overlooking a twilight city, string lights along the railing, potted cannabis plants in cel-shaded leaves, Makoto Shinkai clouds and lens flare, a glowing bong silhouetted against the sky',
+    'a cluttered anime loft studio, warm lamp light, posters and manga shelves, a bong and rolling tray rendered in clean 2d lineart on the low table, dust motes catching the light',
+    'a rain-streaked anime apartment window at night, neon reflections on the glass, a soft-lit room with a cel-shaded bong and papers on the table, quiet melancholic mood',
+  ],
+  toy_3d_sculpt: [
+    'a miniature room built entirely from glossy ABS plastic bricks and studs, a bong constructed from stacked transparent brick pieces, brick-built sofa and shelf, macro tilt-shift photography',
+    'a plastic collector diorama of a cozy den, every object moulded in glossy brick form, a brick-built bong on a brick table, shallow depth of field macro lens',
+    'a LEGO-style grow room diorama, brick-built plant pots with plastic leaves, a transparent brick bong, studded floor, warm studio product lighting',
+    'a miniature vinyl-toy apartment set, smooth moulded furniture, a sculpted plastic bong on a painted table, macro toy photography with soft studio light',
+  ],
+  fine_art_medium: [
+    'a painted greenhouse at dusk, oil-painted cannabis plants and glass panes, an impasto bong on a wooden table, visible canvas weave and brush strokes',
+    'a watercolour conservatory, translucent washes of green foliage, a loosely painted bong and papers, paper grain and pigment blooms',
+    'an ink-etched parlour, crosshatched shadows, a stippled bong on a side table, cream paper tone and fine linework',
+    'a charcoal sketch of a dim room, smudged shading, a roughly drawn bong and tray, toned sketchbook paper',
+  ],
+  framed_card: [
+    'the scene sits inside the card border: an engraved botanical greenhouse, curling vines and arched glass, an ornate etched bong on a plinth, gold filigree framing the edges',
+    'inside the card frame: a candlelit apothecary chamber, shelves of jars, an engraved glass vessel on the table, Roman numeral banner above and title plaque below',
+    'inside the card: a moonlit conservatory tableau, etched ferns and smoke, a decorative bong rendered as fine occult linework, parchment texture throughout',
+    'inside the card: a velvet-draped reading room, woodcut textures, an ornate vessel on a carved stand, symmetrical composition within the border',
+  ],
+  macro_object_embed: [
+    'a macro product set: the object sits on a seamless studio sweep, soft rim lighting, reflective tabletop, shallow depth of field',
+    'a bright retail display table, the product centred under product-photography lighting, blurred shelving behind',
+    'a dusk city backdrop behind the object, bokeh lights and wet pavement reflections, the object sharp in the foreground',
+    'a clean workbench under warm studio lamps, tools and props softly out of focus behind the object',
+  ],
+};
+
+/** Hardware phrasing per medium so the bong is made of the right material. */
+const HARDWARE_BY_BUCKET: Record<BucketId, string[]> = {
+  realism_composite: [
+    'a bubbling glass beaker bong on the table with loose rolling papers and blunt wrappers',
+    'a lit joint between the fingers with a glass straight tube bong beside it',
+    'a loaded glass bowl packed with ground flower, ash tray and lighter nearby',
+  ],
+  realism_outfit_nsfw: [
+    'holding a lit blunt with a glass bong on the table beside her',
+    'a glass water pipe bubbling on the nightstand with a rolling tray of flower',
+  ],
+  anime_2d_toon: [
+    'a cel-shaded glass bong with clean ink outlines on the table, rolling papers drawn in flat colour',
+    'a stylised anime bong with glowing liquid, blunt and tray rendered in bold lineart',
+    'a chibi-proportioned glass pipe and papers, flat cel-shaded highlights',
+  ],
+  toy_3d_sculpt: [
+    'a bong built from transparent plastic bricks, stacked and studded, sitting on the brick table',
+    'a moulded plastic bong with glossy ABS finish beside brick-built rolling papers',
+    'a miniature sculpted glass piece rendered as a painted vinyl accessory',
+  ],
+  fine_art_medium: [
+    'a painted bong with visible brush strokes and impasto highlights on the table',
+    'a loosely painted glass vessel, pigment blooms and canvas texture',
+    'an etched bong rendered in fine crosshatched linework',
+  ],
+  framed_card: [
+    'an ornate engraved bong on a carved plinth within the border, gold filigree highlights',
+    'a decorative glass vessel drawn in fine occult linework, framed by the card border',
+    'an etched bong with parchment-toned shading and Roman numeral detailing',
+  ],
+  macro_object_embed: [
+    'the object photographed as a commercial product with crisp studio reflections',
+    'the product centred on a seamless sweep with controlled highlights',
+    'the object sharp against a softly blurred retail backdrop',
+  ],
+};
+
+function bucketOf(styleId: string): BucketId {
+  return styleDefinition(styleId).bucket;
+}
+
 /** Guarantees the background matches the style medium. */
 export function harmonizeBackgroundToStyle(styleId: string, baseEnvironment: string): string {
-  const bucket = styleDefinition(styleId).bucket;
+  const bucket = bucketOf(styleId);
 
   if (bucket === 'anime_2d_toon') {
-    return `, anime cel-shaded background featuring ${baseEnvironment}, clean ink outlines, vibrant 2d animation aesthetic`;
+    return `, anime cel-shaded setting: ${baseEnvironment}, clean ink outlines, vibrant 2d animation aesthetic`;
   }
   if (bucket === 'toy_3d_sculpt') {
-    return `, miniature toy diorama background of ${baseEnvironment}, plastic brick and stop-motion texture, macro product photography`;
+    return `, miniature plastic diorama: ${baseEnvironment}, glossy ABS brick texture, macro toy photography`;
   }
-  if (bucket === 'fine_art_medium' || bucket === 'framed_card') {
-    return `, vintage etched fine art illustration background depicting ${baseEnvironment}, rich parchment paper texture, traditional ink and watercolor rendering`;
+  if (bucket === 'fine_art_medium') {
+    return `, traditional media rendering: ${baseEnvironment}, visible brush strokes and paper texture`;
   }
-  return `, photorealistic background environment: ${baseEnvironment}, cinematic lighting`;
+  if (bucket === 'framed_card') {
+    return `, illustrated card tableau: ${baseEnvironment}, ornate border frame, parchment texture, fine line etching`;
+  }
+  if (bucket === 'macro_object_embed') {
+    return `, commercial product setting: ${baseEnvironment}, studio lighting, crisp surface reflections`;
+  }
+  return `, photorealistic environment: ${baseEnvironment}, cinematic lighting`;
 }
 
 export function generateFinalOpenCodePayload(
@@ -516,11 +604,14 @@ export function generateFinalOpenCodePayload(
 ) {
   const style = STYLE_DEFINITIONS[styleId];
   if (!style) throw new Error(`Unknown style: ${styleId}`);
-  const bucket = BUCKET_CONFIGS[style.bucket];
+  const bucketId = style.bucket;
+  const bucket = BUCKET_CONFIGS[bucketId];
 
-  const rawEnv = customBackground?.trim() || getRandomItem(MASSIVE_AUTHENTIC_WEED_ENVIRONMENTS);
+  // A caller-supplied background is still harmonised, but the default pool is
+  // already written in the style's own medium.
+  const rawEnv = customBackground?.trim() || getRandomItem(ENVIRONMENTS_BY_BUCKET[bucketId]);
   const styledEnv = harmonizeBackgroundToStyle(styleId, rawEnv);
-  const hardwareProp = getRandomItem(SMOKING_HARDWARE_PROPS);
+  const hardwareProp = getRandomItem(HARDWARE_BY_BUCKET[bucketId]);
   const easterEgg = getRandomItem(HIDDEN_TEAM_NO_LACKIN_ELEMENTS);
 
   const petPrompt = includePets ? `, ${getRandomItem(PET_INCLUSION_OPTIONS)}` : '';
