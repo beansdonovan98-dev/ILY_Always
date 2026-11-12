@@ -153,6 +153,7 @@ export default function AIEditorScreen() {
   const [subjectMode, setSubjectMode] = useState<'wife' | 'husband' | 'couple'>('wife');
   const [nude, setNude] = useState(true);
   const [poseUri, setPoseUri] = useState('');
+  const [customRoom, setCustomRoom] = useState('');
   const [editsOpen, setEditsOpen] = useState(false);
   // Hard click lock: state updates are async, so two quick taps can both fire.
   const busyRef = useRef(false);
@@ -290,6 +291,7 @@ export default function AIEditorScreen() {
           subject: subjectMode,
           nude,
           poseImageUrl: poseUri || undefined,
+          backgroundPrompt: customRoom,
         }
       );
       setResultUri(edited);
@@ -307,7 +309,7 @@ export default function AIEditorScreen() {
       setEditBurn(0);
       void bongHaptic();
     }
-  }, [sourceUri, resultUri, editPrompts, editStrokes, selectedStyle, subjectMode, nude, poseUri]);
+  }, [sourceUri, resultUri, editPrompts, editStrokes, selectedStyle, subjectMode, nude, poseUri, customRoom]);
 
   const openBrush = useCallback((target: EditTarget) => {
     setBrushTarget(target);
@@ -651,6 +653,18 @@ export default function AIEditorScreen() {
             </View>
           ) : null}
         </View>
+
+        <Text style={[styles.label, styles.roomLabel]}>Room (optional)</Text>
+        <TextInput
+          value={customRoom}
+          onChangeText={setCustomRoom}
+          placeholder="Leave blank for a random stoner room"
+          placeholderTextColor="rgba(58,42,46,0.45)"
+          style={[styles.editInput, { borderColor: appTheme.borderColor, color: appTheme.textColor }]}
+        />
+        <Text style={[styles.styleHint, styles.roomHint]}>
+          Type a place and it replaces the random one — the seed keeps her the same.
+        </Text>
 
         <Pressable
           onPress={() => setEditsOpen((v) => !v)}
@@ -1071,6 +1085,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   poseThumb: { width: '100%', height: '100%' },
+  roomLabel: { marginTop: 14 },
+  roomHint: { marginTop: 4, marginBottom: 2 },
   styleModalRoot: { flex: 1, justifyContent: 'flex-end' },
   styleBackdrop: {
     position: 'absolute',
