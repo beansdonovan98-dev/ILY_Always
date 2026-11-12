@@ -1068,9 +1068,9 @@ const GOLDEN_SEED = 300661729;
  * the prompt — nothing about them is baked into the weights.
  */
 const DEFAULT_SUBJECT_TRAITS: Record<SubjectMode, string> = {
-  wife: 'long wavy burgundy red hair, round wireframe glasses',
-  husband: 'long dark brown hair',
-  couple: 'long wavy burgundy red hair, round wireframe glasses',
+  wife: '',
+  husband: '',
+  couple: '',
 };
 
 /**
@@ -1202,6 +1202,8 @@ async function handleStyleStart(
     poseImageBase64?: string;
     subjectTraits?: string;
     seed?: number;
+    wide?: boolean;
+    bodyTags?: string;
   }
 ): Promise<Response> {
   const db = getDb();
@@ -1281,12 +1283,14 @@ async function handleStyleStart(
     const backgroundPrompt = (overrides?.backgroundPrompt ?? '').trim() || effectivePrompt;
     const subjectTraits =
       (overrides?.subjectTraits ?? '').trim() || DEFAULT_SUBJECT_TRAITS[subject];
+    const wide = overrides?.wide === true;
     const payload = generateFinalOpenCodePayload(
       styleMode,
       subject,
       isNude,
       backgroundPrompt,
-      subjectTraits
+      subjectTraits,
+      wide
     );
 
     // Optional pose reference: uploaded and fed to OpenPose so the body adopts
@@ -1296,9 +1300,10 @@ async function handleStyleStart(
       const poseCheck = validateInputImage(overrides.poseImageBase64);
       if (poseCheck.ok) poseImage = await uploadImageToComfy(poseCheck.raw);
     }
-    const width = cfg.portrait ? 832 : 1024;
-    const height = cfg.portrait ? 1216 : 1024;
-    const positive = payload.positive;
+    const width = wide ? 1216 : cfg.portrait ? 832 : 1024;
+    const height = wide ? 832 : cfg.portrait ? 1216 : 1024;
+    const bodyTags = (overrides?.bodyTags ?? '').replace(/[{}]/g, '').trim().slice(0, 160);
+    const positive = bodyTags ? `${payload.positive}, ${bodyTags}` : payload.positive;
     const isAnimeBucket = bucketForStyle(styleMode) === 'anime_2d_toon';
     const baseNeg = [BASE_NEGATIVE, payload.negative].filter(Boolean).join(', ');
     // "big eyes, anime eyes" in the negative actively fights source_anime, so they
@@ -1330,11 +1335,14 @@ async function handleStyleStart(
         ...common,
         controlNet: poseImage ? 'openpose' : cfg.controlNet,
         poseImage,
-        controlNetStrength: cfg.controlNetStrength,
-        controlNetEndPercent: cfg.controlNetEndPercent,
+        controlNetStrength: wide ? 0.32 : cfg.controlNetStrength,
+        controlNetEndPercent: wide ? 0.45 : cfg.controlNetEndPercent,
         lineartStrength: cfg.lineartStrength,
         lineartEndPercent: cfg.lineartEndPercent,
-        faceIdWeight: cfg.faceIdWeight,
+        faceIdWeight:
+          Number.isFinite(Number(overrides?.faceIdWeight)) && Number(overrides?.faceIdWeight) > 0
+            ? Number(overrides?.faceIdWeight)
+            : cfg.faceIdWeight,
         faceIdLoraStrength: cfg.faceIdLoraStrength,
         faceIdEndAt: cfg.faceIdEndAt,
         faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',
@@ -2194,6 +2202,8 @@ serve(async (req) => {
           typeof body.poseImageBase64 === 'string' ? body.poseImageBase64 : undefined,
         subjectTraits: typeof body.subjectTraits === 'string' ? body.subjectTraits : undefined,
         seed: typeof body.seed === 'number' ? body.seed : undefined,
+        wide: body.wide === true,
+        bodyTags: typeof body.bodyTags === 'string' ? body.bodyTags : undefined,
       });
     }
 

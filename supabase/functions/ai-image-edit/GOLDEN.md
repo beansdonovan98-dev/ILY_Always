@@ -59,7 +59,7 @@ Applies to: `anime_2d_toon`, `framed_card`, `fine_art_medium`, `toy_3d_sculpt`,
 | LoRA | ashley_v1, 0.85 model / 0.85 clip |
 | FaceID | weight 0.35, end_at 0.40, lora_strength 0.35 |
 | ControlNet | AnimeLineArt → ImageInvert → Canny, 0.50 / 0.55 |
-| Subject tags | `ashley, straight red hair, round wireframe glasses` |
+| Subject tags | `ashley, long straight cherry red hair falling past the shoulders, round wireframe glasses, (thick thighs:1.10), (soft lower belly:1.05), (curvy figure:1.05)` |
 | Framing | bucket framing string; current experiment is `cowboy shot` |
 | Negative | includes `freckles, freckled skin` |
 

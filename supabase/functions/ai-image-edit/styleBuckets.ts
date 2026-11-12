@@ -1,4 +1,4 @@
-﻿export type SubjectMode = 'wife' | 'husband' | 'couple';
+export type SubjectMode = 'wife' | 'husband' | 'couple';
 
 export type BucketId =
   | 'realism_composite'
@@ -374,9 +374,9 @@ export function loraForSubject(subject: SubjectMode): string | null {
 
 /** Trigger tokens. Only these go into the image prompt. */
 export const SUBJECT_TAGS: Record<SubjectMode, string> = {
-  wife: 'ashley, straight red hair, round wireframe glasses',
+  wife: 'ashley, long straight cherry red hair falling past the shoulders, round wireframe glasses, (thick thighs:1.10), (soft lower belly:1.05), (curvy figure:1.05)',
   husband: 'mbboi',
-  couple: 'ashley with cherry red hair wearing glasses and mbboi',
+  couple: 'ashley with long straight cherry red hair wearing glasses and (thick thighs:1.10), (curvy figure:1.05), and mbboi',
 };
 
 // ==========================================
@@ -590,12 +590,16 @@ const FRAMING_BY_BUCKET: Record<BucketId, string> = {
   macro_object_embed: ', product shot framing, object centred in frame',
 };
 
+const WIDE_FRAMING =
+  ', wide establishing shot, full room interior visible, subject standing to one side, environment prominent';
+
 export function generateFinalOpenCodePayload(
   styleId: string,
   subject: SubjectMode,
   isNude: boolean,
   customBackground?: string,
-  subjectTraits?: string
+  subjectTraits?: string,
+  wide?: boolean
 ) {
   const style = STYLE_DEFINITIONS[styleId];
   if (!style) throw new Error(`Unknown style: ${styleId}`);
@@ -635,10 +639,10 @@ export function generateFinalOpenCodePayload(
     style.bucket === 'anime_2d_toon'
       ? style.prompt.replace(/glossy blushed skin,?\s*/gi, '')
       : style.prompt;
-  // Weed room and hardware sit early ï¿½ before the easter egg ï¿½ so they land inside
+  // Weed room and hardware sit early � before the easter egg � so they land inside
   // the first CLIP chunk instead of being buried at token 130.
   const traits = (subjectTraits ?? '').replace(/[\r\n\t]+/g, ' ').replace(/[{}]/g, '').trim().slice(0, 120);
-  const positive = `${SCORE_TAGS}, ${MEDIUM_FRONT[style.bucket]}, ${SUBJECT_ANCHOR[subject]}, ${SUBJECT_TAGS[subject]}${traits ? `, ${traits}` : ''}${bodyDetailPrompt}, ${styleText}, ${hardwareProp}, surrounded by ${env}, featuring ${easterEgg}${FRAMING_BY_BUCKET[style.bucket]}`;
+  const positive = `${SCORE_TAGS}, ${MEDIUM_FRONT[style.bucket]}, ${SUBJECT_ANCHOR[subject]}, ${SUBJECT_TAGS[subject]}${traits ? `, ${traits}` : ''}${bodyDetailPrompt}, ${styleText}, ${hardwareProp}, surrounded by ${env}, featuring ${easterEgg}${wide ? WIDE_FRAMING : FRAMING_BY_BUCKET[style.bucket]}`;
   const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only, plain background, gray background, simple background, freckles, freckled skin`;
 
   return {
