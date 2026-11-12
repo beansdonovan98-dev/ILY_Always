@@ -73,7 +73,7 @@ export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
     negativeAdditions:
       'photorealistic, 35mm photograph, detailed skin pores, real person, 3d render, photograph, washed out, desaturated',
     blurRadius: 0,
-    denoise: 0.65,
+    denoise: 0.5,
   },
   toy_3d_sculpt: {
     checkpoint: 'pony',
@@ -87,7 +87,7 @@ export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
     negativeAdditions: 'real human skin pores, 35mm photograph, flat 2d drawing',
     extraPositive: '(anatomically correct adult collectible figure, explicit nude anatomy:1.15)',
     blurRadius: 0,
-    denoise: 0.65,
+    denoise: 0.5,
   },
   fine_art_medium: {
     checkpoint: 'pony',
@@ -131,7 +131,7 @@ export const BUCKET_PRESETS: Record<BucketMode, BucketParams> = {
     stylePrefix: 'wide angle macro scene, high detail object composition',
     negativeAdditions: 'close-up selfie, cropped frame',
     blurRadius: 0,
-    denoise: 0.7,
+    denoise: 0.55,
   },
 };
 
