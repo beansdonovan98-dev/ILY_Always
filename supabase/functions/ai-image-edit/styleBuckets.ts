@@ -306,7 +306,7 @@ const PORTRAIT_BUCKETS: ReadonlySet<BucketId> = new Set<BucketId>([
 const FACE_ID_BY_BUCKET: Record<BucketId, { weight: number; lora: number; endAt: number }> = {
   realism_composite: { weight: 0.85, lora: 0.65, endAt: 0.85 },
   realism_outfit_nsfw: { weight: 0.85, lora: 0.65, endAt: 0.85 },
-  anime_2d_toon: { weight: 0.35, lora: 0.35, endAt: 0.4 },
+  anime_2d_toon: { weight: 0.5, lora: 0.45, endAt: 0.5 },
   toy_3d_sculpt: { weight: 0.35, lora: 0.35, endAt: 0.4 },
   fine_art_medium: { weight: 0.35, lora: 0.35, endAt: 0.4 },
   framed_card: { weight: 0.35, lora: 0.35, endAt: 0.4 },
