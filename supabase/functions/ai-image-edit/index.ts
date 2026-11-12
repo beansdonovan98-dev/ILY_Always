@@ -1060,6 +1060,58 @@ const STYLE_NEGATIVE_GUARDRAILS: Record<string, string> = {
   // Per-style positive nudges that a bucket-wide anchor cannot express.
 const STYLE_POSITIVE_NUDGES: Record<string, string> = {};
 
+/**
+ * Injects the trained subject LoRA into any built workflow by rewiring the
+ * checkpoint's MODEL and CLIP outputs through a LoraLoader. VAE stays direct.
+ * This is applied to every generation path, not just the benchmark router.
+ */
+function applySubjectLora(
+  workflow: Record<string, unknown>,
+  loraName: string,
+  strength: number
+): Record<string, unknown> {
+  const ckptId = Object.keys(workflow).find(
+    (k) => (workflow[k] as { class_type?: string })?.class_type === 'CheckpointLoaderSimple'
+  );
+  if (!ckptId) return workflow;
+
+  // Already loaded (e.g. a bucket builder added it) — do not stack a second LoRA.
+  const already = Object.values(workflow).some(
+    (n) =>
+      (n as { class_type?: string })?.class_type === 'LoraLoader' &&
+      (n as { inputs?: { lora_name?: string } })?.inputs?.lora_name === loraName
+  );
+  if (already) return workflow;
+
+  const loraId = 'lora_subject';
+  workflow[loraId] = {
+    class_type: 'LoraLoader',
+    inputs: {
+      model: [ckptId, 0],
+      clip: [ckptId, 1],
+      lora_name: loraName,
+      strength_model: strength,
+      strength_clip: strength,
+    },
+  };
+
+  for (const node of Object.values(workflow)) {
+    const inputs = (node as { inputs?: Record<string, unknown> })?.inputs;
+    if (!inputs) continue;
+    for (const key of Object.keys(inputs)) {
+      const ref = inputs[key];
+      if (Array.isArray(ref) && ref[0] === ckptId && (ref[1] === 0 || ref[1] === 1)) {
+        inputs[key] = [loraId, ref[1]];
+      }
+    }
+  }
+  return workflow;
+}
+
+function subjectLoraName(): string {
+  return Deno.env.get('COMFY_SUBJECT_LORA') || 'ashley_v1_1200_steps_00001_.safetensors';
+}
+
 function withoutFaceId(prompt: unknown): Record<string, unknown> | null {
   const candidate = findWorkflowInPrompt(prompt);
   if (!candidate) return null;
@@ -1202,7 +1254,10 @@ async function handleStyleStart(
     const promptRes = await fetch(`${await comfyBaseUrl()}/prompt`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: workflow, client_id: crypto.randomUUID() }),
+      body: JSON.stringify({
+        prompt: applySubjectLora(workflow, subjectLoraName(), 0.7),
+        client_id: crypto.randomUUID(),
+      }),
     });
     const promptText = await promptRes.text();
 
@@ -1473,7 +1528,11 @@ async function handleInpaintStart(
       useFaceId: target === 'body' || target === 'item',
     });
 
-    const jobId = await submitComfyWorkflow(db, requestId, workflow);
+    const jobId = await submitComfyWorkflow(
+      db,
+      requestId,
+      applySubjectLora(workflow, subjectLoraName(), 0.7)
+    );
     return json(200, { requestId, jobId, status: 'IN_PROGRESS', target });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -1789,7 +1848,11 @@ async function handleBenchmarkStart(
       });
     }
 
-    const jobId = await submitComfyWorkflow(db, requestId, workflow);
+    const jobId = await submitComfyWorkflow(
+      db,
+      requestId,
+      applySubjectLora(workflow, subjectLoraName(), cfg.loraStrength ?? 0.85)
+    );
     return json(200, { requestId, jobId, status: 'IN_PROGRESS', bucket });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
