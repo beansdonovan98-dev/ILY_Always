@@ -582,6 +582,8 @@ export type BucketStyleWorkflowOptions = {
   /** Trained subject LoRA (e.g. ashley_v1). */
   loraName?: string;
   loraStrength?: number;
+  /** Separate positive stream for the room, combined at reduced strength. */
+  backgroundPositive?: string;
   /** Sampler CFG from the bucket config. */
   cfgScale?: number;
   faceIdWeight: number;
@@ -840,6 +842,31 @@ export function buildBucketStyleWorkflow(
 
   let posRef: [string, number] = ['73', 0];
   let negRef: [string, number] = ['74', 0];
+
+  // The room is encoded separately and combined at 0.6, so it stops competing
+  // with the subject tags for the first 77-token CLIP chunk.
+  if (options.backgroundPositive) {
+    workflow['130'] = {
+      class_type: 'CLIPTextEncode',
+      inputs: { text: options.backgroundPositive, clip: ['81', 0] },
+    };
+    workflow['131'] = {
+      class_type: 'ConditioningSetArea',
+      inputs: {
+        conditioning: ['130', 0],
+        width,
+        height,
+        x: 0,
+        y: 0,
+        strength: 0.6,
+      },
+    };
+    workflow['132'] = {
+      class_type: 'ConditioningCombine',
+      inputs: { conditioning_1: ['73', 0], conditioning_2: ['131', 0] },
+    };
+    posRef = ['132', 0];
+  }
 
   if (options.controlNet === 'depth' || options.controlNet === 'depth_line') {
     workflow['100'] = { class_type: 'Zoe-DepthMapPreprocessor', inputs: { image: subjectRef } };
@@ -1136,6 +1163,194 @@ export function buildRipShirtWorkflow(
     },
     '217': { class_type: 'VAEDecode', inputs: { samples: ['216', 0], vae: ['72', 2] } },
     '79': { class_type: 'SaveImage', inputs: { filename_prefix: options.filenamePrefix, images: ['217', 0] } },
+  };
+}
+
+export type CoupleWorkflowOptions = {
+  imageName: string;
+  /** Reference photo of him, used only for FaceID. */
+  husbandFaceImage?: string;
+  positive: string;
+  husbandPositive: string;
+  negative: string;
+  seed: number;
+  filenamePrefix: string;
+  checkpoint?: string;
+  width: number;
+  height: number;
+  loraWife: string;
+  loraHusband: string;
+  loraStrength?: number;
+  faceIdProvider?: string;
+};
+
+/**
+ * Couple mode, two masked passes.
+ *
+ * Pass 1 paints the whole frame with her LoRA. Pass 2 switches to his LoRA and
+ * repaints the right half through a feathered mask, with his FaceID confined to
+ * that half via attn_mask. LoRA weights cannot be made regional in one sampler,
+ * so two passes is the only way both faces stay themselves.
+ */
+export function buildCoupleWorkflow(options: CoupleWorkflowOptions): Record<string, unknown> {
+  const checkpoint = options.checkpoint || 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors';
+  const width = Math.max(512, Math.round(options.width / 8) * 8);
+  const height = Math.max(512, Math.round(options.height / 8) * 8);
+  const provider = options.faceIdProvider || 'CPU';
+  const strength = options.loraStrength ?? 0.8;
+  const halfW = Math.round(width / 2);
+  const husbandFaceImage = options.husbandFaceImage || 'boi/boi_001.jpg';
+
+  return {
+    '72': { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: checkpoint } },
+
+    // Branch A: her.
+    '71': {
+      class_type: 'LoraLoader',
+      inputs: {
+        model: ['72', 0],
+        clip: ['72', 1],
+        lora_name: options.loraWife,
+        strength_model: strength,
+        strength_clip: strength,
+      },
+    },
+    '81': { class_type: 'CLIPSetLastLayer', inputs: { stop_at_clip_layer: -2, clip: ['71', 1] } },
+    '73': { class_type: 'CLIPTextEncode', inputs: { text: options.positive, clip: ['81', 0] } },
+    '74': { class_type: 'CLIPTextEncode', inputs: { text: options.negative, clip: ['81', 0] } },
+    '75': { class_type: 'LoadImage', inputs: { image: options.imageName } },
+    '76': {
+      class_type: 'ImageScale',
+      inputs: { image: ['75', 0], upscale_method: 'lanczos', width, height, crop: 'center' },
+    },
+    '77': {
+      class_type: 'ImageCrop',
+      inputs: {
+        image: ['76', 0],
+        width: Math.round(width * 0.56),
+        height: Math.round(height * 0.5),
+        x: Math.round(width * 0.22),
+        y: Math.round(height * 0.02),
+      },
+    },
+    '78': {
+      class_type: 'ImageScale',
+      inputs: { image: ['77', 0], upscale_method: 'lanczos', width: 1024, height: 1024, crop: 'center' },
+    },
+    '82': {
+      class_type: 'IPAdapterUnifiedLoaderFaceID',
+      inputs: { preset: 'FACEID', lora_strength: 0.6, provider, model: ['71', 0] },
+    },
+    '83': {
+      class_type: 'IPAdapterFaceID',
+      inputs: {
+        weight: 0.85,
+        weight_faceidv2: 1,
+        weight_type: 'linear',
+        combine_embeds: 'concat',
+        start_at: 0,
+        end_at: 0.85,
+        embeds_scaling: 'V only',
+        model: ['82', 0],
+        ipadapter: ['82', 1],
+        image: ['78', 0],
+      },
+    },
+    '201': { class_type: 'EmptyLatentImage', inputs: { width, height, batch_size: 1 } },
+    '202': {
+      class_type: 'KSampler',
+      inputs: {
+        seed: options.seed,
+        steps: 30,
+        cfg: 6,
+        sampler_name: 'dpmpp_2m',
+        scheduler: 'karras',
+        denoise: 1,
+        model: ['83', 0],
+        positive: ['73', 0],
+        negative: ['74', 0],
+        latent_image: ['201', 0],
+      },
+    },
+    '203': { class_type: 'VAEDecode', inputs: { samples: ['202', 0], vae: ['72', 2] } },
+
+    // Branch B: him, confined to the right half.
+    '91': {
+      class_type: 'LoraLoader',
+      inputs: {
+        model: ['72', 0],
+        clip: ['72', 1],
+        lora_name: options.loraHusband,
+        strength_model: strength,
+        strength_clip: strength,
+      },
+    },
+    '92': { class_type: 'CLIPSetLastLayer', inputs: { stop_at_clip_layer: -2, clip: ['91', 1] } },
+    '93': { class_type: 'CLIPTextEncode', inputs: { text: options.husbandPositive, clip: ['92', 0] } },
+
+    '100': { class_type: 'SolidMask', inputs: { value: 0, width, height } },
+    '101': { class_type: 'SolidMask', inputs: { value: 1, width: halfW, height } },
+    '102': {
+      class_type: 'MaskComposite',
+      inputs: { destination: ['100', 0], source: ['101', 0], x: halfW, y: 0, operation: 'add' },
+    },
+    '103': {
+      class_type: 'ImpactGaussianBlurMask',
+      inputs: { mask: ['102', 0], kernel_size: 48, sigma: 24 },
+    },
+
+    '104': { class_type: 'LoadImage', inputs: { image: husbandFaceImage } },
+    '105': {
+      class_type: 'ImageCrop',
+      inputs: { image: ['104', 0], width: 700, height: 620, x: 300, y: 20 },
+    },
+    '106': {
+      class_type: 'ImageScale',
+      inputs: { image: ['105', 0], upscale_method: 'lanczos', width: 1024, height: 1024, crop: 'center' },
+    },
+    '107': {
+      class_type: 'IPAdapterUnifiedLoaderFaceID',
+      inputs: { preset: 'FACEID', lora_strength: 0.6, provider, model: ['91', 0] },
+    },
+    '108': {
+      class_type: 'IPAdapterFaceID',
+      inputs: {
+        weight: 0.85,
+        weight_faceidv2: 1,
+        weight_type: 'linear',
+        combine_embeds: 'concat',
+        start_at: 0,
+        end_at: 0.8,
+        embeds_scaling: 'V only',
+        model: ['107', 0],
+        ipadapter: ['107', 1],
+        image: ['106', 0],
+        attn_mask: ['103', 0],
+      },
+    },
+
+    '204': { class_type: 'VAEEncode', inputs: { pixels: ['203', 0], vae: ['72', 2] } },
+    '205': { class_type: 'SetLatentNoiseMask', inputs: { samples: ['204', 0], mask: ['103', 0] } },
+    '206': {
+      class_type: 'KSampler',
+      inputs: {
+        seed: options.seed + 7,
+        steps: 26,
+        cfg: 6,
+        sampler_name: 'dpmpp_2m',
+        scheduler: 'karras',
+        denoise: 0.6,
+        model: ['108', 0],
+        positive: ['93', 0],
+        negative: ['74', 0],
+        latent_image: ['205', 0],
+      },
+    },
+    '207': { class_type: 'VAEDecode', inputs: { samples: ['206', 0], vae: ['72', 2] } },
+    '79': {
+      class_type: 'SaveImage',
+      inputs: { filename_prefix: options.filenamePrefix, images: ['207', 0] },
+    },
   };
 }
 

@@ -7,6 +7,7 @@ import {
   buildGeneratedBackgroundWorkflow,
   buildInpaintWorkflow,
   buildBucketStyleWorkflow,
+  buildCoupleWorkflow,
   buildRealismCompositeWorkflow,
   buildRealismOutfitWorkflow,
   buildRipShirtWorkflow,
@@ -16,6 +17,7 @@ import {
   bucketConfig,
   bucketForStyle,
   generateFinalOpenCodePayload,
+  LORA_FILES,
   loraForSubject,
   type SubjectMode,
 } from './styleBuckets.ts';
@@ -1739,17 +1741,10 @@ async function handleBenchmarkStart(
     const subject: SubjectMode =
       body.subject === 'husband' || body.subject === 'couple' ? body.subject : 'wife';
     const isNude = body.isNude === true || body.nude === true;
-    const includePets = body.includePets === true;
 
     // The stoner payload owns the bucket prompts: harmonised background, rotating
-    // hardware, pet toggle, grooming rules and the Team No Lackin easter egg.
-    const payload = generateFinalOpenCodePayload(
-      styleMode,
-      subject,
-      isNude,
-      includePets,
-      backgroundPrompt
-    );
+    // hardware, grooming rules and the Team No Lackin easter egg.
+    const payload = generateFinalOpenCodePayload(styleMode, subject, isNude, backgroundPrompt);
     const bucketPositive = [PONY_QUALITY, payload.positive, subjectTraits]
       .filter(Boolean)
       .join(', ');
@@ -1782,7 +1777,25 @@ async function handleBenchmarkStart(
     };
 
     let workflow: Record<string, unknown>;
-    if (bucket === 'realism_outfit_nsfw') {
+    if (subject === 'couple') {
+      // Two masked passes: her LoRA paints the frame, his repaints the right half.
+      workflow = buildCoupleWorkflow({
+        imageName,
+        husbandFaceImage: Deno.env.get('COMFY_HUSBAND_IMAGE') || 'boi/boi_001.jpg',
+        positive: bucketPositive,
+        husbandPositive: [PONY_QUALITY, 'mbboi', 'man', backgroundPrompt].filter(Boolean).join(', '),
+        negative: bucketNegative,
+        seed: common.seed,
+        filenamePrefix: common.filenamePrefix,
+        checkpoint: common.checkpoint,
+        width: outWidth,
+        height: outHeight,
+        loraWife: LORA_FILES.wife,
+        loraHusband: LORA_FILES.husband,
+        loraStrength: 0.8,
+        faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',
+      });
+    } else if (bucket === 'realism_outfit_nsfw') {
       workflow = buildRealismOutfitWorkflow({ ...common, editPositive: baseEditPositive });
     } else if (bucket === 'realism_composite') {
       workflow = buildRealismCompositeWorkflow(common);
@@ -1830,6 +1843,7 @@ async function handleBenchmarkStart(
         ...common,
         positive: bucketPositive,
         negative: bucketNegative,
+        backgroundPositive: payload.backgroundPositive,
         controlNet:
           cfg.controlNet === 'depth_line'
             ? 'depth_line'

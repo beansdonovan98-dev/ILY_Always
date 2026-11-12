@@ -448,12 +448,6 @@ export const HIDDEN_TEAM_NO_LACKIN_ELEMENTS = [
   'a neon light-box decoration resting on a bookshelf spelling out "Team No Lackin"',
 ];
 
-export const PET_INCLUSION_OPTIONS = [
-  'Crowley, a fat fluffy black cat with a distinctive little white soul patch, sitting nearby on a vintage rug, alongside Smokey, a fluffy medium-hair Russian Blue cat lounging comfortably on your shoulder',
-  'Crowley the chunky black cat with a white soul patch curled up on the furniture, and Smokey the Russian Blue cat riding proudly on your shoulder',
-  'fat black cat Crowley with his little white soul patch exploring the room, while Smokey the Russian Blue cat sits perched right on your shoulder',
-];
-
 export const CLOTHED_OUTFIT_OPTIONS = [
   'wearing matching custom streetwear hoodies and sweatpants patterned with green cannabis leaf prints, gold cannabis leaf pendant chains',
   'wearing casual loungewear with embroidered trichome-dusted cannabis patterns and snapback caps',
@@ -496,7 +490,6 @@ export function generateFinalOpenCodePayload(
   styleId: string,
   subject: SubjectMode,
   isNude: boolean,
-  includePets: boolean,
   customBackground?: string
 ) {
   const style = STYLE_DEFINITIONS[styleId];
@@ -509,8 +502,6 @@ export function generateFinalOpenCodePayload(
   const hardwareProp = getRandomItem(SMOKING_HARDWARE_PROPS);
   const easterEgg = getRandomItem(HIDDEN_TEAM_NO_LACKIN_ELEMENTS);
 
-  const petPrompt = includePets ? `, ${getRandomItem(PET_INCLUSION_OPTIONS)}` : '';
-
   let bodyDetailPrompt = '';
   if (isNude) {
     const nudeBody = getRandomItem(NUDE_BODY_DETAILS);
@@ -522,12 +513,17 @@ export function generateFinalOpenCodePayload(
     bodyDetailPrompt = `, ${getRandomItem(CLOTHED_OUTFIT_OPTIONS)}`;
   }
 
-  const positive = `${bucket.basePrefix}, ${SUBJECT_TAGS[subject]}, ${style.prompt}, background environment: ${env}${bodyDetailPrompt}, ${hardwareProp}, featuring ${easterEgg}${petPrompt}`;
+  // The easter egg sits immediately after the style tag so it lands inside the
+  // first 77-token CLIP chunk instead of being truncated at the tail.
+  const positive = `${bucket.basePrefix}, ${SUBJECT_TAGS[subject]}, ${style.prompt}, featuring ${easterEgg}${bodyDetailPrompt}, ${hardwareProp}`;
+  // The room is its own conditioning stream so it stops competing with her body.
+  const backgroundPositive = `background environment: ${env}`;
   const negative = bucket.baseNegative;
 
   return {
     checkpoint: bucket.checkpoint,
     positive,
+    backgroundPositive,
     negative,
     denoise: style.denoiseOverride ?? bucket.defaultDenoise,
     cfg: bucket.defaultCfg,
