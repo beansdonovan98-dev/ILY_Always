@@ -1194,6 +1194,7 @@ async function handleStyleStart(
     backgroundPrompt?: string;
     poseImageBase64?: string;
     subjectTraits?: string;
+    seed?: number;
   }
 ): Promise<Response> {
   const db = getDb();
@@ -1303,7 +1304,10 @@ async function handleStyleStart(
       imageName,
       positive,
       negative,
-      seed: Math.floor(Math.random() * 2_147_483_647),
+      seed:
+        Number.isFinite(Number(overrides?.seed)) && Number(overrides?.seed) > 0
+          ? Number(overrides?.seed)
+          : Math.floor(Math.random() * 2_147_483_647),
       filenamePrefix: `ily_${requestId}`,
       checkpoint: Deno.env.get('COMFY_CHECKPOINT') || undefined,
       width,
@@ -2179,6 +2183,7 @@ serve(async (req) => {
         poseImageBase64:
           typeof body.poseImageBase64 === 'string' ? body.poseImageBase64 : undefined,
         subjectTraits: typeof body.subjectTraits === 'string' ? body.subjectTraits : undefined,
+        seed: typeof body.seed === 'number' ? body.seed : undefined,
       });
     }
 
