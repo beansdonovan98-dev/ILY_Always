@@ -604,14 +604,12 @@ export function generateFinalOpenCodePayload(
 ) {
   const style = STYLE_DEFINITIONS[styleId];
   if (!style) throw new Error(`Unknown style: ${styleId}`);
-  const bucketId = style.bucket;
-  const bucket = BUCKET_CONFIGS[bucketId];
+  const bucket = BUCKET_CONFIGS[style.bucket];
 
-  // A caller-supplied background is still harmonised, but the default pool is
-  // already written in the style's own medium.
-  const rawEnv = customBackground?.trim() || getRandomItem(ENVIRONMENTS_BY_BUCKET[bucketId]);
-  const styledEnv = harmonizeBackgroundToStyle(styleId, rawEnv);
-  const hardwareProp = getRandomItem(HARDWARE_BY_BUCKET[bucketId]);
+  // Universal environments: any room can be pushed into any of the 98 styles
+  // natively, because the bucket basePrefix carries the medium.
+  const env = customBackground?.trim() || getRandomItem(MASSIVE_AUTHENTIC_WEED_ENVIRONMENTS);
+  const hardwareProp = getRandomItem(SMOKING_HARDWARE_PROPS);
   const easterEgg = getRandomItem(HIDDEN_TEAM_NO_LACKIN_ELEMENTS);
 
   const petPrompt = includePets ? `, ${getRandomItem(PET_INCLUSION_OPTIONS)}` : '';
@@ -627,7 +625,7 @@ export function generateFinalOpenCodePayload(
     bodyDetailPrompt = `, ${getRandomItem(CLOTHED_OUTFIT_OPTIONS)}`;
   }
 
-  const positive = `${bucket.basePrefix}, ${SUBJECT_TAGS[subject]}, ${style.prompt}${styledEnv}${bodyDetailPrompt}, ${hardwareProp}, featuring ${easterEgg}${petPrompt}`;
+  const positive = `${bucket.basePrefix}, ${SUBJECT_TAGS[subject]}, ${style.prompt}, background environment: ${env}${bodyDetailPrompt}, ${hardwareProp}, featuring ${easterEgg}${petPrompt}`;
   const negative = bucket.baseNegative;
 
   return {
