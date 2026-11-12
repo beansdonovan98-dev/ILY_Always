@@ -79,6 +79,17 @@ const EDIT_ROWS: EditRow[] = [
   },
 ];
 
+const QUICK_STYLES = [
+  'adult-anime',
+  'tarot-card',
+  'anime',
+  'lego',
+  'figurine',
+  'pointillism',
+  'park-bench',
+  'change-outfit',
+];
+
 const EMPTY_STROKES: Record<EditTarget, BrushStroke[]> = {
   background: [],
   hair: [],
@@ -142,6 +153,7 @@ export default function AIEditorScreen() {
   const [subjectMode, setSubjectMode] = useState<'wife' | 'husband' | 'couple'>('wife');
   const [nude, setNude] = useState(true);
   const [poseUri, setPoseUri] = useState('');
+  const [editsOpen, setEditsOpen] = useState(false);
   // Hard click lock: state updates are async, so two quick taps can both fire.
   const busyRef = useRef(false);
 
@@ -493,6 +505,13 @@ export default function AIEditorScreen() {
         Developing our dirtiest fantasies in the dark — snapshots, but make them sinful 🔞📷
       </Text>
 
+      <View style={[styles.summaryRow, { borderColor: appTheme.borderColor }]}>
+        <Text style={[styles.summaryText, { fontFamily: font, color: appTheme.subtitleColor }]}>
+          {subjectMode === 'wife' ? 'Her' : subjectMode === 'husband' ? 'Him' : 'Both'} ·{' '}
+          {nude ? 'Nude' : 'Clothed'} · {styleLabel(selectedStyle)} · random room
+        </Text>
+      </View>
+
       <MylarPouch title={<Text style={[styles.cardTitle, { fontFamily: font }]}>New Edit ✨</Text>} hint="Pick a style, add edits, and let the darkroom do the dirty work 😏🔥" defaultStrain="PINEAPPLE EXP." stampRight="THC: 24.5%">
         <LeafBorder color={appTheme.leafColor} />
         <Text style={styles.cardHint}>Pick a photo and a style, then add only the edits you want 😏</Text>
@@ -515,16 +534,37 @@ export default function AIEditorScreen() {
 
         <View style={styles.styleHeader}>
           <Text style={styles.label}>Style</Text>
-          <Text style={styles.styleHint}>Tap to change</Text>
+          <Pressable onPress={() => setStylePickerOpen(true)}>
+            <Text style={[styles.styleHint, { color: appTheme.accentColor }]}>All 98 →</Text>
+          </Pressable>
         </View>
-        <Pressable
-          onPress={() => setStylePickerOpen(true)}
-          style={[styles.styleSelect, { borderColor: appTheme.borderColor, backgroundColor: appTheme.accentSoft }]}>
-          <Text style={[styles.styleSelectText, { fontFamily: font, color: appTheme.textColor }]}>
-            {styleLabel(selectedStyle)}
-          </Text>
-          <Text style={[styles.styleSelectChevron, { color: appTheme.textColor }]}>⌄</Text>
-        </Pressable>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipStrip}>
+          {QUICK_STYLES.map((key) => {
+            const active = selectedStyle === key;
+            return (
+              <Pressable
+                key={key}
+                onPress={() => setSelectedStyle(key)}
+                style={[
+                  styles.quickChip,
+                  { borderColor: appTheme.borderColor },
+                  active && { backgroundColor: appTheme.accentSoft, borderColor: appTheme.accentColor },
+                ]}>
+                <Text
+                  style={[
+                    styles.quickChipText,
+                    { fontFamily: font, color: appTheme.textColor },
+                    active && { color: appTheme.accentColor },
+                  ]}>
+                  {styleLabel(key)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
 
         <View style={styles.styleHeader}>
           <Text style={styles.label}>Direction</Text>
@@ -612,15 +652,24 @@ export default function AIEditorScreen() {
           ) : null}
         </View>
 
-        <View style={styles.styleHeader}>
-          <Text style={styles.label}>Edits</Text>
-          <Text style={styles.styleHint}>Runs in order</Text>
-        </View>
-        <Text style={[styles.editIntro, { color: appTheme.subtitleColor }]}>
-          Optional. Add only what you want changed — each edit gets its own mask so her face and body stay put.
-        </Text>
+        <Pressable
+          onPress={() => setEditsOpen((v) => !v)}
+          style={[styles.editToggle, { borderColor: appTheme.borderColor }]}>
+          <Text style={[styles.label, { color: appTheme.textColor }]}>
+            {editsOpen ? 'Detail edits ▾' : 'Add detail edits ▸'}
+          </Text>
+          <Text style={[styles.styleHint, { color: appTheme.textColor }]}>
+            {editsOpen ? 'Hide' : 'Optional'}
+          </Text>
+        </Pressable>
 
-        {EDIT_ROWS.map((row) => {
+        {editsOpen ? (
+          <>
+            <Text style={[styles.editIntro, { color: appTheme.subtitleColor }]}>
+              Optional. Add only what you want changed — each edit gets its own mask so her face and body stay put.
+            </Text>
+
+            {EDIT_ROWS.map((row) => {
           const painted = (editStrokes[row.target] || []).length > 0;
           return (
             <View key={row.target} style={[styles.editRow, { borderColor: appTheme.borderColor }]}>
@@ -675,6 +724,8 @@ export default function AIEditorScreen() {
         <Text style={styles.hint}>
           Background and Hair mask themselves. Body and Objects need you to paint the spot. Every prompt is sent as explicit.
         </Text>
+          </>
+        ) : null}
 
         {resultUri ? (
           <Pressable
@@ -865,7 +916,7 @@ export default function AIEditorScreen() {
                     ]}>
                     <Text
                       style={[
-                        styles.styleChipText,
+                        styles.quickChipText,
                         {
                           fontFamily: font,
                           color: appTheme.textColor,
@@ -962,6 +1013,33 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   styleHint: { fontSize: 11, opacity: 0.5, fontWeight: '600' },
+  summaryRow: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    alignSelf: 'center',
+  },
+  summaryText: { fontSize: 12, fontWeight: '700' },
+  chipStrip: { gap: 8, paddingVertical: 2, paddingRight: 8 },
+  quickChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+  },
+  quickChipText: { fontSize: 13, fontWeight: '800' },
+  editToggle: {
+    marginTop: 16,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   styleSelect: {
     borderWidth: 1,
     borderRadius: 16,
