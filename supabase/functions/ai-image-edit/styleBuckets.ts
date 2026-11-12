@@ -519,9 +519,9 @@ export function getRandomItem(arr: unknown[]): any {
 
 /** Subject anchor. Comes first so the model cannot fill the frame with scenery. */
 const SUBJECT_ANCHOR: Record<SubjectMode, string> = {
-  wife: '1girl, solo, nude woman, full body visible, standing, looking at viewer',
-  husband: '1man, solo, nude man, upper body, portrait, looking at viewer',
-  couple: '1girl and 1man, two people, nude couple, upper body, portrait',
+  wife: '1girl, solo, nude woman, mid-thigh up, standing, looking at viewer',
+  husband: '1man, solo, nude man, mid-thigh up, standing, looking at viewer',
+  couple: '1girl and 1man, two people, nude couple, mid-thigh up, standing',
 };
 
 /** Medium tags placed immediately after the score tags, before anything else. */
@@ -537,12 +537,12 @@ const MEDIUM_FRONT: Record<BucketId, string> = {
 
 /** Keeps the model from zooming into a body close-up. */
 const FRAMING_BY_BUCKET: Record<BucketId, string> = {
-  realism_composite: ', medium shot, waist-up framing, room visible behind her',
-  realism_outfit_nsfw: ', medium shot, waist-up framing, room visible behind her',
-  anime_2d_toon: ', medium shot, waist-up framing, background visible behind her',
-  toy_3d_sculpt: ', medium shot, figure centred, diorama visible behind her',
-  fine_art_medium: ', medium shot, waist-up framing, painted room visible behind her',
-  framed_card: ', centred figure inside the card border, room visible behind her',
+  realism_composite: ', mid-thigh up framing, standing, thighs visible, wide shot, room visible around her',
+  realism_outfit_nsfw: ', mid-thigh up framing, standing, thighs visible, wide shot, room visible around her',
+  anime_2d_toon: ', mid-thigh up framing, standing, thighs visible, wide shot, background visible around her',
+  toy_3d_sculpt: ', mid-thigh up figure, standing, diorama visible around her',
+  fine_art_medium: ', mid-thigh up framing, standing, thighs visible, painted room visible around her',
+  framed_card: ', centred mid-thigh up figure inside the card border, room visible around her',
   macro_object_embed: ', product shot framing, object centred in frame',
 };
 
@@ -595,7 +595,7 @@ export function generateFinalOpenCodePayload(
   // the first CLIP chunk instead of being buried at token 130.
   const traits = (subjectTraits ?? '').replace(/[\r\n\t]+/g, ' ').replace(/[{}]/g, '').trim().slice(0, 120);
   const positive = `${SCORE_TAGS}, ${MEDIUM_FRONT[style.bucket]}, ${SUBJECT_ANCHOR[subject]}, ${SUBJECT_TAGS[subject]}${traits ? `, ${traits}` : ''}${bodyDetailPrompt}, ${styleText}, ${hardwareProp}, surrounded by ${env}, featuring ${easterEgg}${FRAMING_BY_BUCKET[style.bucket]}`;
-  const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only, plain background, gray background, simple background`;
+  const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only, plain background, gray background, simple background, freckles, freckled skin`;
 
   return {
     checkpoint: bucket.checkpoint,
