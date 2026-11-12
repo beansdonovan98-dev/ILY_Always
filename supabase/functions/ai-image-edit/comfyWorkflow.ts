@@ -649,15 +649,17 @@ export function buildBucketStyleWorkflow(
       },
     },
     // Deterministic head-and-shoulders crop for FaceID. MediaPipe returns empty
-    // SEGS on this pod, which silently fed InsightFace a blank image.
+    // SEGS on this pod, so this is fixed geometry — keep it generous (full width,
+    // top 62%) or a differently-framed upload puts her face outside the crop and
+    // InsightFace reports "No face detected".
     '93': {
       class_type: 'ImageCrop',
       inputs: {
         image: ['87', 0],
-        width: Math.round(width * 0.56),
-        height: Math.round(height * 0.5),
-        x: Math.round(width * 0.22),
-        y: Math.round(height * 0.02),
+        width,
+        height: Math.round(height * 0.62),
+        x: 0,
+        y: 0,
       },
     },
     '94': {
@@ -1304,10 +1306,10 @@ export function buildCoupleWorkflow(options: CoupleWorkflowOptions): Record<stri
       class_type: 'ImageCrop',
       inputs: {
         image: ['76', 0],
-        width: Math.round(width * 0.56),
-        height: Math.round(height * 0.5),
-        x: Math.round(width * 0.22),
-        y: Math.round(height * 0.02),
+        width,
+        height: Math.round(height * 0.62),
+        x: 0,
+        y: 0,
       },
     },
     '78': {
