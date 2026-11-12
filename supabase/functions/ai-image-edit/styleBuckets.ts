@@ -267,10 +267,10 @@ const CONTROL_NET_BY_BUCKET: Record<BucketId, BucketParams['controlNet']> = {
 const LORA_BY_BUCKET: Record<BucketId, { model: number; clip: number }> = {
   realism_composite: { model: 0.85, clip: 0.85 },
   realism_outfit_nsfw: { model: 0.85, clip: 0.85 },
-  anime_2d_toon: { model: 0.72, clip: 0.4 },
+  anime_2d_toon: { model: 0.8, clip: 0.5 },
   toy_3d_sculpt: { model: 0.5, clip: 0.4 },
-  fine_art_medium: { model: 0.72, clip: 0.4 },
-  framed_card: { model: 0.72, clip: 0.4 },
+  fine_art_medium: { model: 0.8, clip: 0.5 },
+  framed_card: { model: 0.8, clip: 0.5 },
   macro_object_embed: { model: 0.65, clip: 0.4 },
 };
 
@@ -278,6 +278,9 @@ const LORA_BY_BUCKET: Record<BucketId, { model: number; clip: number }> = {
 const FACE_ID_BUCKETS: ReadonlySet<BucketId> = new Set<BucketId>([
   'realism_composite',
   'realism_outfit_nsfw',
+  'anime_2d_toon',
+  'fine_art_medium',
+  'framed_card',
 ]);
 
 /** Lineart is the composition anchor for stylized buckets. */
@@ -303,7 +306,7 @@ const PORTRAIT_BUCKETS: ReadonlySet<BucketId> = new Set<BucketId>([
 const FACE_ID_BY_BUCKET: Record<BucketId, { weight: number; lora: number; endAt: number }> = {
   realism_composite: { weight: 0.85, lora: 0.65, endAt: 0.85 },
   realism_outfit_nsfw: { weight: 0.85, lora: 0.65, endAt: 0.85 },
-  anime_2d_toon: { weight: 0.55, lora: 0.4, endAt: 0.5 },
+  anime_2d_toon: { weight: 0.6, lora: 0.45, endAt: 0.55 },
   toy_3d_sculpt: { weight: 0.35, lora: 0.35, endAt: 0.4 },
   fine_art_medium: { weight: 0.35, lora: 0.35, endAt: 0.4 },
   framed_card: { weight: 0.35, lora: 0.35, endAt: 0.4 },
