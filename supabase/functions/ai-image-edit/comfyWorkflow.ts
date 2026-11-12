@@ -336,6 +336,125 @@ export function buildComfyWorkflow(options: ComfyWorkflowOptions): Record<string
   return workflow;
 }
 
+export type GeneratedBackgroundOptions = {
+  imageName: string;
+  positive: string;
+  negative: string;
+  seed: number;
+  filenamePrefix: string;
+  checkpoint?: string;
+  width: number;
+  height: number;
+};
+
+/**
+ * Full generated scene: text-to-image background from an empty latent, then
+ * composite the untouched subject back on top and harmonize. This is for
+ * "make the background a weed grow room / Walmart / moon" rather than
+ * reinterpreting the original room.
+ */
+export function buildGeneratedBackgroundWorkflow(
+  options: GeneratedBackgroundOptions
+): Record<string, unknown> {
+  const checkpoint = options.checkpoint || 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors';
+  const width = Math.max(512, Math.round(options.width / 8) * 8);
+  const height = Math.max(512, Math.round(options.height / 8) * 8);
+
+  return {
+    '72': { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: checkpoint } },
+    '81': { class_type: 'CLIPSetLastLayer', inputs: { stop_at_clip_layer: -2, clip: ['72', 1] } },
+    '73': { class_type: 'CLIPTextEncode', inputs: { text: options.positive, clip: ['81', 0] } },
+    '74': { class_type: 'CLIPTextEncode', inputs: { text: options.negative, clip: ['81', 0] } },
+    '75': { class_type: 'LoadImage', inputs: { image: options.imageName } },
+    '200': {
+      class_type: 'ImageScale',
+      inputs: {
+        image: ['75', 0],
+        upscale_method: 'lanczos',
+        width,
+        height,
+        crop: 'disabled',
+      },
+    },
+    '84': {
+      class_type: 'RMBG',
+      inputs: {
+        image: ['200', 0],
+        model: 'RMBG-2.0',
+        sensitivity: 1.0,
+        process_res: 1024,
+        mask_blur: 0,
+        mask_offset: 0,
+        invert_output: false,
+        refine_foreground: true,
+        background: 'Alpha',
+        background_color: '#222222',
+      },
+    },
+    '95': {
+      class_type: 'GrowMask',
+      inputs: { mask: ['84', 1], expand: 24, tapered_corners: true },
+    },
+    '96': {
+      class_type: 'ImpactGaussianBlurMask',
+      inputs: { mask: ['95', 0], kernel_size: 16, sigma: 8 },
+    },
+    '201': {
+      class_type: 'EmptyLatentImage',
+      inputs: { width, height, batch_size: 1 },
+    },
+    '202': {
+      class_type: 'KSampler',
+      inputs: {
+        seed: options.seed,
+        steps: 30,
+        cfg: 5.5,
+        sampler_name: 'dpmpp_2m',
+        scheduler: 'karras',
+        denoise: 1.0,
+        model: ['72', 0],
+        positive: ['73', 0],
+        negative: ['74', 0],
+        latent_image: ['201', 0],
+      },
+    },
+    '203': { class_type: 'VAEDecode', inputs: { samples: ['202', 0], vae: ['72', 2] } },
+    '204': {
+      class_type: 'ImageCompositeMasked',
+      inputs: {
+        destination: ['203', 0],
+        source: ['200', 0],
+        x: 0,
+        y: 0,
+        resize_source: false,
+        mask: ['96', 0],
+      },
+    },
+    '208': {
+      class_type: 'CLIPTextEncode',
+      inputs: { text: HARMONIZE_POSITIVE, clip: ['81', 0] },
+    },
+    '205': { class_type: 'VAEEncode', inputs: { pixels: ['204', 0], vae: ['72', 2] } },
+    '206': {
+      class_type: 'KSampler',
+      inputs: {
+        seed: options.seed + 1,
+        steps: 20,
+        cfg: 5.0,
+        sampler_name: 'dpmpp_2m',
+        scheduler: 'karras',
+        denoise: 0.18,
+        model: ['72', 0],
+        positive: ['208', 0],
+        negative: ['74', 0],
+        latent_image: ['205', 0],
+      },
+    },
+    '207': { class_type: 'VAEDecode', inputs: { samples: ['206', 0], vae: ['72', 2] } },
+    '79': { class_type: 'SaveImage', inputs: { filename_prefix: options.filenamePrefix, images: ['207', 0] } },
+  };
+}
+
 /**
  * Masked inpaint pass.
  *

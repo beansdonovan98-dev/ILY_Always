@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 
 import { supabaseUrl, supabaseAnonKey } from '@/lib/supabase';
+import { STYLE_SCENES } from '@/lib/aiStyles';
 
 const FRIENDLY: Record<number, string> = {
   401: 'Your RunPod API key is invalid or missing.',
@@ -290,6 +291,30 @@ export async function editImageWithStyle(
       'style_status',
       styleRequestId
     );
+
+    // Styles like 20s Era / Walmart / Dungeon own their scene. Run the
+    // subject-protected background pass automatically so the room changes
+    // with the style, while the Background edit stays free for extras.
+    const scene = STYLE_SCENES[styleMode];
+    if (scene) {
+      onProgress?.('Building the scene...');
+      const sceneRequestId = createAIRequestId();
+      const sceneBody: Record<string, unknown> = {
+        action: 'inpaint_start',
+        request_id: sceneRequestId,
+        couple_id: coupleId,
+        target: 'background',
+        prompt: scene.prompt,
+        styleMode,
+      };
+      if (scene.negative) sceneBody.negative = scene.negative;
+      if (current.startsWith('data:')) {
+        sceneBody.imageBase64 = current.replace(/^data:[^;,]+[;,]/, '');
+      } else {
+        sceneBody.imageUrl = current;
+      }
+      current = await runComfyJob(sceneBody, 'inpaint_status', sceneRequestId);
+    }
   }
 
   for (const edit of active) {

@@ -2,7 +2,12 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'npm:@supabase/supabase-js';
 import { STYLE_PRESETS } from './stylePresets.ts';
 import { configForStyle } from './styleFamilies.ts';
-import { buildComfyWorkflow, buildInpaintWorkflow, InpaintMaskSource } from './comfyWorkflow.ts';
+import {
+  buildComfyWorkflow,
+  buildGeneratedBackgroundWorkflow,
+  buildInpaintWorkflow,
+  InpaintMaskSource,
+} from './comfyWorkflow.ts';
 import { buildBrushMaskPng } from './maskPng.ts';
 
 const corsHeaders = {
@@ -1395,11 +1400,13 @@ async function handleInpaintStart(
 
     const styleMode = String(body.styleMode ?? '').trim();
     const config = editTargetConfig(target);
+    const sceneNegative = String(body.negative ?? '').trim();
+    const baseNegative = negativeForEdit(target, userPrompt, styleMode);
     const workflow = buildInpaintWorkflow({
       imageName,
       mask,
       positive: buildEditPrompt(target, userPrompt, styleMode),
-      negative: negativeForEdit(target, userPrompt, styleMode),
+      negative: sceneNegative ? `${baseNegative}, ${sceneNegative}` : baseNegative,
       denoise: clampEditDenoise(body.denoise, config.denoise),
       seed: Math.floor(Math.random() * 2_147_483_647),
       filenamePrefix: `ily_${target}_${requestId.slice(-8)}`,
@@ -1413,6 +1420,119 @@ async function handleInpaintStart(
 
     const jobId = await submitComfyWorkflow(db, requestId, workflow);
     return json(200, { requestId, jobId, status: 'IN_PROGRESS', target });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    await db
+      .from('ai_image_jobs')
+      .update({ status: 'FAILED', error: message, updated_at: new Date().toISOString() })
+      .eq('request_id', requestId);
+    return json(502, { requestId, status: 'FAILED', error: message });
+  }
+}
+
+/** Text-to-image background + untouched subject composite + harmonization. */
+async function handleBackgroundGenerate(
+  body: Record<string, unknown>,
+  requestId: string,
+  coupleId: string
+): Promise<Response> {
+  const db = getDb();
+  if (!db) {
+    return json(500, {
+      error: 'SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are not available to the Edge Function.',
+    });
+  }
+
+  const styleMode = String(body.styleMode ?? '').trim();
+  const userPrompt = String(body.prompt ?? '').trim();
+
+  let source: ResolvedImage;
+  try {
+    source = await resolveSourceImage(body);
+  } catch (e) {
+    return json(400, { error: e instanceof Error ? e.message : String(e) });
+  }
+  const imageCheck = validateImageBytes(source.bytes);
+  if (!imageCheck.ok) return json(400, { error: imageCheck.error });
+
+  const { data: inserted, error: insertError } = await db
+    .from('ai_image_jobs')
+    .insert({ request_id: requestId, status: 'PENDING', couple_id: coupleId || null })
+    .select('*')
+    .maybeSingle();
+
+  let row = (inserted as JobRow | null) ?? null;
+  if (insertError && insertError.code !== '23505') {
+    return json(500, { error: `Could not create AI job: ${insertError.message}` });
+  }
+  if (!row) {
+    row = await getJobRow(db, requestId);
+    if (!row) return json(500, { error: 'AI job disappeared while being created.' });
+    if (row.job_id || row.status === 'COMPLETED' || isFailedStatus(row.status)) {
+      return json(200, { requestId, jobId: row.job_id, status: row.status, error: row.error });
+    }
+    const updatedAt = Date.parse(row.updated_at || row.created_at);
+    const stale = !Number.isFinite(updatedAt) || Date.now() - updatedAt > STALE_PENDING_MS;
+    if (!stale) return json(200, { requestId, status: 'PENDING' });
+    await db
+      .from('ai_image_jobs')
+      .update({ status: 'PENDING', error: null, updated_at: new Date().toISOString() })
+      .eq('request_id', requestId);
+  }
+
+  try {
+    const imageName = await uploadBytesToComfy(source.bytes, source.mimeType, 'bg');
+    const cfg = configForStyle(styleMode);
+    const quality = cfg.quality === 'anime' ? ANIME_QUALITY : PONY_QUALITY;
+    const styleTags = styleTagsForEdit(styleMode);
+    // Scene-specific shorthand, then style tags first so the style wins over
+    // the scene noun (otherwise "grow room" erases "1920s").
+    const expanded = userPrompt
+      ? (() => {
+          const extras: string[] = [];
+          if (/grow room|weed|cannabis|marijuana/i.test(userPrompt)) {
+            extras.push(
+              'indoor cannabis cultivation room, rows of marijuana plants under LED grow lights, reflective floor, purple and green smoke'
+            );
+          }
+          if (/walmart|store|aisle/i.test(userPrompt)) {
+            extras.push('big-box retail store interior, fluorescent ceiling lights, long aisles, shelves of products');
+          }
+          if (/moon/i.test(userPrompt)) extras.push('large glowing moon, night sky');
+          if (/beach/i.test(userPrompt)) extras.push('sandy beach, ocean waves, palm trees');
+          return [userPrompt, ...extras].join(', ');
+        })()
+      : 'detailed background, scenery, environment';
+    const positive = [
+      quality,
+      styleTags,
+      expanded,
+      'wide establishing shot, full environment, detailed scenery, cinematic lighting, no people',
+    ]
+      .filter(Boolean)
+      .join(', ');
+    const baseNegative = cfg.negative === 'anime' ? ANIME_NEGATIVE : BASE_NEGATIVE;
+    const negative = `${baseNegative}, people, person, human, body parts, limbs, hands, feet, text, watermark`;
+
+    const srcW = source.width || 1024;
+    const srcH = source.height || 1024;
+    const scale = Math.min(1, 1024 / Math.max(srcW, srcH));
+    const width = Math.max(512, Math.round((srcW * scale) / 8) * 8);
+    const height = Math.max(512, Math.round((srcH * scale) / 8) * 8);
+
+    const workflow = buildGeneratedBackgroundWorkflow({
+      imageName,
+      positive,
+      negative,
+      seed: Math.floor(Math.random() * 2_147_483_647),
+      filenamePrefix: `ily_bg_${requestId.slice(-8)}`,
+      checkpoint: checkpointForStyle(styleMode),
+      width,
+      height,
+    });
+
+    const jobId = await submitComfyWorkflow(db, requestId, workflow);
+    return json(200, { requestId, jobId, status: 'IN_PROGRESS', mode: 'generate' });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     await db
@@ -1660,6 +1780,13 @@ serve(async (req) => {
         return json(400, { error: 'Missing or invalid request_id.' });
       }
       return await handleStyleStatus(requestId);
+    }
+
+    if (actionRaw === 'background_generate') {
+      if (!requestId || requestId.length > 160) {
+        return json(400, { error: 'Missing or invalid request_id.' });
+      }
+      return await handleBackgroundGenerate(body, requestId, coupleId);
     }
 
     // In-app pod kill switch: status / stop / start. No image job is created.
