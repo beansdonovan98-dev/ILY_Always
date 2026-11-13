@@ -1,0 +1,31 @@
+# ILY_Always ComfyUI — Python dependencies for a Kaggle rebuild
+# Pin torch to the Kaggle image's CUDA build; do not let pip resolve it.
+# torch==2.4.1+cu121 ; torchvision==0.19.1+cu121 ; torchaudio==2.4.1+cu121
+
+transformers>=4.38,<4.46
+safetensors>=0.4.2
+accelerate>=0.30
+huggingface_hub>=0.23
+diffusers>=0.30
+numpy<2
+pillow>=10.2
+scipy>=1.11
+scikit-image>=0.22
+opencv-python-headless>=4.9
+einops>=0.7
+kornia>=0.7
+aiohttp>=3.9
+fastapi>=0.110
+uvicorn>=0.29
+python-multipart>=0.0.9
+pydantic>=2.6
+tqdm>=4.66
+psutil>=5.9
+segment-anything>=1.0
+insightface>=0.7.3
+onnxruntime-gpu>=1.17
+facexlib>=0.3.0
+filterpy>=1.4.5
+lmdb>=1.4
+pyyaml>=6.0
+requests>=2.31

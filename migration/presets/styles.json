@@ -1,0 +1,397 @@
+{
+  "count": 98,
+  "styles": [
+    {
+      "id": "realistic",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "double-exposure",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "polaroid",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "glitch-art",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "neon-noir",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "color-swap",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "luminescence",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "20s-era",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "prism",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "black-and-white",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "y2k-film",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "candle-light",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "dream-diffusion",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "velvet-glow",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "polaroid-after-dark",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "plum-and-espresso",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "walmart-security-cam",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "alien-abduction-beam",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "park-bench",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "product-photo",
+      "bucket": "realism_composite"
+    },
+    {
+      "id": "superhero",
+      "bucket": "realism_outfit_nsfw"
+    },
+    {
+      "id": "lord-of-the-rings",
+      "bucket": "realism_outfit_nsfw"
+    },
+    {
+      "id": "change-outfit",
+      "bucket": "realism_outfit_nsfw"
+    },
+    {
+      "id": "olympian-greek-god",
+      "bucket": "realism_outfit_nsfw"
+    },
+    {
+      "id": "dungeon",
+      "bucket": "realism_outfit_nsfw"
+    },
+    {
+      "id": "comic-book",
+      "bucket": "anime_2d_toon"
+    },
+    {
+      "id": "anime",
+      "bucket": "anime_2d_toon"
+    },
+    {
+      "id": "adult-anime",
+      "bucket": "anime_2d_toon"
+    },
+    {
+      "id": "cartoon",
+      "bucket": "anime_2d_toon"
+    },
+    {
+      "id": "powerpuff-girls",
+      "bucket": "anime_2d_toon"
+    },
+    {
+      "id": "sticker-pack",
+      "bucket": "anime_2d_toon"
+    },
+    {
+      "id": "pixel-art",
+      "bucket": "anime_2d_toon"
+    },
+    {
+      "id": "manga-memoir",
+      "bucket": "anime_2d_toon"
+    },
+    {
+      "id": "90s-anime",
+      "bucket": "anime_2d_toon"
+    },
+    {
+      "id": "gameboy",
+      "bucket": "anime_2d_toon"
+    },
+    {
+      "id": "south-park",
+      "bucket": "anime_2d_toon"
+    },
+    {
+      "id": "adventure-time",
+      "bucket": "anime_2d_toon"
+    },
+    {
+      "id": "atla",
+      "bucket": "anime_2d_toon"
+    },
+    {
+      "id": "16-bit-arcade",
+      "bucket": "anime_2d_toon"
+    },
+    {
+      "id": "lego",
+      "bucket": "toy_3d_sculpt"
+    },
+    {
+      "id": "figurine",
+      "bucket": "toy_3d_sculpt"
+    },
+    {
+      "id": "pixar",
+      "bucket": "toy_3d_sculpt"
+    },
+    {
+      "id": "claymation",
+      "bucket": "toy_3d_sculpt"
+    },
+    {
+      "id": "plush-doll",
+      "bucket": "toy_3d_sculpt"
+    },
+    {
+      "id": "kawaii-collector",
+      "bucket": "toy_3d_sculpt"
+    },
+    {
+      "id": "statue",
+      "bucket": "toy_3d_sculpt"
+    },
+    {
+      "id": "3d-avatar",
+      "bucket": "toy_3d_sculpt"
+    },
+    {
+      "id": "bobblehead",
+      "bucket": "toy_3d_sculpt"
+    },
+    {
+      "id": "minecraft",
+      "bucket": "toy_3d_sculpt"
+    },
+    {
+      "id": "mini-me",
+      "bucket": "toy_3d_sculpt"
+    },
+    {
+      "id": "paper-people",
+      "bucket": "toy_3d_sculpt"
+    },
+    {
+      "id": "watercolor",
+      "bucket": "fine_art_medium"
+    },
+    {
+      "id": "ink-illustration",
+      "bucket": "fine_art_medium"
+    },
+    {
+      "id": "posterize",
+      "bucket": "fine_art_medium"
+    },
+    {
+      "id": "coloring-book",
+      "bucket": "fine_art_medium"
+    },
+    {
+      "id": "stencil",
+      "bucket": "fine_art_medium"
+    },
+    {
+      "id": "astrology",
+      "bucket": "fine_art_medium"
+    },
+    {
+      "id": "psychedelic",
+      "bucket": "fine_art_medium"
+    },
+    {
+      "id": "comic-dot",
+      "bucket": "fine_art_medium"
+    },
+    {
+      "id": "pop-garden",
+      "bucket": "fine_art_medium"
+    },
+    {
+      "id": "pointillism",
+      "bucket": "fine_art_medium"
+    },
+    {
+      "id": "negative-space-invasion",
+      "bucket": "fine_art_medium"
+    },
+    {
+      "id": "drawn-to-life",
+      "bucket": "fine_art_medium"
+    },
+    {
+      "id": "stained-glass",
+      "bucket": "fine_art_medium"
+    },
+    {
+      "id": "mural",
+      "bucket": "fine_art_medium"
+    },
+    {
+      "id": "graffiti",
+      "bucket": "fine_art_medium"
+    },
+    {
+      "id": "blueprint",
+      "bucket": "fine_art_medium"
+    },
+    {
+      "id": "sketch",
+      "bucket": "fine_art_medium"
+    },
+    {
+      "id": "tarot-card",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "holiday-cards",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "magazine-cover",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "pokemon-card",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "yugioh-card",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "playing-card",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "myspace-glitter",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "magazine-ransom-note",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "album-cover",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "record-vinyl",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "app-icon",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "scrapbook",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "backwoods-wrapper",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "post-card",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "photobooth",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "wanted-poster",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "book-cover",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "thumbnail",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "advertisement",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "missing-poster",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "fbi-wanted",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "post-it-note",
+      "bucket": "framed_card"
+    },
+    {
+      "id": "snowglobe",
+      "bucket": "macro_object_embed"
+    },
+    {
+      "id": "rip-shirt",
+      "bucket": "macro_object_embed"
+    },
+    {
+      "id": "merchandise",
+      "bucket": "macro_object_embed"
+    },
+    {
+      "id": "billboard",
+      "bucket": "macro_object_embed"
+    },
+    {
+      "id": "side-of-bus",
+      "bucket": "macro_object_embed"
+    },
+    {
+      "id": "milk-carton",
+      "bucket": "macro_object_embed"
+    },
+    {
+      "id": "perc-in-bong",
+      "bucket": "macro_object_embed"
+    },
+    {
+      "id": "car-wrap",
+      "bucket": "macro_object_embed"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+# Custom nodes required by the ILY_Always ComfyUI graphs
+# Source of truth: node class names in supabase/functions/ai-image-edit/comfyWorkflow.ts
+# Commit hashes could not be read: the pod API returned 404 at packaging time.
+# Fill them in on the pod with:
+#   for d in /workspace/runpod-slim/ComfyUI/custom_nodes/*/; do echo "$d $(git -C "$d" rev-parse HEAD)"; done
+
+comfyui_controlnet_aux
+  repo    https://github.com/Fannovel16/comfyui_controlnet_aux
+  commit  UNKNOWN
+  nodes   AnimeLineArtPreprocessor, Zoe-DepthMapPreprocessor, OpenposePreprocessor
+  why     lineart is the medium anchor for every stylized bucket
+
+ComfyUI-Impact-Pack
+  repo    https://github.com/ltdrdata/ComfyUI-Impact-Pack
+  commit  UNKNOWN
+  nodes   ImpactGaussianBlurMask
+  why     mask feathering on the sign glow and control masks
+
+ComfyUI-Impact-Subpack
+  repo    https://github.com/ltdrdata/ComfyUI-Impact-Subpack
+  commit  UNKNOWN
+  nodes   (support for Impact Pack detectors)
+  why     pulled in by Impact Pack on this install
+
+ComfyUI_IPAdapter_plus
+  repo    https://github.com/cubiq/ComfyUI_IPAdapter_plus
+  commit  UNKNOWN
+  nodes   IPAdapterUnifiedLoaderFaceID, IPAdapterFaceID
+  why     ab2-B golden identity (weight 0.35, end 0.40)
+
+ComfyUI-BRIA_AI-RMBG
+  repo    https://github.com/ZHO-ZHO-ZHO/ComfyUI-BRIA_AI-RMBG
+  commit  UNKNOWN
+  nodes   RMBG
+  why     subject cutout on non-pose paths
+
+# InsightFace is a Python dependency, not a node pack:
+#   pip install insightface onnxruntime-gpu
+# models under models/insightface/models/buffalo_l/

@@ -1,0 +1,19 @@
+{
+  "generated": "2026-11-13",
+  "source": "pod 64g74uxnppd82i (unreachable at packaging time — names taken from workflow JSONs and code)",
+  "notes": "Sizes and checksums are null because the pod API returned 404; fill them on the pod with: sha256sum + stat. Paths are relative to ComfyUI root.",
+  "comfyRoot": "/workspace/runpod-slim/ComfyUI",
+  "models": [
+    { "kind": "checkpoint", "filename": "ponyDiffusionV6XL_v6StartWithThisOne.safetensors", "location": "models/checkpoints/", "sizeBytes": null, "sha256": null, "required": true, "usedBy": "every anime/framed/fine-art/toy style" },
+    { "kind": "checkpoint", "filename": "SDXL/sd_xl_base_1.0.safetensors", "location": "models/checkpoints/SDXL/", "sizeBytes": null, "sha256": null, "required": false, "usedBy": "fallback only" },
+    { "kind": "lora", "filename": "ashley_v1_1200_steps_00001_.safetensors", "location": "models/loras/", "sizeBytes": null, "sha256": null, "required": true, "usedBy": "wife subject, all buckets" },
+    { "kind": "lora", "filename": "mbboi_v1_1200_steps_00001_.safetensors", "location": "models/loras/", "sizeBytes": null, "sha256": null, "required": true, "usedBy": "husband subject" },
+    { "kind": "controlnet", "filename": "diffusers_xl_canny_full.safetensors", "location": "models/controlnet/", "sizeBytes": null, "sha256": null, "required": true, "usedBy": "AnimeLineArt->Canny chain (golden + pose pass 2)" },
+    { "kind": "controlnet", "filename": "SDXL/depth-zoe-xl-v1.0-controlnet.safetensors", "location": "models/controlnet/SDXL/", "sizeBytes": null, "sha256": null, "required": true, "usedBy": "depth bucket + toy pass 2" },
+    { "kind": "controlnet", "filename": "thibaud_xl_openpose.safetensors", "location": "models/controlnet/", "sizeBytes": null, "sha256": null, "required": true, "usedBy": "pose reference (OpenPose)" },
+    { "kind": "faceid", "filename": "ip-adapter-faceid-plusv2_sdxl.bin", "location": "models/ipadapter/", "sizeBytes": null, "sha256": null, "required": false, "usedBy": "ab2-B golden only (FaceID 0.35)" },
+    { "kind": "faceid", "filename": "buffalo_l (InsightFace)", "location": "models/insightface/models/buffalo_l/", "sizeBytes": null, "sha256": null, "required": false, "usedBy": "FaceID" },
+    { "kind": "rmbg", "filename": "RMBG-2.0", "location": "models/RMBG/RMBG-2.0/", "sizeBytes": null, "sha256": null, "required": false, "usedBy": "non-pose cutout paths" },
+    { "kind": "asset", "filename": "team_no_lackin_neon.png", "location": "input/", "sizeBytes": 31445, "sha256": "included-in-source-archive", "required": true, "usedBy": "composited sign" }
+  ]
+}
