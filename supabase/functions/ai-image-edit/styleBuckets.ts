@@ -477,11 +477,11 @@ export const MASSIVE_AUTHENTIC_WEED_ENVIRONMENTS = [
 export const GLASS_COLORS = [
   'vibrant neon green and purple accented',
   'deep electric blue and black gradient',
-  'iridescent pink and gold shifting',
+  'iridescent pink and teal shifting',
   'glowing UV reactive neon green',
   'translucent smoke gray with purple accents',
   'custom tie-dye colored glass',
-  'classic crystal clear with gold lettering',
+  'classic crystal clear with etched glass lettering',
 ];
 
 export const FLAVORED_WRAPS = [
@@ -922,7 +922,7 @@ export function generateFinalOpenCodePayload(
         .join(', ')
     : styleText;
   const lightLead = chosenLight
-    ? `, (${lightOverrideClause(rawEnv, chosenLight)}:1.3)`
+    ? `, (${lightOverrideClause(rawEnv, chosenLight)}:1.15)`
     : '';
   // Weed room and hardware sit early ï¿½ before the easter egg ï¿½ so they land inside
   // the first CLIP chunk instead of being buried at token 130.
@@ -940,13 +940,13 @@ export function generateFinalOpenCodePayload(
   const poseLead = pose ? `(${pose}:1.25), ` : '';
   const framingText = pose
     ? wide
-      ? ', wide shot, full body in frame, the room visible around her'
-      : ', full scene, environment visible around her'
+      ? ', wide shot, full body in frame, the room visible around her, eye-level camera, natural perspective'
+      : ', full scene, environment visible around her, natural perspective'
     : wide
       ? WIDE_FRAMING
       : FRAMING_BY_BUCKET[style.bucket];
   const positive = `${SCORE_TAGS}, ${mediumFront}, ${poseLead}${poseAnchor}, ${subjectTagText}${lightLead}${traits ? `, ${traits}` : ''}${bodyDetailPrompt}, ${styleTextLit}, ${hardwareProp}, surrounded by ${env}, with ${easterEgg}, ${backgroundProp}${framingText}`;
-  const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only, plain background, gray background, simple background, freckles, freckled skin${chosenLight ? ', multicolored lighting, rainbow lighting, mixed color lighting, neutral lighting, white lighting, daylight' : ''}`;
+  const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only, plain background, gray background, simple background, freckles, freckled skin${chosenLight ? ', multicolored lighting, rainbow lighting, mixed color lighting, neutral lighting, white lighting, daylight' : ''}${pose ? ', extreme low angle, worm\'s eye view, fisheye lens, distorted perspective, blonde hair, light hair' : ''}`;
 
   return {
     checkpoint: bucket.checkpoint,
