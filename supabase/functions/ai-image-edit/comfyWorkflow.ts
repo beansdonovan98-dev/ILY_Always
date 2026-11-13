@@ -346,7 +346,89 @@ export type RealismWorkflowOptions = {
   checkpoint?: string;
   width: number;
   height: number;
+  /** Composite the Team No Lackin sign into the finished photo. */
+  neonSign?: boolean;
 };
+
+/**
+ * The bucket path has its own inline neon block. This mirrors it for the photo
+ * pipelines, on a separate node range, so every style render carries the sign
+ * whether it goes through the bucket graph or the realism graph.
+ */
+function addNeonSignComposite(
+  workflow: Record<string, unknown>,
+  opts: {
+    width: number;
+    height: number;
+    seed: number;
+    cfgScale: number;
+    modelRef: [string, number];
+    positiveRef: [string, number];
+    negativeRef: [string, number];
+    imageRef: [string, number];
+    saveNodeId: string;
+  }
+) {
+  const signW = Math.round(opts.width * 0.28);
+  const signH = Math.round(signW * 0.3125);
+  workflow['300'] = { class_type: 'LoadImage', inputs: { image: 'team_no_lackin_neon.png' } };
+  workflow['301'] = {
+    class_type: 'ImageScale',
+    inputs: { image: ['300', 0], upscale_method: 'lanczos', width: signW, height: signH, crop: 'disabled' },
+  };
+  workflow['302'] = { class_type: 'MaskToImage', inputs: { mask: ['300', 1] } };
+  workflow['303'] = {
+    class_type: 'ImageScale',
+    inputs: { image: ['302', 0], upscale_method: 'lanczos', width: signW, height: signH, crop: 'disabled' },
+  };
+  workflow['304'] = { class_type: 'ImageToMask', inputs: { image: ['303', 0], channel: 'red' } };
+  workflow['305'] = {
+    class_type: 'ImpactGaussianBlurMask',
+    inputs: { mask: ['304', 0], kernel_size: 6, sigma: 3 },
+  };
+  workflow['306'] = { class_type: 'InvertMask', inputs: { mask: ['305', 0] } };
+  workflow['307'] = {
+    class_type: 'ImageCompositeMasked',
+    inputs: {
+      destination: opts.imageRef,
+      source: ['301', 0],
+      x: Math.round(opts.width * 0.06),
+      y: Math.round(opts.height * 0.07),
+      resize_source: false,
+      mask: ['306', 0],
+    },
+  };
+  workflow['308'] = {
+    class_type: 'GrowMask',
+    inputs: { mask: ['306', 0], expand: 48, tapered_corners: true },
+  };
+  workflow['309'] = {
+    class_type: 'ImpactGaussianBlurMask',
+    inputs: { mask: ['308', 0], kernel_size: 32, sigma: 16 },
+  };
+  workflow['310'] = { class_type: 'VAEEncode', inputs: { pixels: ['307', 0], vae: ['72', 2] } };
+  workflow['311'] = {
+    class_type: 'SetLatentNoiseMask',
+    inputs: { samples: ['310', 0], mask: ['309', 0] },
+  };
+  workflow['312'] = {
+    class_type: 'KSampler',
+    inputs: {
+      seed: opts.seed,
+      steps: 14,
+      cfg: opts.cfgScale,
+      sampler_name: 'dpmpp_2m',
+      scheduler: 'karras',
+      denoise: 0.12,
+      model: opts.modelRef,
+      positive: opts.positiveRef,
+      negative: opts.negativeRef,
+      latent_image: ['311', 0],
+    },
+  };
+  workflow['313'] = { class_type: 'VAEDecode', inputs: { samples: ['312', 0], vae: ['72', 2] } };
+  (workflow[opts.saveNodeId] as { inputs: Record<string, unknown> }).inputs.images = ['313', 0];
+}
 
 function realismBase(options: RealismWorkflowOptions): Record<string, unknown> {
   const checkpoint = options.checkpoint || 'ponyDiffusionV6XL_v6StartWithThisOne.safetensors';
@@ -462,8 +544,7 @@ function realismBase(options: RealismWorkflowOptions): Record<string, unknown> {
 /** Mode 1A: new background + exact subject composite + face-protected blend. */
 export function buildRealismCompositeWorkflow(
   options: RealismWorkflowOptions
-): Record<string, unknown> {
-  const workflow = realismBase(options);
+): Record<string, unknown> {  const workflow = realismBase(options);
   workflow['205'] = { class_type: 'VAEEncode', inputs: { pixels: ['204', 0], vae: ['72', 2] } };
   workflow['206'] = {
     class_type: 'SetLatentNoiseMask',
@@ -489,6 +570,19 @@ export function buildRealismCompositeWorkflow(
     class_type: 'SaveImage',
     inputs: { filename_prefix: options.filenamePrefix, images: ['208', 0] },
   };
+  if (options.neonSign) {
+    addNeonSignComposite(workflow, {
+      width: Math.max(512, Math.round(options.width / 8) * 8),
+      height: Math.max(512, Math.round(options.height / 8) * 8),
+      seed: options.seed + 4,
+      cfgScale: 5.0,
+      modelRef: ['72', 0],
+      positiveRef: ['124', 0],
+      negativeRef: ['74', 0],
+      imageRef: ['208', 0],
+      saveNodeId: '79',
+    });
+  }
   return workflow;
 }
 
@@ -556,6 +650,19 @@ export function buildRealismOutfitWorkflow(
     class_type: 'SaveImage',
     inputs: { filename_prefix: options.filenamePrefix, images: ['208', 0] },
   };
+  if (options.neonSign) {
+    addNeonSignComposite(workflow, {
+      width: Math.max(512, Math.round(options.width / 8) * 8),
+      height: Math.max(512, Math.round(options.height / 8) * 8),
+      seed: options.seed + 4,
+      cfgScale: 5.0,
+      modelRef: ['72', 0],
+      positiveRef: ['124', 0],
+      negativeRef: ['74', 0],
+      imageRef: ['208', 0],
+      saveNodeId: '79',
+    });
+  }
   return workflow;
 }
 

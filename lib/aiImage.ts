@@ -276,6 +276,12 @@ export async function editImageWithStyle(
     subject?: 'wife' | 'husband' | 'couple';
     nude?: boolean;
     backgroundPrompt?: string;
+    /** Solid room light colour id, e.g. 'pink' (ignored by realism_composite). */
+    lightColor?: string;
+    /** 'random' draws from the 150-pose pool; 'match_photo' keeps her pose. */
+    poseMode?: 'match_photo' | 'random';
+    /** Landscape canvas, 1216x832, so the room reads. */
+    wide?: boolean;
   }
 ): Promise<string> {
   const active = edits.filter((edit) => edit.prompt.trim().length > 0);
@@ -297,6 +303,9 @@ export async function editImageWithStyle(
     if (options?.subject) styleBody.subject = options.subject;
     if (options?.nude === false) styleBody.isNude = false;
     if (options?.backgroundPrompt?.trim()) styleBody.backgroundPrompt = options.backgroundPrompt.trim();
+    if (options?.lightColor?.trim()) styleBody.lightColor = options.lightColor.trim();
+    if (options?.poseMode) styleBody.poseMode = options.poseMode;
+    if (options?.wide) styleBody.wide = true;
     if (options?.poseImageUrl) {
       styleBody.poseImageBase64 = await prepareImageBase64(options.poseImageUrl);
     }

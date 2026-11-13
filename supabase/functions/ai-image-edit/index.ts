@@ -31,7 +31,7 @@ const corsHeaders = {
 };
 
 const RUNPOD_BASE = 'https://api.runpod.ai/v2';
-const DEFAULT_ENDPOINT = '7ckfcko9p6h503';
+const DEFAULT_ENDPOINT = 'ioivzvpk09x4sh';
 const STYLE_FACE_TAGS =
   'natural eye size, symmetrical eyes, realistic face proportions, natural lips, relaxed closed mouth, symmetrical lips, realistic mouth, open eyes, exact same face, exact same body shape, exact same pose, exact same camera angle, natural anatomy, two arms, two legs, two feet, sharp facial details, sharp eyes, same glasses, realistic skin texture';
 
@@ -1216,6 +1216,7 @@ async function handleStyleStart(
     bodyTags?: string;
     poseMode?: string;
     posePrompt?: string;
+    lightColor?: string;
   }
 ): Promise<Response> {
   const db = getDb();
@@ -1303,14 +1304,25 @@ async function handleStyleStart(
         : poseMode === 'random'
           ? pickRandomPose()
           : (overrides?.posePrompt ?? '').trim();
+    // Horizontal poses on a 832x1216 portrait canvas get cropped to the torso, which
+    // also crops the room out. Any pose that lies down or spreads across the frame
+    // flips to landscape on its own, so the environment survives.
+    const poseIsHorizontal = poseText
+      ? /lying|all fours|sprawled|scissored|squatting|straddling|bent (?:forward|over)|legs (?:up|folded|behind)|from directly above|overhead|top-down|hips (?:raised|lifted)/i.test(
+          poseText
+        )
+      : false;
+    const landscape = wide || poseIsHorizontal;
+    const neonSignEnabled = (Deno.env.get('COMFY_EASTER_EGG') ?? '1') !== '0';
     const payload = generateFinalOpenCodePayload(
       styleMode,
       subject,
       isNude,
       backgroundPrompt,
       subjectTraits,
-      wide,
-      poseText
+      landscape,
+      poseText,
+      String(overrides?.lightColor ?? '')
     );
 
     // Optional pose reference: uploaded and fed to OpenPose so the body adopts
@@ -1320,8 +1332,8 @@ async function handleStyleStart(
       const poseCheck = validateInputImage(overrides.poseImageBase64);
       if (poseCheck.ok) poseImage = await uploadImageToComfy(poseCheck.raw);
     }
-    const width = wide ? 1216 : cfg.portrait ? 832 : 1024;
-    const height = wide ? 832 : cfg.portrait ? 1216 : 1024;
+    const width = landscape ? 1216 : cfg.portrait ? 832 : 1024;
+    const height = landscape ? 832 : cfg.portrait ? 1216 : 1024;
     const bodyTags = (overrides?.bodyTags ?? '').replace(/[{}]/g, '').trim().slice(0, 160);
     const positive = bodyTags ? `${payload.positive}, ${bodyTags}` : payload.positive;
     const isAnimeBucket = bucketForStyle(styleMode) === 'anime_2d_toon';
@@ -1359,8 +1371,8 @@ async function handleStyleStart(
         ...common,
         controlNet: poseText ? 'none' : poseImage ? 'openpose' : cfg.controlNet,
         poseImage,
-        controlNetStrength: wide ? 0.32 : cfg.controlNetStrength,
-        controlNetEndPercent: wide ? 0.45 : cfg.controlNetEndPercent,
+        controlNetStrength: landscape ? 0.32 : cfg.controlNetStrength,
+        controlNetEndPercent: landscape ? 0.45 : cfg.controlNetEndPercent,
         lineartStrength: cfg.lineartStrength,
         lineartEndPercent: cfg.lineartEndPercent,
         faceIdWeight:
@@ -1377,12 +1389,16 @@ async function handleStyleStart(
         loraClipStrength: cfg.loraClipStrength,
         useFaceId: cfg.useFaceId,
         cfgScale: cfg.cfgScale,
-        neonSign: (Deno.env.get('COMFY_EASTER_EGG') ?? '1') !== '0',
+        neonSign: neonSignEnabled,
       });
     } else if (bucketForStyle(styleMode) === 'realism_outfit_nsfw') {
-      workflow = buildRealismOutfitWorkflow({ ...common, editPositive: payload.positive });
+      workflow = buildRealismOutfitWorkflow({
+        ...common,
+        editPositive: payload.positive,
+        neonSign: neonSignEnabled,
+      });
     } else {
-      workflow = buildRealismCompositeWorkflow(common);
+      workflow = buildRealismCompositeWorkflow({ ...common, neonSign: neonSignEnabled });
     }
 
     const promptRes = await fetch(`${await comfyBaseUrl()}/prompt`, {
@@ -2231,6 +2247,7 @@ serve(async (req) => {
         wide: body.wide === true,
         poseMode: typeof body.poseMode === 'string' ? body.poseMode : undefined,
         posePrompt: typeof body.posePrompt === 'string' ? body.posePrompt : undefined,
+        lightColor: typeof body.lightColor === 'string' ? body.lightColor : undefined,
         bodyTags: typeof body.bodyTags === 'string' ? body.bodyTags : undefined,
       });
     }

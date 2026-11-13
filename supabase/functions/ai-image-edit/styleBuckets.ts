@@ -505,6 +505,22 @@ export const SMOKING_HARDWARE_PROPS: Array<() => string> = [
   () => `breaking down sticky bud on a tray next to ${getRandomItem(FLAVORED_WRAPS)} wrappers, a lighter, and a bubbling ${getRandomItem(GLASS_COLORS)} beaker bong`,
 ];
 
+/**
+ * Background weed objects. These deliberately repeat whatever she may be holding,
+ * but in another colour and another shape, so a pose with a bong in hand still gets
+ * a bong in the room without the two being the same piece.
+ */
+export const BACKGROUND_WEED_PROPS: Array<() => string> = [
+  () => `in the background a ${getRandomItem(GLASS_COLORS)} beaker bong sits on a low table beside a jar of cured buds and a loaded ashtray`,
+  () => `behind her, a ${getRandomItem(GLASS_COLORS)} straight-tube bong and a row of mason jars of buds line the shelf`,
+  () => `in the background a ${getRandomItem(GLASS_COLORS)} recycler dab rig and a grinder sit on a stack of rolling trays`,
+  () => `behind her, a ${getRandomItem(GLASS_COLORS)} bubbler and open packs of ${getRandomItem(FLAVORED_WRAPS)} are scattered across a side table`,
+  () => `in the background a heavy ${getRandomItem(GLASS_COLORS)} hand pipe rests on an ashtray next to a half-rolled blunt`,
+  () => `behind her, a ${getRandomItem(GLASS_COLORS)} bong and a cluster of glass jars of top-shelf flower catch the light`,
+  () => `in the background a long ${getRandomItem(GLASS_COLORS)} steamroller and a tipped-over jar of buds sit on a low crate`,
+  () => `behind her, a ${getRandomItem(GLASS_COLORS)} gravity bong and a tangle of ${getRandomItem(FLAVORED_WRAPS)} wrappers sit on the floor`,
+];
+
 export const HIDDEN_TEAM_NO_LACKIN_ELEMENTS = [
   'a vintage military-style canvas flag hanging on the wall clearly bearing the bold stenciled text "Team No Lackin"',
   'a framed poster hanging in the background with clean typography reading "Team No Lackin"',
@@ -537,6 +553,82 @@ export const NUDE_BODY_DETAILS = [
 ];
 
 export const HAIR_DYE_OPTIONS = ['dyed vibrant neon green', 'dyed vibrant electric purple', 'with natural colored hair'];
+
+/**
+ * Solid room lighting she can pick, from the app. Each phrase is the wording that
+ * actually renders: SDXL resolves colour names, not hex, so the label is only for
+ * the swatch. Kept to colours that survive a Pony checkpoint without wrecking skin.
+ */
+export type LightColor = { id: string; label: string; hex: string; phrase: string };
+
+export const LIGHT_COLORS: LightColor[] = [
+  { id: 'red', label: 'Red', hex: '#FF2D2D', phrase: 'deep red' },
+  { id: 'orange', label: 'Orange', hex: '#FF7A1A', phrase: 'burnt orange' },
+  { id: 'amber', label: 'Amber', hex: '#FFB000', phrase: 'warm amber' },
+  { id: 'acid', label: 'Acid Green', hex: '#8CFF3D', phrase: 'acid green' },
+  { id: 'emerald', label: 'Emerald', hex: '#1FD37A', phrase: 'emerald green' },
+  { id: 'teal', label: 'Teal', hex: '#17E0C6', phrase: 'teal' },
+  { id: 'cyan', label: 'Cyan', hex: '#2EC8FF', phrase: 'cyan' },
+  { id: 'blue', label: 'Electric Blue', hex: '#2F6BFF', phrase: 'electric blue' },
+  { id: 'violet', label: 'Violet', hex: '#8B5CFF', phrase: 'violet' },
+  { id: 'magenta', label: 'Magenta', hex: '#FF2BD1', phrase: 'magenta' },
+  { id: 'pink', label: 'Hot Pink', hex: '#FF4D9E', phrase: 'hot pink' },
+  { id: 'white', label: 'Warm White', hex: '#FFE3BC', phrase: 'warm white' },
+];
+
+export function findLightColor(value?: string): LightColor | undefined {
+  const v = (value ?? '').trim().toLowerCase();
+  if (!v) return undefined;
+  return LIGHT_COLORS.find((c) => c.id === v || c.label.toLowerCase() === v);
+}
+
+/** Lighting nouns that make the colour words in a clause worth stripping. */
+const LIGHT_NOUN =
+  /\b(light|lights|lighting|lit|glow|glowing|neon|led|laser|fairy|lantern|sconce|bulb|blacklight|moonlight|daylight|sunlight|sunset|sunrise|torch|campfire|crt|vu meter|mood lighting|accent lighting)\b/i;
+
+const LIGHT_COLOUR_WORDS =
+  /\b(purple|green|red|amber|yellow|blue|pink|teal|orange|violet|magenta|cyan|rainbow|multicolou?red)\b/gi;
+
+const LIGHT_TEMPERATURE_WORDS = /\b(warm|cool|dim|low|soft|harsh)\b/gi;
+
+/**
+ * The room pool bakes in its own lighting ("glowing purple and green LED strip
+ * lighting"). When she picks a colour those words have to go, or they win. We strip
+ * colour and temperature words per comma-clause, and only in clauses that mention a
+ * light source, so "amber mason jars" and "golden rolling trays" survive intact.
+ */
+export function stripBakedLighting(env: string): string {
+  const clauses = env.split(',').map((clause) => {
+    if (!LIGHT_NOUN.test(clause)) return clause.trim();
+    let cleaned = clause
+      .replace(LIGHT_COLOUR_WORDS, '')
+      .replace(LIGHT_TEMPERATURE_WORDS, '')
+      .replace(/\band\s*(?=,|$)/gi, '')
+      .replace(/\s{2,}/g, ' ')
+      .replace(/\s+([,)])/g, '$1')
+      .replace(/^\s*and\s+/i, '')
+      .trim();
+    return cleaned;
+  });
+  return clauses
+    .map((c) => c.trim())
+    .filter((c) => c.length > 0)
+    .join(', ')
+    .replace(/,\s*,/g, ',')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+/** Outdoors reads better as an ambient wash than as strip lights along a ceiling. */
+const OUTDOOR_ROOM =
+  /\b(porch|patio|balcony|terrace|rooftop|forest|clearing|campsite|camp|backyard|garden|greenhouse|woods|deck|dock|yacht|oasis|field|trail)\b/i;
+
+export function lightOverrideClause(env: string, colour: LightColor): string {
+  if (OUTDOOR_ROOM.test(env)) {
+    return `the whole scene washed in ${colour.phrase} light, everything tinted ${colour.phrase}, ${colour.phrase} ambient glow on her skin, ${colour.phrase} rim light along her body, no daylight`;
+  }
+  return `the whole room lit only by ${colour.phrase} LED strip lights running along the walls and ceiling, every surface washed in ${colour.phrase} light, ${colour.phrase} ambient glow on her skin, ${colour.phrase} rim light along her body, no daylight`;
+}
 
 export const HUSBAND_GROOMING_OPTIONS = [
   'chest hair trimmed into a cannabis leaf shape, neatly edged',
@@ -599,97 +691,163 @@ export const SUBJECT_TAGS_PLAIN: Record<SubjectMode, string> = {
   couple: 'ashley with long straight cherry red hair wearing glasses and mbboi',
 };
 
-/** Large pose pool. Pose mode is always randomized from this list. */
-export const POSE_OPTIONS_SFW = [
-  'sitting cross-legged on a velvet couch, leaning forward, holding a glowing bong',
-  'lounging on a bed propped on one elbow, legs relaxed, looking at the viewer',
-  'kneeling on floor cushions, hands resting on her thighs, leaning slightly back',
-  'leaning against a wall with one knee bent, hip cocked, holding a lit joint',
-  'lying on a rug on her side, head propped on one hand, other hand on her hip',
-  'reclining in an armchair with one leg over the armrest, relaxed and unhurried',
-  'sitting on the floor with knees drawn up, arms wrapped around them',
-  'crouching low on her heels, elbows on knees, looking up at the viewer',
-  'standing with her weight on one hip, one hand in her hair',
-  'standing with arms stretched overhead, body arched, eyes closed',
-  'sitting sideways on a windowsill, one leg dangling, shoulder against the frame',
-  'lying on her stomach on a bed, chin propped on folded arms, feet up',
-  'lying on her back with knees bent, arms above her head',
-  'sitting on a kitchen counter, legs crossed at the ankle, leaning back on her hands',
-  'kneeling upright with her hands clasped behind her neck, chest lifted',
-  'sitting in a beanbag chair, sunk low, legs splayed',
-  'perched on a bar stool with legs crossed, one elbow on the counter',
-  'leaning over a table with both palms flat, looking back over her shoulder',
-  'standing in a doorway with one hand on the frame, hip out',
-  'sitting on the edge of a bathtub, towel slipping, one knee raised',
-  'curled up in a blanket on a couch, only her shoulders and knees out',
-  'stretching on tiptoe, arms high, spine long',
-  'sitting on a low stool with her knees together and hands between them',
-  'leaning back against a headboard, legs stretched out, ankles crossed',
-  'lying diagonally across a bed, one arm draped off the edge',
-  'sitting on a rug with her legs folded to one side, hands on the floor',
-  'standing with her back to the viewer, looking over her shoulder',
-  'kneeling with one knee up, forearm resting on it, other hand on the floor',
-  'sitting on a stack of cushions, legs tucked, holding a mug',
-  'leaning on a windowsill with both elbows, gazing outside',
-  'sitting on a swing chair, feet off the ground, hands on the ropes',
-  'crouched beside a coffee table, one hand reaching for a lighter',
-  'standing with one foot up on a low crate, elbow on the knee',
-  'sitting on a bed with her legs hanging over the side, shoulders slumped',
-  'lying on a couch with her legs over the backrest, head hanging off the seat',
-  'kneeling on a bed with her weight on her forearms, hips raised',
-  'sitting cross-legged with a bong balanced on her knee',
-  'standing under a shower with her head tipped back, water running',
-  'leaning against a fridge with the door open, lighting up',
-  'sitting on the floor with her back to the couch, knees up, head tipped back',
-  'straddling a chair backwards, arms folded on the backrest',
-  'lying on a sunlounger with one knee raised, arm behind her head',
-  'sitting on a windowsill with both knees up, hugging her shins',
-  'kneeling on a rug with her hands on her thighs, shoulders back',
-  'standing with her hands behind her back, chin lifted, defiant',
-  'sitting on a bar counter with her legs crossed, leaning on one hand',
-  'curled on her side on a couch, knees tucked, watching the viewer',
-  'leaning out of a window with both forearms on the ledge',
-  'sitting on a bed with one leg folded under her, the other hanging down',
-  'crouched in a corner with her arms around her knees',
-  'lying on a bed with one arm over her eyes, the other across her stomach',
-  'standing with her back arched and hands on her lower back',
-  'sitting on a wooden floor with her legs stretched wide, leaning forward',
-  'kneeling on cushions with one hand in her hair, the other on her hip',
-  'reclining on a pile of pillows, one knee up, ankle on the other knee',
-  'sitting on a stool with her elbows on her knees, chin in her hands',
-  'viewed from directly above, lying on her back, head toward the bottom of the frame, body stretched out',
-  'top-down overhead shot, lying on her back on the floor, arms above her head, legs toward the top of frame',
-  'lying on her back with her head at the bottom of frame, looking up at the camera, one knee raised',
+/** Pose pool: SFW and NSFW interleaved on purpose, one flat list. */
+export const POSE_OPTIONS = [
+  'leaning back with one arm raised, lighting a kief-dusted joint, flame at the tip',
+  'sitting with legs crossed at the ankle, leaning back on her hands, a lit joint between her lips, smoke curling from the tip',
+  'standing with her back to the viewer, a lit blunt tucked between two fingers at her side, looking over her shoulder',
+  'sitting up on her heels, thighs apart, holding a glowing pink bong in one hand, the other between her legs',
+  'lying on her back with her legs folded behind her head, a realistic skin-toned dildo inside her, one hand on its base, a lit joint between her lips, toes curled',
+  'lying on her side with her head tipped back, hand between her thighs, mouth open, smoke curling from her lips, hair spilling',
+  'crouched low with knees wide, a dildo between her thighs, one hand spreading herself, the other holding a lit joint hovering over the dildo, tongue out, heavy blush',
+  'kneeling with her hands on her thighs, shoulders back, a lit blunt resting against her thigh, exhaling through her nose, smoke curling from her nostrils',
+  'close-up on her face and shoulders, leaning forward, a kief-dusted joint in one hand, ash tipping, gazing away',
+  'sitting with her legs folded to one side, hands on the ground, an open mason jar of buds, a pack of blunts, a dab rig and a small digital scale set down in front of her',
+  'top-down overhead shot, lying on her back, arms above her head, a lit joint in one hand, smoke drifting up, legs toward the top of frame',
+  'on her back viewed from directly above, her legs folded behind her head and spread toward the camera, a glass dildo inside her, a lit blunt resting on her stomach, mouth open',
+  'sitting with her legs crossed at the ankle and spread wide, hand between her thighs, a grinder and a small digital scale resting on her stomach, biting her lip',
+  'kneeling with her weight on her forearms, hips raised, a rolling tray and a small digital scale balanced on her lower back',
+  'straddling, hips rolled forward, chest pushed out, a pink leather harness across her chest, green fuzzy handcuffs on her wrists, hands behind her head, eyes closed',
+  'sitting with her knees together, a rolling tray with an Adventure Time print on her lap, hands between her knees',
+  'lying back with her legs up over the edge, head hanging back, a lit joint hanging from her fingers, smoke drifting down',
+  'lying back taking a selfie with a polaroid camera, holding it up, legs spread, other hand between her legs, grinning at the lens',
+  'kneeling upright with a mason jar of buds in one hand, the other between her legs, head tipped back',
+  'sitting with one leg folded under her, the other hanging down, licking a blunt closed, a lighter in her other hand',
+  'sitting with her knees together, towel slipping, one knee raised, a glowing bong held to her lips mid-hit',
+  'leaning over with both palms flat, a rolling tray of loose weed balanced on her ass, looking back over her shoulder',
+  'crouching low on her heels, elbows on knees, a lighter in one hand, looking up at the viewer, tongue out, a little dirt on the soles of her feet',
+  'lying back with one knee raised, arm behind her head, a pack of blunts resting on her chest below her collarbones',
+  'kneeling with her back arched, both hands on her breasts, thighs apart, silk rope wrapped loosely around her waist, a dildo inside her, mouth open',
+  'lying on her back, one knee raised high, hand between her legs, other arm above her head, a kief-dusted joint between her lips, smoke drifting, back arched',
+  'reclining back, left leg down, right ankle resting on her left knee, a rolling tray balanced on her shin, her bare foot a little dirty',
+  'standing on tiptoe, one hand braced high, the other wrapped around the realistic skin-toned dildo of a black strap-on harness, a black collar that reads BAD KITTY around her neck, body stretched long',
+  'legs crossed, one elbow raised, chin resting on her hand, a lit joint tucked behind her ear',
+  'on all fours, hips raised, looking back over her shoulder, a pink buttplug with a heart-shaped base, smirk, arched spine',
+  'lying back with an ice cube melting on her stomach, one hand between her legs, eyes half closed, shivering',
+  'kneeling upright with her hands clasped behind her neck, chest lifted, exhaling a long plume of smoke',
+  'sunk low and sprawled back, legs splayed, an ashtray balanced on her stomach',
+  'standing with her hands behind her back holding a lit joint, green fuzzy handcuffs on her wrists, chin lifted, defiant, smoke curling behind her',
+  'crouched low, one hand lifting the lid of a wooden stash box, a grinder visible inside',
+  'standing with her head tipped back, water running over her, wet hair',
+  'kneeling with her chest low and hips high, one arm stretched forward, other hand between her legs, a leather crop resting across her back',
+  'sitting with her elbows on her knees, chin in her hands, a lit joint between her fingers',
+  'pulling her panties aside with one hand, the other between her legs, standing with legs apart',
+  'bent over with her cheek down and hips raised, looking back at the camera, one hand between her legs, a ballgag hanging around her neck, the heart-shaped base of a buttplug showing',
+  'sitting with her knees drawn up and open, elbows on her knees, two fingers at her mouth, a lip gloss tube in her other hand, watching the viewer',
+  'crouched low with her arms around her knees, a pack of Backwoods in one hand',
+  'sitting with her knees wide apart, leaning back on one hand, two fingers inside, a glass pipe between her lips, mouth open',
+  'lying on her side, head propped on one hand, a lit blunt in the other resting on her hip, smoke curling',
+  'lying on her stomach, hips raised, one hand underneath her, a polaroid camera in her other hand, face turned to the camera, biting her lip',
+  'shot from a low angle near her feet, lying on her back, looking up at the camera, a lit joint between her lips, one knee raised, a little dirt on the soles of her feet',
+  'sitting cross-legged with a bong balanced on her knee, a mason jar of buds between her crossed legs',
+  'leaning back with one leg raised, wet skin, wet hair, hand between her thighs, the other holding a bong, water dripping',
+  'standing with arms stretched overhead, body arched, blowing smoke upward from her mouth and nose, eyes closed',
+  'kneeling with her arms folded across her chest, a lit blunt between two fingers, smoke drifting past her face',
+  'sitting with her legs stretched out in front of her, a rolling tray and a small digital scale across her thighs, a lit joint in one hand, leaning back on the other',
+  'sitting with her legs stretched wide, hands bound to her own ankles with green fuzzy handcuffs, leaning forward, bare feet with a little dirt on the soles',
+  'kneeling with one knee up, forearm resting on it, a lit joint in that hand, the other hand down',
+  'viewed from directly above, lying on her back, head toward the bottom of the frame, a rolling tray and a small digital scale resting on her stomach, body stretched out',
+  'reclining with one leg raised and bent over the other, a mason jar of buds held against her chest, relaxed and unhurried',
+  'standing, legs apart, a black leather strap-on harness with a realistic skin-toned dildo, one hand wrapped around it, the other sliding down her stomach, head tipped back, tongue out',
+  'sitting with one knee up, elbow on the knee, chin on her hand, a pink bullet vibrator in her other hand between her legs, watching the viewer',
+  'crouched on her toes, knees wide, one hand spreading herself, the other holding a lit joint to her lips, a little dirt on her toes, eyes locked on the viewer',
+  'sitting with her knees up, head tipped back, blowing smoke from her lips, a lit joint in one hand',
+  'sitting cross-legged, leaning forward, holding a glowing bong, a mason jar of buds beside her knee',
+  'kneeling with her thighs apart, phone held up filming herself, other hand between her legs, grin',
+  'curled up under a blanket, only her shoulders and knees showing',
+  'lying on her side, top leg lifted high, holding her own ankle, a black collar that reads BAD KITTY around her neck, a bullet vibrator buzzing between her thighs, looking at viewer',
+  'stretching on tiptoe, arms high, spine long, bare feet on tiptoe with a little dirt on the soles',
+  'standing with her back arched, a lit blunt between two fingers, the other hand tugging her own hair',
+  'lounging back propped on one elbow, legs relaxed, holding a dab rig, a mason jar of buds resting against her hip, looking at the viewer',
+  'bent forward with hips high, looking back over her shoulder, a lit joint in her braced hand, tongue out',
+  'lying diagonally, a lit joint in her loose hand, a bottle of body oil resting on her stomach, smoke drifting from her lips, skin slick with oil',
+  'on all fours with her face close to the camera, hips high behind her, a leash trailing from her collar, mascara running down her cheeks, looking up at the viewer',
+  'reclining with one leg raised over the other, lazily touching herself, a Coors Banquet stubby bottle in her other hand, oil shining on her skin',
+  'standing with her weight on one hip, one hand in her hair, a lit joint in the other',
+  'sitting with her knees drawn up and her back to the viewer, a grinder resting in her lap, glancing back over her shoulder',
+  'sitting sideways, one leg dangling, shoulder leaned back, a lit joint in one hand, her dangling bare foot a little dirty',
+  'lying on her side with her legs scissored wide, a dab rig in one hand, oil shining on her thighs, watching the viewer',
+  'lying back with one arm over her eyes, a lit joint in that hand, the other arm across her stomach',
+  'sitting with legs tucked, holding a mug',
+  'leaning back with one knee bent, hip cocked, holding a lit joint',
+  'kneeling upright, thighs apart, one hand pinching her nipple, the other between her legs, a silk blindfold over her eyes, a black collar around her neck, head tipped back',
+  'sitting with both knees up, hugging her shins, a lit joint pinched between her fingers, bare feet with a little dirt on the soles',
+  'leaning back, legs stretched out, ankles crossed, a lit joint between her fingers',
+  'sitting with her knees bent and feet up, hands clasped behind her head, gently rocking, bare feet with a little dirt on the soles',
+  'kneeling upright, hands resting on her thighs, leaning slightly back, a dab rig in one hand, exhaling a thick plume of smoke through her mouth and nose',
+  'lying on her back with knees bent and feet flat, holding a bong up with both hands, smoke rising',
+  'standing with her back arched, both hands in her hair, thighs pressed together, a sheer robe slipping off her shoulders, oily skin, eyes closed',
+  'standing turned away, looking back over her shoulder, one hand reaching behind between her legs, tongue out',
+  'sitting with her knees splayed wide, chest resting on her folded arms, a dab rig between two fingers',
+  'sitting back on her heels, thighs apart, a pink bullet vibrator pressed against herself, a bottle of body oil in her other hand, oily skin, mouth open, eyes half closed',
+  'lying back with both legs folded behind her head, a realistic skin-toned dildo inside her, eyes rolled back, tongue out, oily skin',
+  'standing with one foot up, elbow on the knee, smoking a lit joint, smoke drifting past her face, a little dirt on the sole of the raised foot',
+  'kneeling with one hand in her hair, a lit joint in the hand on her hip',
+  'standing with one leg raised, hand between her thighs, the other hand holding a lit joint, smoke curling up',
+  'lying back with her legs up and apart, a mason jar of buds balanced on her stomach, ankles crossed overhead, three fingers inside, head tipped back, dirty soles facing up',
+  'lying on her stomach, chin propped on folded arms, bare feet up with a little dirt on the soles',
+  'standing with her shoulders back and her chin lifted, a lit joint in one hand, a mason jar of buds in the other',
+  'standing before her reflection in a tall mirror, palm flat on the glass, watching herself, the other hand wrapped around the realistic skin-toned dildo of a black strap-on harness',
+  'sprawled out on her back, one arm above her head holding a bottle of body oil, oil pooling on her stomach, legs hanging loose, biting her lip, a dildo in the hand between her thighs',
+  'sitting with her shoulders slumped and her chin on her chest, a lit joint dangling from her fingers, ash falling',
+  'sitting back on one hip, one leg draped over the other, hand between her thighs, a dab rig in her other hand, smirk',
+  'squatting deep over a suction-cup dildo, riding it hands-free, palms braced on her knees, mouth open, looking at the viewer',
+  'half-kneeling with one knee up and the other down, a lit blunt between two fingers, smoke drifting past her face',
+  'standing in profile with her back arched, a mason jar of buds held against her stomach, oily skin catching the light',
+  'kneeling with her forehead resting on her folded arms and her hips up, a lit joint resting between her shoulder blades',
+  'tying her hair up with both hands, a lit blunt tucked behind her ear, bare feet a little dirty',
+  'sitting with her legs in a butterfly stretch, picking stems out of a sticky bud over a rolling tray on her lap, bits of leaf stuck to her thigh',
+  'lying on her back with her knees drawn to her chest, a dab rig resting on her stomach, eyes closed',
+  'standing with her weight on one leg, her other foot resting on her own ankle, a lit joint between her lips, oily skin',
+  'sitting with her back arched and her palms planted behind her, a lit blunt hanging from her lips, smoke curling up her face',
+  'leaning forward over an open bag of buds, breaking a cola apart with both hands over a rolling tray, a small digital scale beside it',
+  'kneeling with her back to the viewer, a lit joint in one hand, glancing over her shoulder, bare feet with dirty soles',
+  'standing with her arms crossed under her chest, a dab rig in one hand, smoke drifting from her nose',
+  'lying on her side with one arm stretched overhead, a mason jar of buds in that hand, watching the viewer',
+  'sitting with her knees wide and her elbows on them, breaking down a sticky bud on a tray balanced between her knees, a grinder beside her',
+  'standing on tiptoe with her hands behind her head, a lit blunt between her lips, back arched',
+  'crouched with one knee up, rolling a blunt on her thigh, an open pack of Backwoods beside her knee',
+  'sitting with her legs folded to one side and her back turned, a dab rig in one hand, glancing back at the camera',
+  'kneeling with a rolling tray balanced across her knees, rolling a joint, eyes closed, a lit one smoking in the ashtray beside her',
+  'lying on her back with her legs crossed at the knee, a lit joint resting on her stomach, one arm behind her head',
+  'standing with her hips forward and her back arched, a mason jar of buds held in both hands, oily skin',
+  'sitting with her legs stretched wide and her hands behind her, a lit blunt between her lips, smoke curling around her face',
+  'close-up on her hands rolling a blunt, a lit joint smoking in an ashtray beside her, a grinder just out of focus',
+  'lying on her back with her legs folded behind her head, a realistic skin-toned dildo inside her, a dab rig in one hand, eyes half closed',
+  'standing bent at the waist, looking back between her legs at the camera, a lit blunt between her lips, a black strap-on harness with a realistic skin-toned dildo hanging beneath her',
+  'sitting back on her heels with her chest arched, the heart-shaped base of a pink buttplug showing between her cheeks, a black collar around her neck',
+  'on all fours with her cheek down and hips raised, a lit joint between her lips, the heart-shaped base of a buttplug showing',
+  'straddling the camera, looking down at the viewer, palms flat on her own thighs, a black strap-on harness with a realistic skin-toned dildo at her hips',
+  'lying on her back with a bottle of body oil tipped over her chest, oil pooling on her stomach, one hand between her legs',
+  'sitting with her legs in a V, pouring body oil down her stomach from a bottle, head tipped back, oily skin',
+  'kneeling with a rolling tray between her thighs, breaking down a bud, one hand between her legs, a mason jar of buds beside her knee',
+  'standing with one leg raised high, holding her own ankle, a lit joint in the other hand, oily skin, a dirty foot',
+  'sitting with her knees wide, a small digital scale balanced on one thigh, one hand between her legs, biting her lip',
+  'crouched low over a rolling tray, breaking down a bud, one hand between her legs, a lit joint smoking beside the tray',
+  'viewed from between her legs, lying back with her legs folded behind her head, a suction-cup dildo inside her, a lit joint in one hand, oily skin',
+  'kneeling upright with her hands behind her back, a lit blunt between her lips, a black collar around her neck, back arched',
+  'lying on her back with her hips lifted off the ground, one hand between her legs, a lit joint resting on her stomach',
+  'sitting back on one hip, one leg draped over the other, a mason jar of buds resting between her thighs, one hand between her legs',
+  'standing with her legs apart and her back arched, looking back over her shoulder, the heart-shaped base of a buttplug showing, a black collar around her neck',
+  'lying on her stomach with her hips raised, a dab rig in one hand, face turned to the camera, oily skin',
+  'sitting with her back to the viewer and her legs spread, a lit joint in one hand, glancing back over her shoulder, the heart-shaped base of a buttplug showing',
+  'crouched with her knees wide, a mason jar of buds in one hand, the other between her legs',
+  'kneeling with her thighs apart, pouring body oil over her chest from a bottle, mouth open, oily skin',
+  'lying on her back with one leg hooked over her arm, a lit blunt between her lips, smoke curling from her nose',
+  'standing before the mirror, oily skin, a dab rig in one hand, watching her own reflection, one hand between her legs',
+  'on all fours with her hips low and her shoulders down, breaking down a bud on a tray under her chest, oily skin, looking at the viewer',
+  'sitting with one knee up, a black strap-on harness with a realistic skin-toned dildo at her hips, one hand wrapped around the shaft, tongue out',
+  'standing with her back to the viewer, bent slightly at the waist, a lit blunt in one hand, the heart-shaped base of a buttplug showing',
+  'kneeling upright with oily skin, a dab rig in one hand, smoke pouring from her mouth and nose',
+  'sitting with her knees up and apart, rolling a blunt on her thigh, a grinder and scattered stems between her feet',
+  'standing with her weight on one leg, a lit joint in one hand, the other between her thighs, bare feet a little dirty',
+  'lying on her side with both knees pulled up and apart, a pink bullet vibrator in one hand, oily skin, the other behind her head',
+  'kneeling over a suction-cup dildo, easing down onto it, hands on her own thighs, eyes closed',
 ];
 
-export const POSE_OPTIONS_NSFW = [
-  'sitting, spread legs, hand between thighs, masturbation, head tilted back',
-  'lying on back, spread legs, hand between legs, masturbation, back arched',
-  'kneeling, spread legs, hand between thighs, masturbation, looking at viewer',
-  'reclining, one leg up, hand between legs, masturbation',
-  'kneeling, spread legs, fingers between legs, masturbation',
-  'lying on side, one leg raised, hand between thighs, masturbation',
-  'leaning back, spread legs, masturbation, looking at viewer',
-  'crouching, spread legs, hand between thighs, masturbation, looking up',
-  'sitting, one knee up, hand between legs',
-  'sitting, spread legs, m legs, spreading pussy, two fingers, looking at viewer',
-  'lying on back, spread legs, m legs, fingers inside, masturbation, open mouth',
-  'kneeling, spread legs, spreading pussy, looking at viewer',
-  'reclining, one knee up, fingers between folds, masturbation',
-  'kneeling, hand between legs, masturbation, fingers slick',
-  'crouching, spread legs, spreading pussy, two fingers, head back',
-  'lying on back, spread legs, fingers inside, masturbation, one leg up',
-  'fingers in mouth, sucking her fingers, tongue out, looking at viewer',
-  'two fingers in her mouth, spit string, looking up at the camera',
-  'her own fingers between her lips, glossy mouth, eyes half closed',
-];
-
-/** Combined list, SFW first. */
-export const POSE_OPTIONS = [...POSE_OPTIONS_SFW, ...POSE_OPTIONS_NSFW];
-
-/** 3:2 SFW to NSFW, weighted so the ratio holds regardless of list length. */
+/** Uniform draw. The pool is 3:2 SFW to NSFW by construction (59/39). */
 export function pickRandomPose(): string {
-  return Math.random() < 0.6 ? getRandomItem(POSE_OPTIONS_SFW) : getRandomItem(POSE_OPTIONS_NSFW);
+  return getRandomItem(POSE_OPTIONS);
 }
 
 export function generateFinalOpenCodePayload(
@@ -699,7 +857,8 @@ export function generateFinalOpenCodePayload(
   customBackground?: string,
   subjectTraits?: string,
   wide?: boolean,
-  pose?: string
+  pose?: string,
+  lightColor?: string
 ) {
   const style = STYLE_DEFINITIONS[styleId];
   if (!style) throw new Error(`Unknown style: ${styleId}`);
@@ -707,8 +866,22 @@ export function generateFinalOpenCodePayload(
 
   // Universal environments: any room can be pushed into any of the 98 styles
   // natively, because the bucket basePrefix carries the medium.
-  const env = customBackground?.trim() || getRandomItem(MASSIVE_AUTHENTIC_WEED_ENVIRONMENTS);
+  const rawEnv = customBackground?.trim() || getRandomItem(MASSIVE_AUTHENTIC_WEED_ENVIRONMENTS);
+  // A chosen light colour replaces the room's baked-in lighting. realism_composite
+  // is img2img from her photo, so its light comes from the source and is left alone.
+  const chosenLight = style.bucket === 'realism_composite' ? undefined : findLightColor(lightColor);
+  const env = chosenLight ? stripBakedLighting(rawEnv) : rawEnv;
+  // A colour clause is only useful if it outranks the lighting already in the style
+  // text ("moody bedroom lighting", "studio product lighting"), so those clauses go,
+  // and the colour is weighted and placed before the medium's own descriptors.
+  const mediumFront = chosenLight
+    ? MEDIUM_FRONT[style.bucket]
+        .split(',')
+        .filter((clause) => !/\blighting\s*$/i.test(clause.trim()))
+        .join(', ')
+    : MEDIUM_FRONT[style.bucket];
   const hardwareProp = getRandomItem(SMOKING_HARDWARE_PROPS);
+  const backgroundProp = getRandomItem(BACKGROUND_WEED_PROPS);
   const easterEgg = getRandomItem(HIDDEN_TEAM_NO_LACKIN_ELEMENTS);
 
   let bodyDetailPrompt = '';
@@ -741,6 +914,16 @@ export function generateFinalOpenCodePayload(
     style.bucket === 'anime_2d_toon'
       ? style.prompt.replace(/glossy blushed skin,?\s*/gi, '')
       : style.prompt;
+  // Same reason as the medium: a style that names its own light would fight the pick.
+  const styleTextLit = chosenLight
+    ? styleText
+        .split(',')
+        .filter((clause) => !/\blighting\s*$/i.test(clause.trim()))
+        .join(', ')
+    : styleText;
+  const lightLead = chosenLight
+    ? `, (${lightOverrideClause(rawEnv, chosenLight)}:1.3)`
+    : '';
   // Weed room and hardware sit early ï¿½ before the easter egg ï¿½ so they land inside
   // the first CLIP chunk instead of being buried at token 130.
   const traits = (subjectTraits ?? '').replace(/[\r\n\t]+/g, ' ').replace(/[{}]/g, '').trim().slice(0, 120);
@@ -756,12 +939,14 @@ export function generateFinalOpenCodePayload(
     : SUBJECT_TAGS[subject];
   const poseLead = pose ? `(${pose}:1.25), ` : '';
   const framingText = pose
-    ? ', full scene, environment visible around her'
+    ? wide
+      ? ', wide shot, full body in frame, the room visible around her'
+      : ', full scene, environment visible around her'
     : wide
       ? WIDE_FRAMING
       : FRAMING_BY_BUCKET[style.bucket];
-  const positive = `${SCORE_TAGS}, ${MEDIUM_FRONT[style.bucket]}, ${poseLead}${poseAnchor}, ${subjectTagText}${traits ? `, ${traits}` : ''}${bodyDetailPrompt}, ${styleText}, ${hardwareProp}, surrounded by ${env}, featuring ${easterEgg}${framingText}`;
-  const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only, plain background, gray background, simple background, freckles, freckled skin`;
+  const positive = `${SCORE_TAGS}, ${mediumFront}, ${poseLead}${poseAnchor}, ${subjectTagText}${lightLead}${traits ? `, ${traits}` : ''}${bodyDetailPrompt}, ${styleTextLit}, ${hardwareProp}, surrounded by ${env}, with ${easterEgg}, ${backgroundProp}${framingText}`;
+  const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only, plain background, gray background, simple background, freckles, freckled skin${chosenLight ? ', multicolored lighting, rainbow lighting, mixed color lighting, neutral lighting, white lighting, daylight' : ''}`;
 
   return {
     checkpoint: bucket.checkpoint,

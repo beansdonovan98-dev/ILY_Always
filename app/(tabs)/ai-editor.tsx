@@ -27,6 +27,7 @@ import { JointBurnTimer, bongHaptic } from '@/components/CannabisFeatures';
 import { getCoupleId } from '@/lib/couple';
 import { BrushStroke, EditTarget, checkAIJob, editImageWithStyle } from '@/lib/aiImage';
 import { AI_STYLE_KEYS, styleLabel } from '@/lib/aiStyles';
+import { ROOM_LIGHT_COLORS } from '@/lib/lightColors';
 import { uploadMedia, getSignedUrl, deleteMedia, MediaRow } from '@/lib/media';
 import { getItem, setItem } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
@@ -154,6 +155,9 @@ export default function AIEditorScreen() {
   const [nude, setNude] = useState(true);
   const [poseUri, setPoseUri] = useState('');
   const [customRoom, setCustomRoom] = useState('');
+  const [lightColor, setLightColor] = useState('');
+  const [poseMode, setPoseMode] = useState<'match_photo' | 'random'>('match_photo');
+  const [wide, setWide] = useState(false);
   const [editsOpen, setEditsOpen] = useState(false);
   // Hard click lock: state updates are async, so two quick taps can both fire.
   const busyRef = useRef(false);
@@ -292,6 +296,9 @@ export default function AIEditorScreen() {
           nude,
           poseImageUrl: poseUri || undefined,
           backgroundPrompt: customRoom,
+          lightColor: lightColor || undefined,
+          poseMode,
+          wide,
         }
       );
       setResultUri(edited);
@@ -309,7 +316,7 @@ export default function AIEditorScreen() {
       setEditBurn(0);
       void bongHaptic();
     }
-  }, [sourceUri, resultUri, editPrompts, editStrokes, selectedStyle, subjectMode, nude, poseUri, customRoom]);
+  }, [sourceUri, resultUri, editPrompts, editStrokes, selectedStyle, subjectMode, nude, poseUri, customRoom, lightColor, poseMode, wide]);
 
   const openBrush = useCallback((target: EditTarget) => {
     setBrushTarget(target);
@@ -633,6 +640,36 @@ export default function AIEditorScreen() {
           <Text style={[styles.editIntro, { color: appTheme.subtitleColor }]}>
             Pick a reference photo and her body copies that pose. Her face and the style stay.
           </Text>
+          <View style={styles.segmentRow}>
+            {(['match_photo', 'random'] as const).map((mode) => {
+              const active = poseMode === mode;
+              return (
+                <Pressable
+                  key={mode}
+                  onPress={() => setPoseMode(mode)}
+                  style={[
+                    styles.segment,
+                    { borderColor: appTheme.borderColor },
+                    active && { backgroundColor: appTheme.accentSoft, borderColor: appTheme.accentColor },
+                  ]}>
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      { fontFamily: font, color: appTheme.textColor },
+                      active && { color: appTheme.accentColor },
+                    ]}>
+                    {mode === 'match_photo' ? 'Match photo' : 'Random pose'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {poseMode === 'random' ? (
+            <Text style={[styles.editIntro, { color: appTheme.subtitleColor }]}>
+              Random pose from the pool. The room stays in frame.
+            </Text>
+          ) : (
+            <>
           <View style={styles.editRowActions}>
             <Pressable
               onPress={pickPose}
@@ -652,6 +689,8 @@ export default function AIEditorScreen() {
               <ExpoImage source={{ uri: poseUri }} style={styles.poseThumb} contentFit="cover" />
             </View>
           ) : null}
+            </>
+          )}
         </View>
 
         <Text style={[styles.label, styles.roomLabel]}>Room (optional)</Text>
@@ -664,6 +703,70 @@ export default function AIEditorScreen() {
         />
         <Text style={[styles.styleHint, styles.roomHint]}>
           Type a place and it replaces the random one — the seed keeps her the same.
+        </Text>
+
+        <Text style={[styles.label, styles.roomLabel]}>Room light</Text>
+        <View style={styles.swatchRow}>
+          <Pressable
+            onPress={() => setLightColor('')}
+            style={[
+              styles.swatch,
+              styles.swatchRandom,
+              { borderColor: !lightColor ? appTheme.accentColor : appTheme.borderColor },
+            ]}>
+            <Text style={[styles.swatchRandomText, { color: appTheme.textColor }]}>RND</Text>
+          </Pressable>
+          {ROOM_LIGHT_COLORS.map((color) => {
+            const active = lightColor === color.id;
+            return (
+              <Pressable
+                key={color.id}
+                onPress={() => setLightColor(active ? '' : color.id)}
+                style={[
+                  styles.swatch,
+                  {
+                    backgroundColor: color.hex,
+                    borderColor: active ? appTheme.accentColor : appTheme.borderColor,
+                  },
+                  active && styles.swatchActive,
+                ]}
+              />
+            );
+          })}
+        </View>
+        <Text style={[styles.styleHint, styles.roomHint]}>
+          {lightColor
+            ? `Strip lights set to ${ROOM_LIGHT_COLORS.find((c) => c.id === lightColor)?.label}. The room changes, the colour holds. Real-photo styles keep their own light.`
+            : 'Pick a colour and the whole room is lit in it. RND keeps each room\u2019s own lighting.'}
+        </Text>
+
+        <Text style={[styles.label, styles.roomLabel]}>Frame</Text>
+        <View style={styles.segmentRow}>
+          {([false, true] as const).map((isWide) => {
+            const active = wide === isWide;
+            return (
+              <Pressable
+                key={String(isWide)}
+                onPress={() => setWide(isWide)}
+                style={[
+                  styles.segment,
+                  { borderColor: appTheme.borderColor },
+                  active && { backgroundColor: appTheme.accentSoft, borderColor: appTheme.accentColor },
+                ]}>
+                <Text
+                  style={[
+                    styles.segmentText,
+                    { fontFamily: font, color: appTheme.textColor },
+                    active && { color: appTheme.accentColor },
+                  ]}>
+                  {isWide ? 'Wide' : 'Portrait'}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={[styles.styleHint, styles.roomHint]}>
+          Wide keeps the room in frame. Horizontal poses switch to wide on their own.
         </Text>
 
         <Pressable
@@ -1087,6 +1190,28 @@ const styles = StyleSheet.create({
   poseThumb: { width: '100%', height: '100%' },
   roomLabel: { marginTop: 14 },
   roomHint: { marginTop: 4, marginBottom: 2 },
+  swatchRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  swatch: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 2,
+  },
+  swatchActive: {
+    borderWidth: 4,
+  },
+  swatchRandom: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  swatchRandomText: { fontSize: 10, letterSpacing: 0.5, fontWeight: '700' },
   styleModalRoot: { flex: 1, justifyContent: 'flex-end' },
   styleBackdrop: {
     position: 'absolute',
