@@ -686,10 +686,10 @@ const WIDE_FRAMING =
 
 /** Same as SUBJECT_TAGS without the body-weight nudges, used in pose mode. */
 export const POSE_SUBJECT_TAGS: Record<SubjectMode, string> = {
-  wife: 'ashley, round wireframe glasses, ((long straight dark cherry red hair:1.25)), (voluptuous curvy figure:1.3), (wide hips:1.3), (thick plush thighs:1.3), (soft curvy waist:1.2), (soft lower belly:1.2), (moderate bust:1.15)',
+  wife: 'ashley, round wireframe glasses, ((long straight dark cherry red hair:1.25)), (voluptuous curvy figure:1.35), (wide hips:1.3), (thick plush thighs:1.35), (soft curvy waist:1.2), (soft lower belly:1.2), (moderate bust:1.15)',
   husband: 'mbboi, (broad shoulders:1.15), (solid build:1.1)',
   couple:
-    'ashley with glasses and ((long straight dark cherry red hair:1.25)), (voluptuous curvy figure:1.3), (wide hips:1.3), (thick plush thighs:1.3), (soft curvy waist:1.2), (soft lower belly:1.2), and mbboi, (broad shoulders:1.15)',
+    'ashley with glasses and ((long straight dark cherry red hair:1.25)), (voluptuous curvy figure:1.35), (wide hips:1.3), (thick plush thighs:1.35), (soft curvy waist:1.2), (soft lower belly:1.2), and mbboi, (broad shoulders:1.15)',
 };
 
 export const SUBJECT_TAGS_PLAIN: Record<SubjectMode, string> = {
@@ -957,7 +957,7 @@ export function generateFinalOpenCodePayload(
         .join(', ')
     : styleText;
   const lightLead = chosenLight
-    ? `(${lightOverrideClause(rawEnv, chosenLight)}:1.5), `
+    ? `(${lightOverrideClause(rawEnv, chosenLight)}:1.4), `
     : '';
   // Weed room and hardware sit early ï¿½ before the easter egg ï¿½ so they land inside
   // the first CLIP chunk instead of being buried at token 130.
@@ -987,18 +987,29 @@ export function generateFinalOpenCodePayload(
       ? WIDE_FRAMING
       : FRAMING_BY_BUCKET[style.bucket];
   // Prompt is chunked on BREAK so each block gets its own full-strength CLIP
-  // window instead of being sliced at token 77. Chunk 1 carries identity, pose and
-  // camera; chunk 2 the medium, light and body; chunk 3 the room, props and sign.
-  const chunk1 = `${SCORE_TAGS}, ${mediumText}, ${cameraLead}${poseLead}${poseAnchor}, ${subjectTagText}${traits ? `, ${traits}` : ''}`;
-  const chunk2 = `${lightLead}${styleTextLit}${bodyDetailPrompt}`;
+  // window instead of being sliced at token 77. Chunk 1 carries the anime header,
+  // identity, pose and camera; chunk 2 the style and body; chunk 3 the light, room
+  // and props.
+  const animeHeader = 'score_9, score_8_up, score_7_up, source_anime, (anime screencap, flat 2d cel shading, bold black ink outlines, flat solid color blocks:1.35)';
+  const chunk1 =
+    pose && style.bucket === 'anime_2d_toon'
+      ? `${animeHeader}, ${cameraLead}${poseLead}${poseAnchor}, ${subjectTagText}${traits ? `, ${traits}` : ''}`
+      : `${SCORE_TAGS}, ${mediumText}, ${cameraLead}${poseLead}${poseAnchor}, ${subjectTagText}${traits ? `, ${traits}` : ''}`;
+  const chunk2 = pose ? `${styleTextLit}${bodyDetailPrompt}` : `${lightLead}${styleTextLit}${bodyDetailPrompt}`;
   // Scene props only in chunk 3. An action here ("rolling a joint") would compete
   // with the pose action already fixed in chunk 1.
   const sceneProps = pose ? backgroundProp : `${hardwareProp}, ${backgroundProp}`;
-  const chunk3 = `surrounded by ${env}, ${sceneProps}, ${easterEgg}${framingText}`;
+  // Pose mode carries the light and the room in chunk 3 so the environment and its
+  // colour cast render together. The room is trimmed to its defining clauses and the
+  // easter-egg text is left out — the composited banner already guarantees the sign,
+  // and the extra props were what made the background busy.
+  const envClean = env.split(',').slice(0, 3).join(',').trim();
+  const chunk3 = pose
+    ? `${lightLead}${envClean}, ${sceneProps}${framingText}`
+    : `surrounded by ${env}, ${sceneProps}, ${easterEgg}${framingText}`;
   const positive = pose ? `${chunk1} BREAK ${chunk2} BREAK ${chunk3}` : `${chunk1}, ${chunk2}, ${chunk3}`;
   // Pass-2 positive, in Pony's required order: score tags and source_anime must be
-  // token 1 or the 2D trigger never fires. Light and identity follow, and the room's
-  // long prose stays out so this pass only repaints flat colour.
+  // token 1 or the 2D trigger never fires. This is the anime25 recipe, unchanged.
   const restyleLight = chosenLight
     ? `(entire scene drenched in heavy ${findLightColor(lightColor)?.phrase ?? ''} neon lighting:1.4), `
     : '';
@@ -1017,7 +1028,7 @@ export function generateFinalOpenCodePayload(
       ? ', watercolor, watercolour, oil painting, gouache, brush strokes, painterly, soft shading, airbrush, sketch, pencil lines, cross-hatching, 3d render'
       : '';
   const nudeNegative = isNude
-    ? ', clothing, bra, panties, underwear, lingerie, bikini, swimsuit, bodysuit, covered breasts'
+    ? ', clothing, bra, panties, underwear, lingerie, bikini, swimsuit, bodysuit, covered breasts, shoes, heels, flats, sandals, ribbon'
     : '';
   const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only, plain background, gray background, simple background, freckles, freckled skin${chosenLight ? ', multicolored lighting, rainbow lighting, mixed color lighting, neutral lighting, white lighting, daylight' : ''}${poseNegative}${mediumNegative}${nudeNegative}`;
 
