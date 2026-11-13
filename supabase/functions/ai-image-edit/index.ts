@@ -572,15 +572,7 @@ function getDb() {
   const url = Deno.env.get('SUPABASE_URL') ?? '';
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   if (!url || !serviceKey) return null;
-  return createClient(url, serviceKey, {
-    auth: { persistSession: false },
-    global: {
-      // Postgres stalls must fail fast: an untimed DB call hangs the function
-      // past the gateway limit and surfaces as a 504 with no useful error.
-      fetch: (input: RequestInfo | URL, init?: RequestInit) =>
-        fetch(input, { ...init, signal: AbortSignal.timeout(10_000) }),
-    },
-  });
+  return createClient(url, serviceKey, { auth: { persistSession: false } });
 }
 
 async function getJobRow(db: ReturnType<typeof getDb>, requestId: string): Promise<JobRow | null> {

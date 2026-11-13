@@ -546,9 +546,6 @@ export const HUSBAND_GROOMING_OPTIONS = [
   'chest hair grown out and shaped into a broad cannabis leaf',
 ];
 
-/** Shared pubic styling: both of them get the same weed-leaf options. */
-export const PUBIC_WEED_STYLES = WIFE_PUBIC_WEED_STYLES;
-
 export const WIFE_PUBIC_WEED_STYLES = [
   'pubic hair neatly trimmed into the precise shape of a cannabis leaf, close cropped',
   'pubic hair trimmed into a cannabis leaf shape, slightly grown out and soft',
