@@ -76,3 +76,22 @@ Applies to: `anime_2d_toon`, `framed_card`, `fine_art_medium`, `toy_3d_sculpt`,
 - Editing LoRA strengths, ControlNet strength, or the golden seed
 - Replacing the lineart preprocessor or the invert
 - Changing `EmptyLatentImage` to `VAEEncode`
+
+## Preset: `gta_25d` (single-pass stylized look)
+
+Saved from the `ily_wide2` render, before the two-pass restyle work. This is the
+glossy 2.5D anime look. It is a request-level preset, not a change to golden.
+
+- Pipeline: ONE sampler. No pass 2, no second LoRA, no second prompt.
+- Canvas: pose mode forces 1216x832 landscape.
+- Pass: `EmptyLatentImage` -> `KSampler` at bucket denoise; ControlNet `none` in
+  pose mode (pose text at 1.15).
+- LoRA: `ashley_v1` at bucket strength (0.85 anime).
+- FaceID: not wired in pose mode.
+- Prompt shape: three BREAK chunks — identity/camera/pose, colour light + style +
+  body, environment + static props + sign.
+- Colours: `LIGHT_COLORS` clause at 1.5, `stripBakedLighting` first.
+- Sign: prompt element plus the composited `team_no_lackin_neon.png` overlay.
+
+Use `styleMode: 'adult-anime'` with `poseMode: 'random'`, `lightColor` set, and no
+`restylePass2` flag. That reproduces the wide2 look.

@@ -393,7 +393,7 @@ export const MASSIVE_AUTHENTIC_WEED_ENVIRONMENTS = [
   'suburban apartment living room late at night under glowing blacklights, string weed leaf fairy lights, glass bong and scattered swisher sweets and white owl wrappers on the table',
   'creative music producer apartment studio at 2:30 AM, synthesizers and DJ decks glowing with green and purple LEDs, soundproofing foam on walls, hazy smoke filling the room',
   'vintage retro apartment living room at midnight, 70s shag carpet, green and purple lava lamps, cannabis leaf tapestries, heavy fragrant smoke hanging in the air',
-  'cozy wooden cabin deep in the snowy woods at 1:00 AM, warm yellow light spilling from windows mixed with green and purple fairy lights inside, crackling stone fireplace, rolling up a fresh Backwood on the wooden table',
+  'cozy wooden cabin deep in the snowy woods at 1:00 AM, warm yellow light spilling from windows mixed with green and purple fairy lights inside, crackling stone fireplace, a half-rolled Backwood resting in an ashtray on the wooden table',
   'isolated cabin porch in the deep forest at midnight, surrounded by towering pine trees and outdoor cannabis crops, starry night sky, glowing campfire embers casting warm light',
   'rustic timber-framed cabin living room at 3:00 AM, massive stone fireplace throwing warm amber light, green and purple accent lighting, leather couch, heavy smoke hanging in the air',
   'cozy wooden treehouse tucked deep in the forest at midnight, fairy lights woven through the branches, open windows letting in the crisp night air, blankets and pillows piled high, packing a fresh bowl',
@@ -625,9 +625,9 @@ const OUTDOOR_ROOM =
 
 export function lightOverrideClause(env: string, colour: LightColor): string {
   if (OUTDOOR_ROOM.test(env)) {
-    return `the whole scene washed in ${colour.phrase} light, everything tinted ${colour.phrase}, ${colour.phrase} ambient glow on her skin, ${colour.phrase} rim light along her body, no daylight`;
+    return `entire scene drenched in heavy ${colour.phrase} neon lighting, strong ${colour.phrase} color cast on skin and background, no daylight`;
   }
-  return `the whole room lit only by ${colour.phrase} LED strip lights running along the walls and ceiling, every surface washed in ${colour.phrase} light, ${colour.phrase} ambient glow on her skin, ${colour.phrase} rim light along her body, no daylight`;
+  return `entire scene drenched in heavy ${colour.phrase} neon lighting, ${colour.phrase} LED strip lights along every wall and ceiling edge, strong ${colour.phrase} color cast on skin and background, no daylight`;
 }
 
 export const HUSBAND_GROOMING_OPTIONS = [
@@ -686,10 +686,10 @@ const WIDE_FRAMING =
 
 /** Same as SUBJECT_TAGS without the body-weight nudges, used in pose mode. */
 export const POSE_SUBJECT_TAGS: Record<SubjectMode, string> = {
-  wife: 'ashley, round wireframe glasses, ((long straight dark cherry red hair:1.25)), (thick thighs:1.10), (soft lower belly:1.05), (curvy figure:1.05), (moderate bust:1.1)',
+  wife: 'ashley, round wireframe glasses, ((long straight dark cherry red hair:1.25)), (voluptuous curvy figure:1.3), (wide hips:1.3), (thick plush thighs:1.3), (soft curvy waist:1.2), (soft lower belly:1.2), (moderate bust:1.15)',
   husband: 'mbboi, (broad shoulders:1.15), (solid build:1.1)',
   couple:
-    'ashley with glasses and ((long straight dark cherry red hair:1.25)), (thick thighs:1.10), (soft lower belly:1.05), (curvy figure:1.05), and mbboi, (broad shoulders:1.15)',
+    'ashley with glasses and ((long straight dark cherry red hair:1.25)), (voluptuous curvy figure:1.3), (wide hips:1.3), (thick plush thighs:1.3), (soft curvy waist:1.2), (soft lower belly:1.2), and mbboi, (broad shoulders:1.15)',
 };
 
 export const SUBJECT_TAGS_PLAIN: Record<SubjectMode, string> = {
@@ -898,12 +898,16 @@ export function generateFinalOpenCodePayload(
   const backgroundProp = getRandomItem(BACKGROUND_WEED_PROPS);
   const easterEgg = getRandomItem(HIDDEN_TEAM_NO_LACKIN_ELEMENTS);
 
+  const poseIsBackFacing = pose
+    ? /back to the viewer|turned away|from behind|behind her|seen from behind/i.test(pose)
+    : false;
   let bodyDetailPrompt = '';
   if (isNude) {
     const nudeBody = getRandomItem(NUDE_BODY_DETAILS);
     const pubicDye = getRandomItem(HAIR_DYE_OPTIONS);
     const wifePubic = getRandomItem(WIFE_PUBIC_WEED_STYLES);
     const husbandGrooming = getRandomItem(HUSBAND_GROOMING_OPTIONS);
+    const draped = /draped/i.test(nudeBody);
 
     // Grooming is subject-specific: a wife-only render must not inherit his.
     // The dye belongs to the pubic styling only â€” head hair stays cherry red
@@ -915,8 +919,25 @@ export function generateFinalOpenCodePayload(
     } else {
       bodyDetailPrompt = `, ${nudeBody}, husband ${husbandGrooming}, wife intimate styling: ${wifePubic}, pubic hair ${pubicDye}`;
     }
+    // A back-facing pose cannot show front anatomy. Asking for breasts and pussy
+    // while she faces away is what twisted the torso into a front-and-back body.
+    if (poseIsBackFacing) {
+      bodyDetailPrompt = `, completely nude from behind, bare back, bare ass, natural skin`;
+    } else if (draped) {
+      // The fan-leaf drape and "nothing covering her body" cancel each other out.
+      bodyDetailPrompt += ', artfully draped, wearing only cannabis leaves';
+    }
   } else {
     bodyDetailPrompt = `, ${getRandomItem(CLOTHED_OUTFIT_OPTIONS)}`;
+  }
+  // Nude has to be stated as a positive and a negative: the LoRA has plenty of
+  // photographed lingerie in it, so "completely nude" alone still renders straps.
+  if (isNude) {
+    if (poseIsBackFacing) {
+      bodyDetailPrompt += ', (completely nude:1.3), seen from behind, no clothes';
+    } else {
+      bodyDetailPrompt += ', (completely nude:1.3), bare breasts, bare pussy, nothing covering her body';
+    }
   }
 
   // Subject first: with an empty latent the model will happily fill the frame
@@ -936,7 +957,7 @@ export function generateFinalOpenCodePayload(
         .join(', ')
     : styleText;
   const lightLead = chosenLight
-    ? `(${lightOverrideClause(rawEnv, chosenLight)}:1.25), `
+    ? `(${lightOverrideClause(rawEnv, chosenLight)}:1.5), `
     : '';
   // Weed room and hardware sit early ï¿½ before the easter egg ï¿½ so they land inside
   // the first CLIP chunk instead of being buried at token 130.
@@ -948,16 +969,17 @@ export function generateFinalOpenCodePayload(
         ? '1man, solo, nude man'
         : '1girl, solo, nude woman'
     : SUBJECT_ANCHOR[subject];
-  // Pose mode uses the heavier identity block: hair and curves are weighted up front
-  // because the anime checkpoint defaults to a slender frame and light hair once the
-  // character tags fall past the first chunk.
+  const poseIsOverhead = pose
+    ? /overhead|top-down|from directly above|bird.?s eye|from above|above her/i.test(pose)
+    : false;
   const subjectTagText = pose ? POSE_SUBJECT_TAGS[subject] : SUBJECT_TAGS[subject];
   const poseLead = pose ? `(${pose}:1.15), ` : '';
-  // Camera first, pose second: a pose clause at full strength was dragging the
-  // camera with it, which is how a "breaking down a bud" pose became a top-down
-  // fisheye. Anchoring the frame before the pose keeps her in the room.
+  // Camera first, pose second. An overhead pose cannot also be eye-level, so the
+  // eye-level demand is dropped rather than fighting the pose in the same chunk.
   const cameraLead = pose
-    ? `(${wide ? 'wide shot, ' : ''}full body from head to toe, feet visible:1.35), eye-level camera, natural perspective, `
+    ? poseIsOverhead
+      ? '(full body from head to toe, feet visible:1.35), '
+      : `(${wide ? 'wide shot, ' : ''}full body from head to toe, feet visible:1.35), eye-level camera, natural perspective, `
     : '';
   const framingText = pose
     ? ', the environment visible around her'
@@ -968,20 +990,42 @@ export function generateFinalOpenCodePayload(
   // window instead of being sliced at token 77. Chunk 1 carries identity, pose and
   // camera; chunk 2 the medium, light and body; chunk 3 the room, props and sign.
   const chunk1 = `${SCORE_TAGS}, ${mediumText}, ${cameraLead}${poseLead}${poseAnchor}, ${subjectTagText}${traits ? `, ${traits}` : ''}`;
-  // The sign leads chunk 2 so its text has the strongest position of its own window;
-  // the neon asset is composited on top as well, so the lettering is guaranteed.
-  const signLead = pose
-    ? '(framed neon sign on the wall clearly reading "TEAM NO LACKIN" in bold capital letters:1.35), '
-    : '';
-  const chunk2 = `${signLead}${lightLead}${styleTextLit}${bodyDetailPrompt}`;
-  const chunk3 = `surrounded by ${env}, ${hardwareProp}, ${backgroundProp}${pose ? '' : `, ${easterEgg}`}${framingText}`;
+  const chunk2 = `${lightLead}${styleTextLit}${bodyDetailPrompt}`;
+  // Scene props only in chunk 3. An action here ("rolling a joint") would compete
+  // with the pose action already fixed in chunk 1.
+  const sceneProps = pose ? backgroundProp : `${hardwareProp}, ${backgroundProp}`;
+  const chunk3 = `surrounded by ${env}, ${sceneProps}, ${easterEgg}${framingText}`;
   const positive = pose ? `${chunk1} BREAK ${chunk2} BREAK ${chunk3}` : `${chunk1}, ${chunk2}, ${chunk3}`;
-  const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only, plain background, gray background, simple background, freckles, freckled skin${chosenLight ? ', multicolored lighting, rainbow lighting, mixed color lighting, neutral lighting, white lighting, daylight' : ''}${pose ? ', extreme low angle, worm\'s eye view, fisheye lens, distorted perspective, extreme high angle, bird\'s eye view, top-down close-up, blonde hair, light hair, blue hair, black hair, dark hair, green hair on head, pink hair, close-up, cropped legs, cropped feet, upper body only, skinny, slender, thin, petite, flat hips' : ''}`;
+  // Pass-2 positive, in Pony's required order: score tags and source_anime must be
+  // token 1 or the 2D trigger never fires. Light and identity follow, and the room's
+  // long prose stays out so this pass only repaints flat colour.
+  const restyleLight = chosenLight
+    ? `(entire scene drenched in heavy ${findLightColor(lightColor)?.phrase ?? ''} neon lighting:1.4), `
+    : '';
+  const restylePositive = `score_9, score_8_up, score_7_up, source_anime, (flat cel shading:1.35), (flat colors:1.3), (bold clean outlines:1.3), anime screencap, 2d cartoon, ${restyleLight}1girl, ${POSE_SUBJECT_TAGS[subject]}, ${styleTextLit}`;
+  const poseNegative = pose
+    ? `, ${
+        poseIsOverhead
+          ? 'extreme low angle, worm\'s eye view, fisheye lens, distorted perspective'
+          : 'extreme low angle, worm\'s eye view, fisheye lens, distorted perspective, extreme high angle, bird\'s eye view, top-down close-up'
+      }, blonde hair, light hair, blue hair, black hair, dark hair, green hair on head, pink hair, close-up, cropped legs, cropped feet, upper body only, skinny, slender, thin, petite, narrow hips, flat hips, ribcage showing`
+    : '';
+  // The traced lineart comes off a rendered frame, so without these the restyle reads
+  // as watercolour or pencil rather than flat cel.
+  const mediumNegative =
+    pose && style.bucket === 'anime_2d_toon'
+      ? ', watercolor, watercolour, oil painting, gouache, brush strokes, painterly, soft shading, airbrush, sketch, pencil lines, cross-hatching, 3d render'
+      : '';
+  const nudeNegative = isNude
+    ? ', clothing, bra, panties, underwear, lingerie, bikini, swimsuit, bodysuit, covered breasts'
+    : '';
+  const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only, plain background, gray background, simple background, freckles, freckled skin${chosenLight ? ', multicolored lighting, rainbow lighting, mixed color lighting, neutral lighting, white lighting, daylight' : ''}${poseNegative}${mediumNegative}${nudeNegative}`;
 
   return {
     checkpoint: bucket.checkpoint,
     positive,
     negative,
+    restylePositive,
     denoise: style.denoiseOverride ?? bucket.defaultDenoise,
     cfg: bucket.defaultCfg,
   };

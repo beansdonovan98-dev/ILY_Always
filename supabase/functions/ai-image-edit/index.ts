@@ -1217,6 +1217,7 @@ async function handleStyleStart(
     poseMode?: string;
     posePrompt?: string;
     lightColor?: string;
+    restylePass2?: boolean;
   }
 ): Promise<Response> {
   const db = getDb();
@@ -1360,7 +1361,19 @@ async function handleStyleStart(
     };
 
     let workflow: Record<string, unknown>;
-    if (bucketForStyle(styleMode) !== 'realism_composite') {
+    const bucketId = bucketForStyle(styleMode);
+    // Pass-2 settings per bucket: ink styles restyle hardest, sculpts convert via
+    // depth, fine art keeps brush texture instead of hard linework.
+    const poseRestyle =
+      overrides?.restylePass2 === true &&
+      ['anime_2d_toon', 'framed_card', 'fine_art_medium', 'toy_3d_sculpt'].includes(bucketId);
+    const restyleCfg =
+      bucketId === 'toy_3d_sculpt'
+        ? { control: 'depth' as const, strength: 0.65, denoise: 0.6, lora: 0.65 }
+        : bucketId === 'fine_art_medium'
+          ? { control: 'lineart' as const, strength: 0.45, denoise: 0.58, lora: 0.7 }
+          : { control: 'lineart' as const, strength: 0.85, denoise: 0.6, lora: 0.25 };
+    if (bucketId !== 'realism_composite') {
       workflow = buildBucketStyleWorkflow({
         ...common,
         controlNet: poseText ? 'none' : poseImage ? 'openpose' : cfg.controlNet,
@@ -1372,24 +1385,29 @@ async function handleStyleStart(
         faceIdWeight:
           Number.isFinite(Number(overrides?.faceIdWeight)) && Number(overrides?.faceIdWeight) > 0
             ? Number(overrides?.faceIdWeight)
-            : cfg.faceIdWeight,
-        faceIdLoraStrength: cfg.faceIdLoraStrength,
+            : poseText && bucketId.startsWith('realism')
+              ? 0.55
+              : cfg.faceIdWeight,
+        faceIdLoraStrength: poseText && bucketId.startsWith('realism') ? 0.55 : cfg.faceIdLoraStrength,
         faceIdEndAt: cfg.faceIdEndAt,
         faceIdProvider: Deno.env.get('COMFY_FACEID_PROVIDER') || 'CPU',
         initFromSource: cfg.initFromSource,
         denoise: cfg.denoise,
         loraName: LORA_FILES.wife,
-        loraStrength: cfg.loraStrength,
+        loraStrength: poseText && bucketId.startsWith('realism') ? 0.78 : cfg.loraStrength,
         loraClipStrength: cfg.loraClipStrength,
         useFaceId: cfg.useFaceId,
         cfgScale: cfg.cfgScale,
         neonSign: neonSignEnabled,
-        // Pose mode on the 2D buckets: pose first, then restyle the finished frame.
-        poseRestyle:
-          Boolean(poseText) &&
-          ['anime_2d_toon', 'fine_art_medium', 'framed_card'].includes(bucketForStyle(styleMode)),
-        poseRestyleDenoise: 0.58,
-        poseRestyleLora: 0.68,
+        // Pose mode: pose first, then restyle the finished frame. Ink styles get the
+        // hard lineart, sculpts get depth, fine art keeps a softer guide.
+        poseRestyle,
+        poseRestyleDenoise: restyleCfg.denoise,
+        poseRestyleLora: restyleCfg.lora,
+        poseRestyleControl: restyleCfg.control,
+        poseRestyleControlStrength: restyleCfg.strength,
+        poseRestylePositive: payload.restylePositive,
+        dropFaceId: Boolean(poseText),
       });
     } else if (bucketForStyle(styleMode) === 'realism_outfit_nsfw') {
       workflow = buildRealismOutfitWorkflow({
@@ -2248,6 +2266,7 @@ serve(async (req) => {
         poseMode: typeof body.poseMode === 'string' ? body.poseMode : undefined,
         posePrompt: typeof body.posePrompt === 'string' ? body.posePrompt : undefined,
         lightColor: typeof body.lightColor === 'string' ? body.lightColor : undefined,
+        restylePass2: body.restylePass2 === true,
         bodyTags: typeof body.bodyTags === 'string' ? body.bodyTags : undefined,
       });
     }

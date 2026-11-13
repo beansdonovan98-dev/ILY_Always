@@ -701,10 +701,18 @@ export type BucketStyleWorkflowOptions = {
   neonSign?: boolean;
   /** Pose mode: restyle the finished frame as 2D in a second sampling pass. */
   poseRestyle?: boolean;
-  /** Pass-2 denoise. Higher = more cel shading, lower = closer to pass 1. */
+  /** Pass-2 denoise. Higher = more restyle, lower = closer to pass 1. */
   poseRestyleDenoise?: number;
-  /** Pass-2 LoRA strength. Lower than pass 1 so the photo LoRA stops fighting cel shading. */
+  /** Pass-2 LoRA strength. Lower than pass 1 so the photo LoRA stops fighting the style. */
   poseRestyleLora?: number;
+  /** Pass-2 structural guide: lineart for ink styles, depth for sculpts. */
+  poseRestyleControl?: 'lineart' | 'depth';
+  /** Pass-2 control strength. */
+  poseRestyleControlStrength?: number;
+  /** Pass-2 positive: medium first, since the pose is already in the traced frame. */
+  poseRestylePositive?: string;
+  /** Pose mode: drop FaceID and RMBG entirely; the LoRA carries her. */
+  dropFaceId?: boolean;
   /** Sampler CFG from the bucket config. */
   cfgScale?: number;
   faceIdWeight: number;
@@ -853,6 +861,20 @@ export function buildBucketStyleWorkflow(
     for (const nodeId of ['77', '121']) {
       const node = workflow[nodeId] as { inputs?: Record<string, unknown> } | undefined;
       if (node?.inputs) node.inputs.cfg = options.cfgScale;
+    }
+  }
+
+  // Pose mode: no FaceID and no RMBG. The LoRA already carries her face and body,
+  // and both nodes were adding cost and pulling the render back toward photography.
+  if (options.dropFaceId) {
+    const plainModel: [string, number] = options.loraName ? ['71', 0] : ['72', 0];
+    const sampler = workflow['77'] as { inputs?: Record<string, unknown> } | undefined;
+    if (sampler?.inputs) sampler.inputs.model = plainModel;
+    for (const nodeId of ['85', '86', '93', '94']) delete workflow[nodeId];
+    // 84/87 only feed the control-net subject, the blurred base and img2img. In pose
+    // mode none of those run, so the RMBG cutout is dead weight on the pod.
+    if (!options.initFromSource && !useBlurredBase && options.controlNet === 'none') {
+      for (const nodeId of ['84', '87']) delete workflow[nodeId];
     }
   }
 
@@ -1034,24 +1056,43 @@ export function buildBucketStyleWorkflow(
   // re-applied here: a photo face embedding at this stage pulls skin back to photo.
   let finalImageRef: [string, number] = ['78', 0];
   if (options.poseRestyle) {
-    const restyleDenoise = options.poseRestyleDenoise ?? 0.58;
-    const restyleLora = options.poseRestyleLora ?? 0.68;
-    workflow['400'] = { class_type: 'AnimeLineArtPreprocessor', inputs: { image: ['78', 0] } };
-    workflow['401'] = { class_type: 'ImageInvert', inputs: { image: ['400', 0] } };
-    workflow['402'] = {
-      class_type: 'ControlNetLoader',
-      inputs: { control_net_name: 'diffusers_xl_canny_full.safetensors' },
-    };
+    const restyleDenoise = options.poseRestyleDenoise ?? 0.72;
+    const restyleLora = options.poseRestyleLora ?? 0.55;
+    const restyleControl = options.poseRestyleControl ?? 'lineart';
+    const restyleStrength = options.poseRestyleControlStrength ?? 0.72;
+    if (restyleControl === 'depth') {
+      workflow['400'] = { class_type: 'Zoe-DepthMapPreprocessor', inputs: { image: ['78', 0] } };
+      workflow['402'] = {
+        class_type: 'ControlNetLoader',
+        inputs: { control_net_name: 'SDXL/depth-zoe-xl-v1.0-controlnet.safetensors' },
+      };
+    } else {
+      workflow['400'] = { class_type: 'AnimeLineArtPreprocessor', inputs: { image: ['78', 0] } };
+      workflow['401'] = { class_type: 'ImageInvert', inputs: { image: ['400', 0] } };
+      workflow['402'] = {
+        class_type: 'ControlNetLoader',
+        inputs: { control_net_name: 'diffusers_xl_canny_full.safetensors' },
+      };
+    }
+    const restylePosRef: [string, number] = options.poseRestylePositive
+      ? ['409', 0]
+      : posRef;
+    if (options.poseRestylePositive) {
+      workflow['409'] = {
+        class_type: 'CLIPTextEncode',
+        inputs: { text: options.poseRestylePositive, clip: ['81', 0] },
+      };
+    }
     workflow['403'] = {
       class_type: 'ControlNetApplyAdvanced',
       inputs: {
-        positive: posRef,
+        positive: restylePosRef,
         negative: negRef,
         control_net: ['402', 0],
-        image: ['401', 0],
-        strength: 0.5,
+        image: restyleControl === 'depth' ? ['400', 0] : ['401', 0],
+        strength: restyleStrength,
         start_percent: 0,
-        end_percent: 0.55,
+        end_percent: 0.7,
       },
     };
     let restyleModel: [string, number] = ['72', 0];
@@ -1143,7 +1184,7 @@ export function buildBucketStyleWorkflow(
         scheduler: 'karras',
         denoise: 0.05,
         model:
-          options.useFaceId === false
+          options.useFaceId === false || options.dropFaceId
             ? workflow['404']
               ? ['404', 0]
               : options.loraName
