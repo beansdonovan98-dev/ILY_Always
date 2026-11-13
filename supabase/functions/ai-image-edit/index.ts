@@ -20,6 +20,7 @@ import {
   getRandomItem,
   LORA_FILES,
   pickRandomPose,
+  posePresetFor,
   loraForSubject,
   type SubjectMode,
 } from './styleBuckets.ts';
@@ -1397,7 +1398,14 @@ async function handleStyleStart(
         initFromSource: cfg.initFromSource,
         denoise: cfg.denoise,
         loraName: LORA_FILES.wife,
-        loraStrength: poseText && bucketId.startsWith('realism') ? 0.78 : cfg.loraStrength,
+        loraStrength:
+          poseText && bucketId === 'anime_2d_toon'
+            ? posePresetFor(poseText) === 'squat'
+              ? 0.72
+              : 0.85
+            : poseText && bucketId.startsWith('realism')
+              ? 0.78
+              : cfg.loraStrength,
         loraClipStrength: cfg.loraClipStrength,
         useFaceId: cfg.useFaceId,
         cfgScale: cfg.cfgScale,

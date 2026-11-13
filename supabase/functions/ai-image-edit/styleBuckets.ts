@@ -383,95 +383,95 @@ export const SUBJECT_TAGS: Record<SubjectMode, string> = {
 // MASTER STONER ENVIRONMENT POOL
 // ==========================================
 export const MASSIVE_AUTHENTIC_WEED_ENVIRONMENTS = [
-  'cozy Chicago brick loft at midnight, exposed brick walls, cannabis tapestries and weed posters, glass bongs and jars of buds on the coffee table',
-  'high-rise apartment living room at 2 AM, floor-to-ceiling windows over a snowy city, jars of cannabis buds on a shelf and a bong on the side table',
-  'studio apartment at 3 AM, velvet curtains drawn, cannabis plants on the windowsill, jars of buds and a rolling tray on the desk',
-  'bohemian loft studio, floor cushions around a low table covered in blunts, joints, papers and grinders, cannabis plants in the corner',
-  'penthouse living room at midnight, velvet couches, a percolator bong and jars of top-shelf buds on the bar',
-  'minimalist apartment, bare concrete walls, one cannabis plant under a grow bulb, jars of buds on a steel shelf',
-  'converted warehouse loft, exposed ducts, a grow tent glowing in the corner with cannabis plants, buds drying on a rack',
-  'cozy attic room, sloped ceiling, cannabis plants by the dormer window, a bong and jars of buds on a crate',
-  'art-deco apartment, velvet chaise, crystal ashtray, a glass bong and jars of buds on the marble table',
-  'small kitchen at 2 AM, open cupboard with jars of cannabis buds, a bong on the counter, rolling papers scattered',
-  'wooden cabin in snowy woods at 1 AM, stone fireplace, cannabis jars on the mantel, a bong on the table',
-  'isolated forest cabin porch at midnight, pine trees and outdoor cannabis crops, jars of buds and a bong on the rail',
-  'rustic timber cabin, fireplace embers, cannabis plants in pots, a bong and rolling tray on the table',
-  'treehouse at midnight, fairy lights, blankets piled high, jars of cannabis buds on a shelf and a pipe on the sill',
-  'forest clearing at 2 AM, moss and ferns, cannabis plants growing wild, buds drying on a line',
-  'woodland campsite at midnight, campfire, cannabis plants around the clearing, a bong on a log',
-  'mountain cabin with a glass wall onto dark forest, cannabis jars on the shelf, a bong on the hearth',
-  'hunting cabin, wood-panelled walls and taxidermy, jars of buds and a bong on the table',
-  'lakeside dock at 1 AM, mist over the water, cannabis plants in buckets, a bong on the planks',
-  'rustic barn loft, hay bales, cannabis hanging to dry, jars of buds on a workbench',
-  'hydroponic grow room at midnight, rows of flowering cannabis plants, jars of buds on a metal shelf',
-  'grow tent interior, silver mylar walls, cannabis plants under panels, a bucket of buds on the floor',
-  'garage grow op, reflective walls, cannabis plants in pots, a bong and jars on a crate',
-  'basement grow with ducting, cannabis plants under strip lights, jars of buds on a bench',
-  'greenhouse at night, tall cannabis plants, jars of buds along a potting bench',
-  'botanical garden greenhouse, giant cannabis fan leaves, a bong on a stone ledge',
-  'converted closet grow, cannabis plants, jars of buds stacked on a shelf',
-  'commercial grow aisle, rows of cannabis plants, a jar of buds on a rolling cart',
-  'basement smoke den at 4:20 AM, blacklight posters, purple laser haze, a bong and jars of buds on the table',
-  'velvet lounge at midnight, deep couches, crystal ashtray, cannabis jars and a bong on the bar',
-  'bookshop back room at midnight, floor-to-ceiling shelves, a hidden sesh corner with a bong and jars of buds',
-  'record room, vinyl shelves, cannabis plants in the corner, a bong on the turntable stand',
-  'retro arcade back room, cabinet glow, a bong and jars of buds on the stool',
-  'bunker lounge, riveted steel walls, jars of cannabis buds on the bolted table and a bong beside them',
-  'bank-vault lounge, open steel door, cushions on the floor, a bong and jars of buds on the polished floor',
-  'home theatre, dark walls, a bong and jars of cannabis buds on the console',
-  'games room, pool table, cannabis plants in pots, a bong on the bar',
-  'library room, leather armchairs, a globe, jars of cannabis buds and a bong on the side table',
-  'cigar lounge, dark wood and leather chairs, cannabis jars and a bong on the humidor table',
-  'spa room, tiled walls and steam, jars of cannabis buds and a bong on a stool',
-  'dispensary counter at night, glass jars of cannabis buds on shelves, a bong on the counter',
-  'dispensary back room, boxes of cannabis products, jars of buds on a shelf',
-  'head shop, shelves of bongs and pipes, jars of cannabis buds on the counter',
-  'apothecary, wooden drawers, jars of cannabis buds and a scale on the counter',
-  'corner store back room, stacked crates, jars of cannabis buds and a bong on a box',
-  'smoke shop lounge, jars of buds and a bong on the counter',
-  'apartment balcony late at night, city skyline, potted cannabis plants, a bong on the railing',
-  'rooftop at midnight, city skyline, cannabis plants in planters, a bong on a crate',
-  'backyard porch at 2 AM, string lights, cannabis plants in pots, jars of buds on the table',
-  'patio at midnight, lounge chairs, cannabis plants, a bong on the low table',
-  'gazebo at 2 AM, draped cannabis tapestries, rolling trays and a bong on the bench',
-  'beach deck at 1 AM, ocean beyond the rail, cannabis plants in pots, a bong on the rail',
-  'cliff terrace at 1 AM, starry sky, cannabis plants, a bong on the stone ledge',
-  'farmhouse porch at 3 AM, rocking chairs, cannabis plants in pots, jars of buds on the rail',
-  'desert camp at 2 AM, fire pit, cannabis plants in buckets, a bong on a crate',
-  'van campsite at night, string lights, a bong and jars of buds on the ground',
-  'camper van interior at midnight, velvet upholstery, cannabis plants in the doorway, a bong on the dash',
-  'Airstream trailer at 2 AM, turquoise upholstery, a bong on the dinette and jars of buds on the shelf',
-  'converted bus, wood panelling, cannabis plants along the windows, a bong on the table',
-  'houseboat cabin, water sounds, brass portholes, a bong and jars of buds on the galley table',
-  'yacht deck at 1 AM, ocean, deck lights, a bong and jars of buds on the rail',
-  'submarine bunker, riveted steel, a bong on the bolted table, jars of buds on a shelf',
-  'parking garage top deck at midnight, concrete, city glow, a bong and jars of buds on a crate',
-  'abandoned rooftop hideout, skyline and graffiti, cannabis plants in pots, a bong on a lawn chair',
-  'warehouse floor at night, pallets, a grow tent with cannabis plants, jars of buds on a crate',
-  'loading dock at 2 AM, crates, cannabis plants in a corner, a bong on a pallet',
-  'laundromat back room, machines humming, a bong and jars of buds on the counter',
-  'auto shop at midnight, tool bench, cannabis plants in a corner, a bong on the workbench',
-  'train car, worn seats, cannabis plants in the aisle, a bong on a seat',
-  'photo studio, seamless backdrop, cannabis plants and jars of buds staged on a plinth',
-  'recording booth, foam walls, a bong and jars of buds on the console',
-  'art studio, canvases, cannabis plants by the window, a bong on the stool',
-  'Moroccan riad courtyard at midnight, mosaic fountain, lanterns, cannabis plants in clay pots, a bong on a cushion',
-  'Japanese ryokan room at night, tatami and shoji screens, a bong and jars of buds on the low table',
-  'tropical villa at 2 AM, open shutters, cannabis plants in pots, a bong on the side table',
-  'sauna, cedar benches, steam, a bong and jars of buds on the bench',
-  'treehouse bar, rope bridge, cannabis plants in pots, jars of buds on the counter',
-  'shipping container home, metal walls, cannabis plants, a bong on a crate',
-  'lighthouse room at midnight, curved wall, storm outside, a bong and jars of buds on the table',
-  'church loft, stained glass, candles, cannabis plants in the corner, a bong on a pew',
-  '1950s diner after closing, chrome stools, checkered floor, a bong and jars of buds on the counter',
-  'retro living room, shag carpet and wood panelling, cannabis plants and a bong on the console',
-  '70s basement bar, orange shag, a bong and jars of buds on the bar',
-  'bowling alley, lane lights, a bong and jars of buds on the ball return',
-  'motel room at 2 AM, patterned curtains, cannabis plants on the sill, a bong on the nightstand',
-  'diner booth, vinyl seats, jars of cannabis buds and a bong on the table',
-  'empty theatre, red seats, a bong and jars of buds on the stage',
-  'garden shed, terracotta pots, cannabis seedlings under a grow bulb, a bong on the workbench',
-  'punk squat living room, band posters and patched couches, cannabis plants in pots, a bong and jars of buds on a crate',
+  'high-rise Chicago apartment living room at 2:00 AM, glowing purple and green LED strip lighting framing the windows, heavy snow falling against the glass outside, city lights blurring in the background, thick aromatic smoke hanging in the air',
+  'cozy vintage Chicago brick-loft apartment at midnight, exposed brick walls adorned with cannabis tapestries and vintage weed posters, glowing green and purple neon lights, coffee table covered in rolling trays, raw papers, and glass bongs',
+  'chic downtown apartment balcony during late twilight, overlooking the Chicago skyline twinkling in the dark, string fairy lights weaving through potted outdoor cannabis plants, crisp night air carrying thick smoke',
+  'darkened basement apartment smoke den at 4:20 AM, blacklight posters glowing on the walls, purple and green laser lights cutting through heavy smoke clouds, vinyl records playing in the corner',
+  'artistic bohemian loft studio at midnight, floor cushions scattered around a massive wooden coffee table loaded with blunts, joints, packs of raw papers, grinders, and fresh bud',
+  'cozy studio apartment at 3:00 AM, heavy velvet curtains closed, purple and green fairy lights strung across the ceiling, rolling supplies, tip booklets, and amber mason jars lining the shelves',
+  'urban penthouse hotbox session at midnight, floor-to-ceiling windows showing a glowing city skyline, velvet couches, massive glass percolator bongs, golden rolling trays, and thick aromatic smoke haze',
+  'suburban apartment living room late at night under glowing blacklights, string weed leaf fairy lights, glass bong and scattered swisher sweets and white owl wrappers on the table',
+  'creative music producer apartment studio at 2:30 AM, synthesizers and DJ decks glowing with green and purple LEDs, soundproofing foam on walls, hazy smoke filling the room',
+  'vintage retro apartment living room at midnight, 70s shag carpet, green and purple lava lamps, cannabis leaf tapestries, heavy fragrant smoke hanging in the air',
+  'cozy wooden cabin deep in the snowy woods at 1:00 AM, warm yellow light spilling from windows mixed with green and purple fairy lights inside, crackling stone fireplace, a half-rolled Backwood resting in an ashtray on the wooden table',
+  'isolated cabin porch in the deep forest at midnight, surrounded by towering pine trees and outdoor cannabis crops, starry night sky, glowing campfire embers casting warm light',
+  'rustic timber-framed cabin living room at 3:00 AM, massive stone fireplace throwing warm amber light, green and purple accent lighting, leather couch, heavy smoke hanging in the air',
+  'cozy wooden treehouse tucked deep in the forest at midnight, fairy lights woven through the branches, open windows letting in the crisp night air, blankets and pillows piled high, packing a fresh bowl',
+  'mystic forest clearing at 2:00 AM illuminated by glowing green bio-luminescent moss and cannabis fairy lights strung between trees, peaceful secluded smoke spot under the stars',
+  'remote mountain cabin at midnight, snow-covered roof, windows glowing with green and purple interior ambient light, thick aromatic smoke rising from the chimney into the cold night air',
+  'rustic log cabin back porch at 4:00 AM, rocking chairs, tiki torches casting purple and green hues, tall pine trees surrounding the property, peaceful wilderness night vibe',
+  'secluded woodland campsite at midnight, glowing campfire lighting up surrounding cannabis bushes, string fairy lights on tent poles, thick smoke rising into the dark sky',
+  'mountain-view cabin living room at 1:30 AM, floor-to-ceiling glass looking out into the dark forest, glowing neon weed sign on the wall, bongs and rolling trays on the coffee table',
+  'rustic hunting cabin at midnight, wood-paneled walls, taxidermy, green and purple LED mood lighting, heavy smoke hanging low over a wooden table covered in papers and flower',
+  'authentic underground grow room and sesh spot at 2:00 AM, glowing purple full-spectrum horticulture lights, drying colas hanging overhead, crystal trichome resin glistening under moody colored lights',
+  'secret indoor hydroponic grow room at midnight, glowing red and purple LED grow panels, rows of resinous flowering cannabis plants framing the shot, heavy aromatic pine and skunk scent in the air',
+  'mystical ancient greenhouse sanctuary at 3:00 AM, overgrown exotic cannabis strains winding up ancient stone pillars, shafts of moonlight piercing through glass roofs and thick resinous smoke',
+  'sunlit commercial cultivation room at dawn, bright natural morning light mixing with purple supplemental grow beams, manicuring trays full of fresh trim',
+  'rustic wooden barn greenhouse at midnight, strings of warm Edison bulbs and green fairy lights, potted cannabis plants stretching toward the rafters, quiet rural night atmosphere',
+  'tropical jungle greenhouse at 2:00 AM, giant palm leaves and exotic cannabis plants, glowing green and purple accent lights, misty air thick with fragrant smoke',
+  'desert greenhouse oasis at midnight, cacti and flowering cannabis plants under glass panels, purple grow lights reflecting off glass jars and rolling trays',
+  'hidden outdoor hoop-house greenhouse at 1:00 AM, plastic walls glowing from green and purple interior lights, rows of sticky flowering colas, peaceful night atmosphere',
+  'overgrown botanical garden greenhouse at midnight, moonlight and green fairy lights illuminating giant cannabis fan leaves, stone pathways, heavy smoke haze',
+  'clandestine garage grow room at 3:00 AM, makeshift reflective Mylar walls, purple LED grow lights casting a moody glow over jars, grinders, and fresh harvests',
+  'late night outdoor patio session under the stars at midnight, string fairy lights weaving through giant cannabis plants, hazy smoke clouds drifting into the cool night air, comfortable outdoor couches',
+  'backyard porch at 2:00 AM lit by glowing green and purple tiki torches and cannabis fairy lights, hazy smoke in the crisp air, relaxing chill atmosphere',
+  'rooftop balcony overlooking a quiet neighborhood at 1:00 AM, string lights, comfortable patio chairs, rolling tray on an iron table, cool evening breeze carrying smoke away',
+  'camper van interior parked deep in nature at midnight, custom fairy lights, velvet upholstery, rolling tray on the dashboard, hazy smoke filling the small cozy space',
+  'hidden desert oasis patio at 3:00 AM, warm breeze, tiki torches, string lights, comfortable wicker furniture surrounded by potted outdoor cannabis plants',
+  'VIP backroom of a private lounge at midnight, deep leather armchairs, low amber and green mood lighting, crystal ashtrays, glass jars of top-shelf exotic strains, heavy fragrant air',
+  'hotel suite balcony at 2:00 AM, city lights blurred in the background, plush robes, room service table covered in gourmet snacks and high-end smoking accessories',
+  'retro 70s van interior converted into a mobile smoke lounge at midnight, shag carpeting, velvet walls, green and purple fairy lights, rolling tray between the front seats',
+  'private yacht deck docked at 1:00 AM, gentle ocean waves, glowing green and purple ambient deck lighting, cannabis fairy lights, hazy smoke drifting over the water',
+  'secluded beach bonfire at midnight, crashing ocean waves casting light, tiki torches, heavy smoke mixing with the salty ocean breeze',
+  'backyard gazebo at 2:30 AM draped in cannabis tapestries and fairy lights, comfortable cushioned seating, rolling trays, bongs, and backwoods on the table',
+  'historic brick courtyard at midnight, ivy-covered walls, string lights weaving through trees, outdoor table covered in smoking accessories and mason jars',
+  'cliffside ocean-view terrace at 1:00 AM, starry sky, glowing neon weed sign on the stone wall, comfortable lounge chairs, thick smoke rolling across the patio',
+  'countryside farmhouse porch at 3:00 AM, rocking chairs, green and purple porch lights, crickets chirping, rolling up a fresh blunt in the cool night air',
+  'abandoned urban rooftop hideout at midnight, city skyline in the distance, graffiti-covered walls, lawn chairs, fairy lights, and heavy smoke haze',
+  'sunken living room in a 1970s split-level house, conversation pit with orange shag cushions, wood paneling, lava lamps, thick smoke drifting through a sunbeam from the skylight',
+  'converted industrial warehouse loft, exposed steel beams and ductwork, huge factory windows, industrial pendant lights, a heavy glass bong on a steel workbench',
+  'tiny Tokyo capsule apartment at 3 AM, neon signs bleeding through frosted glass, futon on the floor, manga stacked in corners, a small bong on a low tray',
+  'Parisian attic studio under a mansard roof, sloped ceiling, rainy skylight, unmade bed, wine bottle, rolling papers on a paint-stained table',
+  'Moroccan riad courtyard at midnight, mosaic tile fountain, lanterns casting patterned light, cannabis plants in clay pots, cushions around a low brass table',
+  'Airstream trailer parked in the desert at 2 AM, warm string lights inside, turquoise upholstery, a bong on the tiny dinette, stars through the windows',
+  'basement recording studio, acoustic foam walls, mixing desk lit by VU meters, thick smoke, a bong balanced on a monitor speaker',
+  'vintage bookshop back room at midnight, floor-to-ceiling shelves, rolling ladder, dusty lamp light, a hidden sesh corner with a leather armchair',
+  'art deco hotel suite, curved velvet sofa, brass fixtures, tall windows over a rainy boulevard, crystal ashtray and a glass bong on the marble table',
+  'submarine-style bunker lounge, riveted steel walls, amber emergency lighting, bolted metal table with a bong and scattered papers',
+  'Japanese ryokan room at night, tatami mats, shoji screens, low table with a bong and tea set, paper lantern glow',
+  'glass igloo in the Arctic, aurora through the dome, fur throws, a bong on a wooden crate, breath fogging in the cold air',
+  'greenhouse train car parked on abandoned tracks, overgrown vines through broken windows, moonlight, cannabis plants reclaiming the seats',
+  '1950s diner after closing, chrome stools, checkered floor, neon sign buzzing outside, a bong on the counter beside a half-finished milkshake',
+  'underground speakeasy behind a bookcase door, velvet booths, jazz posters, dim amber sconces, thick smoke and a glass bong on the bar',
+  'treehouse bar built into an oak canopy, rope bridges, lanterns, cannabis plants potted along the railing, a bong on the plank counter',
+  'snowed-in alpine chalet, stone hearth, drying firewood, wool blankets, a bong on the low table beside a mug of something hot',
+  'retro arcade back room, cabinet glow, sticky carpet, a bong on the stool beside a pinball machine, smoke catching the CRT light',
+  'floating houseboat cabin, gentle water sounds, brass portholes, a bong on the galley table, mist over the river outside',
+  'converted chapel studio, stained glass throwing colour across the floor, vaulted ceiling, a bong on a stone ledge',
+  'rooftop greenhouse in a city, glass panels fogged, tomato and cannabis plants in rows, a bong on a potting bench',
+  'private library with a rolling ladder, leather chairs, green banker lamps, a bong on the reading table beside an open book',
+  'desert airstream camp at dusk, fire pit, folding chairs, cannabis plants in buckets, a bong on a crate and smoke against the sunset',
+  'bohemian beach shack, driftwood walls, open window with ocean sound, sarongs drying, a bong on a crate beside shells',
+  'old cinema projection booth, film reels stacked, dust in the projector beam, a bong on the console',
+  'Victorian parlour, heavy drapes, patterned wallpaper, tarnished silver tray with a bong and a decanter',
+  'mountain fire lookout tower, 360-degree windows, storm outside, a bong on the narrow desk, radio crackling',
+  'fairy-light strung garden shed, potting tools, terracotta pots, cannabis seedlings under a grow bulb, a bong on the workbench',
+  'underground parking garage at 3 AM, sodium lights, concrete pillars, a car with its door open, a bong on the hood',
+  'Scandinavian cabin with a glass roof, snowy pines above, sheepskin rugs, a bong on a pale wood table',
+  'art studio with half-finished canvases, turpentine smell, paint-splattered floor, a bong on a stool beside the easel',
+  'converted lighthouse lantern room, sweeping beam outside, circular windows, a bong on the iron railing ledge',
+  'hidden karaoke room, red velvet walls, mirrored ceiling, a bong on the table between microphones',
+  'winterized camper in a snowy field, condensation on the windows, blankets, a bong on the fold-out table',
+  'rooftop pool deck at night, glowing water, loungers, cannabis plants in planters, a bong on a side table',
+  'old train station waiting room, wooden benches, dusty light through tall windows, a bong on the ticket counter',
+  'basement workshop with power tools, pegboard walls, sawdust, a bong on the bench beside a half-built shelf',
+  'greenhouse attached to a farmhouse, misting system, tomato vines, a bong on a stack of seed trays',
+  'secluded hot spring at night, steam rising, snow on the rocks, a bong on a flat stone beside folded towels',
+  'attic bedroom with sloped beams, string lights, record player, a bong on the floor beside a mattress',
+  'abandoned observatory dome, telescope silhouette, dust motes in moonlight, a bong on the control desk',
+  'tiki bar on a pier at midnight, torches, thatch roof, cannabis plants in barrels, a bong on the bamboo counter',
+  'converted bank vault lounge, steel door open, led lighting, a bong on the polished floor beside cushions',
+  'snowbound bus shelter on a mountain pass, glass walls, emergency light, a bong on the bench, snowfall outside',
 ];
 
 export const GLASS_COLORS = [
@@ -693,10 +693,30 @@ export const POSE_SUBJECT_TAGS: Record<SubjectMode, string> = {
 };
 
 /**
- * Weed anchors for rooms that do not already name any weed object. Varied on
+ * Two locked pose presets:
+ *  - squat:    golden from ily_squatbody-1794567803 (header 1.45, LoRA 0.72, squat body
+ *              block, floor anchor at 1.35, room-first chunk 3).
+ *  - standard: golden from ily_proof2 (header 1.3, LoRA 0.85, pose body block, pose at
+ *              1.15, light-first chunk 3). Used for standing / seated / reclining.
+ */
+export function posePresetFor(pose?: string): 'squat' | 'standard' {
+  return pose && /\bsquat/i.test(pose) ? 'squat' : 'standard';
+}
+
+export const ANIME_HEADER_SQUAT =
+  'score_9, score_8_up, score_7_up, source_anime, (anime style, anime screencap, cel shaded flat colors, 2d cel shading, clean bold lineart, vibrant colors:1.45)';
+export const ANIME_HEADER_STANDARD =
+  'score_9, score_8_up, score_7_up, source_anime, (anime style, 2d cel shading, clean bold lineart, vibrant colors:1.3)'; Varied on
  * purpose: one fixed line would make every background the same jars-and-a-bong
  * shelf. Placement changes too, so the anchor sits in the room instead of on top.
  */
+export const SQUAT_SUBJECT_TAGS: Record<SubjectMode, string> = {
+  wife: 'ashley, round wireframe glasses, ((hip-length dark cherry red hair, sleek and straight:1.3)), (voluptuous curvy figure:1.1), (wide hips:1.15), (thick plush thighs:1.2), (soft curvy waist:1.15), (soft lower belly:1), (plush soft lower abdomen:1.1), (moderate bust:1.10)',
+  husband: 'mbboi, (broad shoulders:1.15), (solid build:1.1)',
+  couple:
+    'ashley with glasses and ((hip-length dark cherry red hair, sleek and straight:1.3)), (voluptuous curvy figure:1.1), (wide hips:1.15), (thick plush thighs:1.2), (soft curvy waist:1.15), (soft lower belly:1), (plush soft lower abdomen:1.1), and mbboi, (broad shoulders:1.15)',
+};
+
 export const POSE_WEED_ANCHORS = [
   'a glass bong sitting on the floor beside her',
   'mason jars of cannabis buds on a shelf behind her',
@@ -726,36 +746,36 @@ export const POSE_OPTIONS = [
   'lying on her back with her legs folded behind her head, a realistic skin-toned dildo inside her, one hand on its base, a lit joint between her lips, toes curled',
   'lying on her side with her head tipped back, hand between her thighs, mouth open, smoke curling from her lips, hair spilling',
   'crouched low with knees wide, a dildo between her thighs, one hand spreading herself, the other holding a lit joint hovering over the dildo, tongue out, heavy blush',
-  'kneeling with her hands on her thighs, shoulders back, a lit blunt resting against her thigh, exhaling through her nose, smoke curling from her nostrils',
+  'kneeling upright on a plush floor rug, both knees resting flat on the floor, hands on her thighs, shoulders back, a lit blunt resting against her thigh, exhaling through her nose',
   'close-up on her face and shoulders, leaning forward, a kief-dusted joint in one hand, ash tipping, gazing away',
   'sitting with her legs folded to one side, hands on the ground, an open mason jar of buds, a pack of blunts, a dab rig and a small digital scale set down in front of her',
   'top-down overhead shot, lying on her back, arms above her head, a lit joint in one hand, smoke drifting up, legs toward the top of frame',
   'on her back viewed from directly above, her legs folded behind her head and spread toward the camera, a glass dildo inside her, a lit blunt resting on her stomach, mouth open',
   'sitting with her legs crossed at the ankle and spread wide, hand between her thighs, a grinder and a small digital scale resting on her stomach, biting her lip',
-  'kneeling with her weight on her forearms, hips raised, a rolling tray and a small digital scale balanced on her lower back',
+  'lying face down with her hips raised, chest on the floor, a rolling tray and a small digital scale balanced on her lower back',
   'straddling, hips rolled forward, chest pushed out, a pink leather harness across her chest, green fuzzy handcuffs on her wrists, hands behind her head, eyes closed',
   'sitting with her knees together, a rolling tray with an Adventure Time print on her lap, hands between her knees',
   'lying back with her legs up over the edge, head hanging back, a lit joint hanging from her fingers, smoke drifting down',
   'lying back taking a selfie with a polaroid camera, holding it up, legs spread, other hand between her legs, grinning at the lens',
-  'kneeling upright with a mason jar of buds in one hand, the other between her legs, head tipped back',
+  'sitting on the floor with a mason jar of buds in one hand, the other between her legs, head tipped back',
   'sitting with one leg folded under her, the other hanging down, licking a blunt closed, a lighter in her other hand',
   'sitting with her knees together, towel slipping, one knee raised, a glowing bong held to her lips mid-hit',
   'leaning over with both palms flat, a rolling tray of loose weed balanced on her ass, looking back over her shoulder',
   'crouching low on her heels, elbows on knees, a lighter in one hand, looking up at the viewer, tongue out, a little dirt on the soles of her feet',
   'lying back with one knee raised, arm behind her head, a pack of blunts resting on her chest below her collarbones',
-  'kneeling with her back arched, both hands on her breasts, thighs apart, silk rope wrapped loosely around her waist, a dildo inside her, mouth open',
+  'reclining on her back, back arched, both hands on her breasts, thighs apart, silk rope around her waist, a dildo inside her, mouth open',
   'lying on her back, one knee raised high, hand between her legs, other arm above her head, a kief-dusted joint between her lips, smoke drifting, back arched',
   'reclining back, left leg down, right ankle resting on her left knee, a rolling tray balanced on her shin, her bare foot a little dirty',
   'standing on tiptoe, one hand braced high, the other wrapped around the realistic skin-toned dildo of a black strap-on harness, a black collar that reads BAD KITTY around her neck, body stretched long',
   'legs crossed, one elbow raised, chin resting on her hand, a lit joint tucked behind her ear',
   'on all fours, hips raised, looking back over her shoulder, a pink buttplug with a heart-shaped base, smirk, arched spine',
   'lying back with an ice cube melting on her stomach, one hand between her legs, eyes half closed, shivering',
-  'kneeling upright with her hands clasped behind her neck, chest lifted, exhaling a long plume of smoke',
+  'standing with her hands clasped behind her neck, chest lifted, exhaling a long plume of smoke',
   'sunk low and sprawled back, legs splayed, an ashtray balanced on her stomach',
   'standing with her hands behind her back holding a lit joint, green fuzzy handcuffs on her wrists, chin lifted, defiant, smoke curling behind her',
   'crouched low, one hand lifting the lid of a wooden stash box, a grinder visible inside',
   'standing with her head tipped back, water running over her, wet hair',
-  'kneeling with her chest low and hips high, one arm stretched forward, other hand between her legs, a leather crop resting across her back',
+  'lying face down with her chest low and hips high, one arm stretched forward, a leather crop resting across her back',
   'sitting with her elbows on her knees, chin in her hands, a lit joint between her fingers',
   'pulling her panties aside with one hand, the other between her legs, standing with legs apart',
   'bent over with her cheek down and hips raised, looking back at the camera, one hand between her legs, a ballgag hanging around her neck, the heart-shaped base of a buttplug showing',
@@ -768,10 +788,10 @@ export const POSE_OPTIONS = [
   'sitting cross-legged with a bong balanced on her knee, a mason jar of buds between her crossed legs',
   'leaning back with one leg raised, wet skin, wet hair, hand between her thighs, the other holding a bong, water dripping',
   'standing with arms stretched overhead, body arched, blowing smoke upward from her mouth and nose, eyes closed',
-  'kneeling with her arms folded across her chest, a lit blunt between two fingers, smoke drifting past her face',
+  'sitting on the floor with her arms folded across her chest, a lit blunt between two fingers, smoke drifting past her face',
   'sitting with her legs stretched out in front of her, a rolling tray and a small digital scale across her thighs, a lit joint in one hand, leaning back on the other',
   'sitting with her legs stretched wide, hands bound to her own ankles with green fuzzy handcuffs, leaning forward, bare feet with a little dirt on the soles',
-  'kneeling with one knee up, forearm resting on it, a lit joint in that hand, the other hand down',
+  'kneeling with one knee up on a plush floor rug, the other knee flat on the floor, forearm resting on the raised knee, a lit joint in that hand',
   'viewed from directly above, lying on her back, head toward the bottom of the frame, a rolling tray and a small digital scale resting on her stomach, body stretched out',
   'reclining with one leg raised and bent over the other, a mason jar of buds held against her chest, relaxed and unhurried',
   'standing, legs apart, a black leather strap-on harness with a realistic skin-toned dildo, one hand wrapped around it, the other sliding down her stomach, head tipped back, tongue out',
@@ -779,7 +799,7 @@ export const POSE_OPTIONS = [
   'crouched on her toes, knees wide, one hand spreading herself, the other holding a lit joint to her lips, a little dirt on her toes, eyes locked on the viewer',
   'sitting with her knees up, head tipped back, blowing smoke from her lips, a lit joint in one hand',
   'sitting cross-legged, leaning forward, holding a glowing bong, a mason jar of buds beside her knee',
-  'kneeling with her thighs apart, phone held up filming herself, other hand between her legs, grin',
+  'reclining on her back with her thighs apart, phone held up filming herself, other hand between her legs, grin',
   'curled up under a blanket, only her shoulders and knees showing',
   'lying on her side, top leg lifted high, holding her own ankle, a black collar that reads BAD KITTY around her neck, a bullet vibrator buzzing between her thighs, looking at viewer',
   'stretching on tiptoe, arms high, spine long, bare feet on tiptoe with a little dirt on the soles',
@@ -796,11 +816,11 @@ export const POSE_OPTIONS = [
   'lying back with one arm over her eyes, a lit joint in that hand, the other arm across her stomach',
   'sitting with legs tucked, holding a mug',
   'leaning back with one knee bent, hip cocked, holding a lit joint',
-  'kneeling upright, thighs apart, one hand pinching her nipple, the other between her legs, a silk blindfold over her eyes, a black collar around her neck, head tipped back',
+  'lying on her back with her thighs apart, one hand pinching her nipple, the other between her legs, a silk blindfold over her eyes, a black collar around her neck',
   'sitting with both knees up, hugging her shins, a lit joint pinched between her fingers, bare feet with a little dirt on the soles',
   'leaning back, legs stretched out, ankles crossed, a lit joint between her fingers',
   'sitting with her knees bent and feet up, hands clasped behind her head, gently rocking, bare feet with a little dirt on the soles',
-  'kneeling upright, hands resting on her thighs, leaning slightly back, a dab rig in one hand, exhaling a thick plume of smoke through her mouth and nose',
+  'sitting on the floor with her hands resting on her thighs, leaning slightly back, a dab rig in one hand, exhaling a thick plume of smoke',
   'lying on her back with knees bent and feet flat, holding a bong up with both hands, smoke rising',
   'standing with her back arched, both hands in her hair, thighs pressed together, a sheer robe slipping off her shoulders, oily skin, eyes closed',
   'standing turned away, looking back over her shoulder, one hand reaching behind between her legs, tongue out',
@@ -808,7 +828,7 @@ export const POSE_OPTIONS = [
   'sitting back on her heels, thighs apart, a pink bullet vibrator pressed against herself, a bottle of body oil in her other hand, oily skin, mouth open, eyes half closed',
   'lying back with both legs folded behind her head, a realistic skin-toned dildo inside her, eyes rolled back, tongue out, oily skin',
   'standing with one foot up, elbow on the knee, smoking a lit joint, smoke drifting past her face, a little dirt on the sole of the raised foot',
-  'kneeling with one hand in her hair, a lit joint in the hand on her hip',
+  'standing with one hand in her hair, a lit joint in the hand on her hip',
   'standing with one leg raised, hand between her thighs, the other hand holding a lit joint, smoke curling up',
   'lying back with her legs up and apart, a mason jar of buds balanced on her stomach, ankles crossed overhead, three fingers inside, head tipped back, dirty soles facing up',
   'lying on her stomach, chin propped on folded arms, bare feet up with a little dirt on the soles',
@@ -818,23 +838,23 @@ export const POSE_OPTIONS = [
   'sitting with her shoulders slumped and her chin on her chest, a lit joint dangling from her fingers, ash falling',
   'sitting back on one hip, one leg draped over the other, hand between her thighs, a dab rig in her other hand, smirk',
   'squatting deep over a suction-cup dildo, (glossy silicone adult toy, molded toy standing upright between her feet, clearly visible:1.3), riding it hands-free, palms braced on her knees, mouth open, looking at the viewer',
-  'half-kneeling with one knee up and the other down, a lit blunt between two fingers, smoke drifting past her face',
+  'sitting with one knee up and the other leg folded on the floor, a lit blunt between two fingers, smoke drifting past her face',
   'standing in profile with her back arched, a mason jar of buds held against her stomach, oily skin catching the light',
-  'kneeling with her forehead resting on her folded arms and her hips up, a lit joint resting between her shoulder blades',
+  'lying face down with her forehead on her folded arms and her hips up, a lit joint resting between her shoulder blades',
   'tying her hair up with both hands, a lit blunt tucked behind her ear, bare feet a little dirty',
   'sitting with her legs in a butterfly stretch, picking stems out of a sticky bud over a rolling tray on her lap, bits of leaf stuck to her thigh',
   'lying on her back with her knees drawn to her chest, a dab rig resting on her stomach, eyes closed',
   'standing with her weight on one leg, her other foot resting on her own ankle, a lit joint between her lips, oily skin',
   'sitting with her back arched and her palms planted behind her, a lit blunt hanging from her lips, smoke curling up her face',
   'leaning forward over an open bag of buds, breaking a cola apart with both hands over a rolling tray, a small digital scale beside it',
-  'kneeling with her back to the viewer, a lit joint in one hand, glancing over her shoulder, bare feet with dirty soles',
+  'kneeling on both knees on a plush floor rug, her back to the viewer, a lit joint in one hand, glancing over her shoulder, bare feet with dirty soles',
   'standing with her arms crossed under her chest, a dab rig in one hand, smoke drifting from her nose',
   'lying on her side with one arm stretched overhead, a mason jar of buds in that hand, watching the viewer',
   'sitting with her knees wide and her elbows on them, breaking down a sticky bud on a tray balanced between her knees, a grinder beside her',
   'standing on tiptoe with her hands behind her head, a lit blunt between her lips, back arched',
   'crouched with one knee up, rolling a blunt on her thigh, an open pack of Backwoods beside her knee',
   'sitting with her legs folded to one side and her back turned, a dab rig in one hand, glancing back at the camera',
-  'kneeling with a rolling tray balanced across her knees, rolling a joint, eyes closed, a lit one smoking in the ashtray beside her',
+  'sitting cross-legged with a rolling tray balanced across her knees, rolling a joint, eyes closed, a lit one smoking in the ashtray',
   'lying on her back with her legs crossed at the knee, a lit joint resting on her stomach, one arm behind her head',
   'standing with her hips forward and her back arched, a mason jar of buds held in both hands, oily skin',
   'sitting with her legs stretched wide and her hands behind her, a lit blunt between her lips, smoke curling around her face',
@@ -846,29 +866,29 @@ export const POSE_OPTIONS = [
   'straddling the camera, looking down at the viewer, palms flat on her own thighs, a black strap-on harness with a realistic skin-toned dildo at her hips',
   'lying on her back with a bottle of body oil tipped over her chest, oil pooling on her stomach, one hand between her legs',
   'sitting with her legs in a V, pouring body oil down her stomach from a bottle, head tipped back, oily skin',
-  'kneeling with a rolling tray between her thighs, breaking down a bud, one hand between her legs, a mason jar of buds beside her knee',
+  'sitting with a rolling tray between her thighs, breaking down a bud, one hand between her legs, a mason jar of buds beside her hip',
   'standing with one leg raised high, holding her own ankle, a lit joint in the other hand, oily skin, a dirty foot',
   'sitting with her knees wide, a small digital scale balanced on one thigh, one hand between her legs, biting her lip',
   'crouched low over a rolling tray, breaking down a bud, one hand between her legs, a lit joint smoking beside the tray',
   'viewed from between her legs, lying back with her legs folded behind her head, a suction-cup dildo inside her, a lit joint in one hand, oily skin',
-  'kneeling upright with her hands behind her back, a lit blunt between her lips, a black collar around her neck, back arched',
+  'standing with her hands behind her back, a lit blunt between her lips, a black collar around her neck, back arched',
   'lying on her back with her hips lifted off the ground, one hand between her legs, a lit joint resting on her stomach',
   'sitting back on one hip, one leg draped over the other, a mason jar of buds resting between her thighs, one hand between her legs',
   'standing with her legs apart and her back arched, looking back over her shoulder, the heart-shaped base of a buttplug showing, a black collar around her neck',
   'lying on her stomach with her hips raised, a dab rig in one hand, face turned to the camera, oily skin',
   'sitting with her back to the viewer and her legs spread, a lit joint in one hand, glancing back over her shoulder, the heart-shaped base of a buttplug showing',
   'crouched with a grinder in one hand, a rolling tray on the floor between her feet, the other hand spreading herself',
-  'kneeling with her thighs apart, pouring body oil over her chest from a bottle, mouth open, oily skin',
+  'sitting on the floor with her thighs apart, pouring body oil over her chest from a bottle, mouth open, oily skin',
   'lying on her back with one leg hooked over her arm, a lit blunt between her lips, smoke curling from her nose',
   'standing before the mirror, oily skin, a dab rig in one hand, watching her own reflection, one hand between her legs',
   'on all fours with her hips low and her shoulders down, breaking down a bud on a tray under her chest, oily skin, looking at the viewer',
   'sitting with one knee up, a black strap-on harness with a realistic skin-toned dildo at her hips, one hand wrapped around the shaft, tongue out',
   'standing with her back to the viewer, bent slightly at the waist, a lit blunt in one hand, the heart-shaped base of a buttplug showing',
-  'kneeling upright with oily skin, a dab rig in one hand, smoke pouring from her mouth and nose',
+  'standing with oily skin, a dab rig in one hand, smoke pouring from her mouth and nose',
   'sitting with her knees up and apart, rolling a blunt on her thigh, a grinder and scattered stems between her feet',
   'standing with her weight on one leg, a lit joint in one hand, the other between her thighs, bare feet a little dirty',
   'lying on her side with both knees pulled up and apart, a pink bullet vibrator in one hand, oily skin, the other behind her head',
-  'kneeling over a suction-cup dildo, (glossy silicone adult toy, molded toy standing upright beneath her, clearly visible:1.3), easing down onto it, hands on her own thighs, eyes closed',
+  'sitting astride a suction-cup toy mounted on the floor, (smooth pink silicone novelty toy standing upright:1.35), easing down onto it, hands on her own thighs, eyes closed',
 ];
 
 /** Uniform draw. The pool is 3:2 SFW to NSFW by construction (59/39). */
@@ -992,8 +1012,40 @@ export function generateFinalOpenCodePayload(
   const poseIsOverhead = pose
     ? /overhead|top-down|from directly above|bird.?s eye|from above|above her/i.test(pose)
     : false;
-  const subjectTagText = pose ? POSE_SUBJECT_TAGS[subject] : SUBJECT_TAGS[subject];
-  const poseLead = pose ? `(${pose}:1.15), ` : '';
+  const posePreset = posePresetFor(pose);
+  const poseIsSquat = posePreset === 'squat';
+  const subjectTagText = pose
+    ? (poseIsSquat ? SQUAT_SUBJECT_TAGS : POSE_SUBJECT_TAGS)[subject]
+    : SUBJECT_TAGS[subject];
+  const poseIsFloor = pose
+    ? /kneel|squat|crouch|lying|sitting|all fours|sprawled|curled|astride|on the floor/i.test(pose)
+    : false;
+  // Squat keeps the floor anchor at 1.35; the standard preset is proof2, pose at 1.15
+  // with no added surface text.
+  const poseWeight = poseIsSquat ? 1.35 : 1.15;
+  const posedText = pose
+    ? poseIsSquat && !/floor|rug|mat|ground/i.test(pose)
+      ? `${pose}, on a plush floor rug, weight resting on the floor`
+      : pose
+    : '';
+  const poseLead = pose ? `(${posedText}:${poseWeight}), ` : '';
+  // Held and interactive props get their own weighted clause. Buried inside the pose
+  // clause at 1.15 they were being dropped.
+  const posePropClause = (() => {
+    if (!pose) return '';
+    // Squat poses keep the toy inline in the pose clause — that wording is proven to
+    // spawn it, and splitting it out is what made it disappear.
+    if (poseIsSquat) return '';
+    if (/silicone|novelty toy/i.test(pose)) return '';
+    if (/dildo|suction-cup|strap-on/i.test(pose))
+      return '(smooth pink silicone novelty toy standing upright on the rug between her feet:1.35), ';
+    if (/\bjoint\b/i.test(pose)) return '(holding a lit joint in her hand, rising smoke:1.3), ';
+    if (/\bblunt\b/i.test(pose)) return '(holding a lit blunt in her hand, rising smoke:1.3), ';
+    if (/dab rig/i.test(pose)) return '(holding a dab rig in her hand:1.3), ';
+    if (/\bbong\b/i.test(pose)) return '(holding a glass bong in her hand:1.3), ';
+    if (/\b(jar|jars)\b/i.test(pose)) return '(a mason jar of buds in her hand:1.25), ';
+    return '';
+  })();
   // Camera first, pose second. An overhead pose cannot also be eye-level, so the
   // eye-level demand is dropped rather than fighting the pose in the same chunk.
   const cameraLead = pose
@@ -1002,7 +1054,7 @@ export function generateFinalOpenCodePayload(
       : `(${wide ? 'wide shot, ' : ''}full body from head to toe, feet visible:1.35), eye-level camera, natural perspective, `
     : '';
   const framingText = pose
-    ? ', the environment visible around her'
+    ? ''
     : wide
       ? WIDE_FRAMING
       : FRAMING_BY_BUCKET[style.bucket];
@@ -1010,27 +1062,24 @@ export function generateFinalOpenCodePayload(
   // window instead of being sliced at token 77. Chunk 1 carries the anime header,
   // identity, pose and camera; chunk 2 the style and body; chunk 3 the light, room
   // and props.
-  const animeHeader = 'score_9, score_8_up, score_7_up, source_anime, (anime style, 2d cel shading, clean bold lineart, vibrant colors:1.3)';
+  const animeHeader = posePreset === 'squat' ? ANIME_HEADER_SQUAT : ANIME_HEADER_STANDARD;
   const chunk1 =
     pose && style.bucket === 'anime_2d_toon'
-      ? `${animeHeader}, ${cameraLead}${poseLead}${poseAnchor}, ${subjectTagText}${traits ? `, ${traits}` : ''}`
-      : `${SCORE_TAGS}, ${mediumText}, ${cameraLead}${poseLead}${poseAnchor}, ${subjectTagText}${traits ? `, ${traits}` : ''}`;
+      ? `${animeHeader}, ${cameraLead}${poseLead}${posePropClause}${poseAnchor}, ${subjectTagText}${traits ? `, ${traits}` : ''}`
+      : `${SCORE_TAGS}, ${mediumText}, ${cameraLead}${poseLead}${posePropClause}${poseAnchor}, ${subjectTagText}${traits ? `, ${traits}` : ''}`;
   const chunk2 = pose ? `${styleTextLit}${bodyDetailPrompt}` : `${lightLead}${styleTextLit}${bodyDetailPrompt}`;
-  // Only add a weed anchor when the room does not already name one, and vary the
-  // anchor so backgrounds do not all become the same shelf of jars.
-  const envHasWeed = ENV_HAS_WEED.test(env);
-  const sceneProps = pose
-    ? envHasWeed
-      ? ''
-      : getRandomItem(POSE_WEED_ANCHORS)
-    : `${hardwareProp}, ${backgroundProp}`;
+  // belly2x behaviour: one weed prop, always placed behind her in frame.
+  const sceneProps = pose ? backgroundProp : `${hardwareProp}, ${backgroundProp}`;
   // Pose mode carries the light and the room in chunk 3 so the environment and its
   // colour cast render together. The room is trimmed to its defining clauses and the
   // easter-egg text is left out � the composited banner already guarantees the sign,
   // and the extra props were what made the background busy.
   const envClean = env.split(',').slice(0, 3).join(',').trim();
+  const poseRoom = `${envClean}${sceneProps ? `, ${sceneProps}` : ''}`;
   const chunk3 = pose
-    ? `${lightLead}${envClean}${sceneProps ? `, ${sceneProps}` : ""}${framingText}`
+    ? poseIsSquat
+      ? `${poseRoom}, ${lightLead}`
+      : `${lightLead}${poseRoom}`
     : `surrounded by ${env}, ${sceneProps}, ${easterEgg}${framingText}`;
   const positive = pose ? `${chunk1} BREAK ${chunk2} BREAK ${chunk3}` : `${chunk1}, ${chunk2}, ${chunk3}`;
   // Pass-2 positive, in Pony's required order: score tags and source_anime must be
@@ -1050,7 +1099,7 @@ export function generateFinalOpenCodePayload(
   // as watercolour or pencil rather than flat cel.
   const mediumNegative =
     pose && style.bucket === 'anime_2d_toon'
-      ? ', watercolor, watercolour, oil painting, gouache, brush strokes, painterly, soft shading, airbrush, sketch, pencil lines, cross-hatching, 3d render, teddy bear, plush toy, stuffed animal, glossy skin, shiny skin, plastic skin, specular highlights, realistic skin texture, photorealistic, photograph'
+      ? ', watercolor, watercolour, oil painting, gouache, brush strokes, painterly, soft shading, airbrush, sketch, pencil lines, cross-hatching, 3d render, teddy bear, plush toy, stuffed animal, glossy skin, shiny skin, plastic skin, specular highlights, realistic skin texture, photorealistic, photograph, soft airbrushed shading, gradient shading on skin, plastic sheen, subsurface scattering'
       : '';
   const nudeNegative = isNude
     ? ', clothing, bra, panties, underwear, lingerie, bikini, swimsuit, bodysuit, covered breasts, shoes, heels, flats, sandals, ribbon'
