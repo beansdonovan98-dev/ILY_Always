@@ -1,4 +1,4 @@
-export type SubjectMode = 'wife' | 'husband' | 'couple';
+﻿export type SubjectMode = 'wife' | 'husband' | 'couple';
 
 export type BucketId =
   | 'realism_composite'
@@ -601,6 +601,7 @@ export const SUBJECT_TAGS_PLAIN: Record<SubjectMode, string> = {
 
 /** Large pose pool. Pose mode is always randomized from this list. */
 export const POSE_OPTIONS = [
+export const POSE_OPTIONS_SFW = [
   'sitting cross-legged on a velvet couch, leaning forward, holding a glowing bong',
   'lounging on a bed propped on one elbow, legs relaxed, looking at the viewer',
   'kneeling on floor cushions, hands resting on her thighs, leaning slightly back',
@@ -657,6 +658,12 @@ export const POSE_OPTIONS = [
   'kneeling on cushions with one hand in her hair, the other on her hip',
   'reclining on a pile of pillows, one knee up, ankle on the other knee',
   'sitting on a stool with her elbows on her knees, chin in her hands',
+  'viewed from directly above, lying on her back, head toward the bottom of the frame, body stretched out',
+  'top-down overhead shot, lying on her back on the floor, arms above her head, legs toward the top of frame',
+  'lying on her back with her head at the bottom of frame, looking up at the camera, one knee raised',
+];
+
+export const POSE_OPTIONS_NSFW = [
   'sitting, spread legs, hand between thighs, masturbation, head tilted back',
   'lying on back, spread legs, hand between legs, masturbation, back arched',
   'kneeling, spread legs, hand between thighs, masturbation, looking at viewer',
@@ -673,10 +680,18 @@ export const POSE_OPTIONS = [
   'kneeling, hand between legs, masturbation, fingers slick',
   'crouching, spread legs, spreading pussy, two fingers, head back',
   'lying on back, spread legs, fingers inside, masturbation, one leg up',
-  'viewed from directly above, lying on her back, head toward the bottom of the frame, body stretched out',
-  'top-down overhead shot, lying on her back on the floor, arms above her head, legs toward the top of frame',
-  'lying on her back with her head at the bottom of frame, looking up at the camera, one knee raised',
+  'fingers in mouth, sucking her fingers, tongue out, looking at viewer',
+  'two fingers in her mouth, spit string, looking up at the camera',
+  'her own fingers between her lips, glossy mouth, eyes half closed',
 ];
+
+/** Combined list, SFW first. */
+export const POSE_OPTIONS = [...POSE_OPTIONS_SFW, ...POSE_OPTIONS_NSFW];
+
+/** 3:2 SFW to NSFW, weighted so the ratio holds regardless of list length. */
+export function pickRandomPose(): string {
+  return Math.random() < 0.6 ? getRandomItem(POSE_OPTIONS_SFW) : getRandomItem(POSE_OPTIONS_NSFW);
+}
 
 export function generateFinalOpenCodePayload(
   styleId: string,
@@ -705,7 +720,7 @@ export function generateFinalOpenCodePayload(
     const husbandGrooming = getRandomItem(HUSBAND_GROOMING_OPTIONS);
 
     // Grooming is subject-specific: a wife-only render must not inherit his.
-    // The dye belongs to the pubic styling only — head hair stays cherry red
+    // The dye belongs to the pubic styling only â€” head hair stays cherry red
     // from SUBJECT_TAGS.
     if (subject === 'wife') {
       bodyDetailPrompt = `, ${nudeBody}, wife intimate styling: ${wifePubic}, pubic hair ${pubicDye}`;
@@ -727,7 +742,7 @@ export function generateFinalOpenCodePayload(
     style.bucket === 'anime_2d_toon'
       ? style.prompt.replace(/glossy blushed skin,?\s*/gi, '')
       : style.prompt;
-  // Weed room and hardware sit early � before the easter egg � so they land inside
+  // Weed room and hardware sit early ï¿½ before the easter egg ï¿½ so they land inside
   // the first CLIP chunk instead of being buried at token 130.
   const traits = (subjectTraits ?? '').replace(/[\r\n\t]+/g, ' ').replace(/[{}]/g, '').trim().slice(0, 120);
   const poseAnchor = pose

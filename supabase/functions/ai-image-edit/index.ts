@@ -19,7 +19,7 @@ import {
   generateFinalOpenCodePayload,
   getRandomItem,
   LORA_FILES,
-  POSE_OPTIONS,
+  pickRandomPose,
   loraForSubject,
   type SubjectMode,
 } from './styleBuckets.ts';
@@ -1301,7 +1301,7 @@ async function handleStyleStart(
       poseMode === 'match_photo'
         ? ''
         : poseMode === 'random'
-          ? getRandomItem(POSE_OPTIONS)
+          ? pickRandomPose()
           : (overrides?.posePrompt ?? '').trim();
     const payload = generateFinalOpenCodePayload(
       styleMode,
