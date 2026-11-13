@@ -706,7 +706,10 @@ export function posePresetFor(pose?: string): 'squat' | 'standard' {
 export const ANIME_HEADER_SQUAT =
   'score_9, score_8_up, score_7_up, source_anime, (anime style, anime screencap, cel shaded flat colors, 2d cel shading, clean bold lineart, vibrant colors:1.45)';
 export const ANIME_HEADER_STANDARD =
-  'score_9, score_8_up, score_7_up, source_anime, (anime style, 2d cel shading, clean bold lineart, vibrant colors:1.3)'; Varied on
+  'score_9, score_8_up, score_7_up, source_anime, (anime style, 2d cel shading, clean bold lineart, vibrant colors:1.3)';
+
+/**
+ * Weed anchors for rooms that do not already name any weed object. Varied on
  * purpose: one fixed line would make every background the same jars-and-a-bong
  * shelf. Placement changes too, so the anchor sits in the room instead of on top.
  */
