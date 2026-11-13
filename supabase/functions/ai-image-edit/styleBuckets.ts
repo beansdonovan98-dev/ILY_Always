@@ -1,3 +1,5 @@
+import { STYLE_OVERRIDES } from './styleOverrides.ts';
+
 export type SubjectMode = 'wife' | 'husband' | 'couple';
 
 export type BucketId =
@@ -138,6 +140,8 @@ export const STYLE_DEFINITIONS: Record<string, StyleDefinition> = {
   'comic-book': { id: 'comic-book', bucket: 'anime_2d_toon', prompt: 'modern American superhero comic book art, Jim Lee style heavy black ink crosshatching, bold dynamic outlines, vibrant cel-shaded coloring', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
   anime: { id: 'anime', bucket: 'anime_2d_toon', prompt: 'modern seasonal key visual anime illustration, Makoto Shinkai lighting, detailed glossy anime eyes, clean cel-shading, cinematic sky backdrop', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
   'adult-anime': { id: 'adult-anime', bucket: 'anime_2d_toon', prompt: 'mature late-night anime aesthetic, seductive expression, glossy blushed skin, detailed adult anime proportions, moody bedroom lighting', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
+  // GTA look: always runs the gta_25d preset (single pass, no lineart, room visible).
+  gta: { id: 'gta', bucket: 'anime_2d_toon', prompt: 'GTA-style stylised artwork, glossy cel shading, bold clean outlines, saturated neon palette, 2.5d comic realism', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
   cartoon: { id: 'cartoon', bucket: 'anime_2d_toon', prompt: 'Saturday morning 2D Western cartoon character design, expressive bold outlines, flat vibrant vector colors, playful exaggerated proportions', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
   'powerpuff-girls': { id: 'powerpuff-girls', bucket: 'anime_2d_toon', prompt: 'Powerpuff Girls Craig McCracken 1998 cartoon style, chibi proportions, giant oval eyes, thick black vector outlines, pastel heart background', denoiseOverride: 0.72, loraStrengthOverride: 0.45 },
   'sticker-pack': { id: 'sticker-pack', bucket: 'anime_2d_toon', prompt: 'die-cut vinyl kiss-cut sticker design, thick white offset border around character, glossy vector chibi illustration, simple solid background', denoiseOverride: 0.5, loraStrengthOverride: 0.85 },
@@ -552,7 +556,7 @@ export const NUDE_BODY_DETAILS = [
   'artfully draped in giant, dew-kissed cannabis fan leaves instead of clothes, natural and raw aesthetic',
 ];
 
-export const HAIR_DYE_OPTIONS = ['dyed vibrant neon green', 'dyed vibrant electric purple', 'with natural colored hair'];
+
 
 /**
  * Solid room lighting she can pick, from the app. Each phrase is the wording that
@@ -576,6 +580,23 @@ export const LIGHT_COLORS: LightColor[] = [
   { id: 'white', label: 'Warm White', hex: '#FFE3BC', phrase: 'warm white' },
 ];
 
+/** Style LoRAs that ship on the volume, with their trigger words. */
+export const STYLE_LORAS: Record<string, { file: string; strength: number; triggers: string[] }> = {
+  'pixel-art': { file: 'pixel-art-xl.safetensors', strength: 0.6, triggers: ['pixel art'] },
+  'comic-book': { file: 'Comic-SDXL.safetensors', strength: 0.7, triggers: ['Comic Style', 'Comic Art'] },
+  'manga-memoir': {
+    file: 'Comic-SDXL.safetensors',
+    strength: 0.7,
+    triggers: ['Comic Style', 'Comic Art'],
+  },
+  cartoon: { file: 'Comic-SDXL.safetensors', strength: 0.7, triggers: ['Comic Style', 'Comic Art'] },
+  gameboy: { file: 'pixel-art-xl.safetensors', strength: 0.6, triggers: ['pixel art'] },
+  '16-bit-arcade': { file: 'pixel-art-xl.safetensors', strength: 0.6, triggers: ['pixel art'] },
+};
+
+export function styleLoraFor(styleId: string) {
+  return STYLE_LORAS[styleId];
+}
 export function findLightColor(value?: string): LightColor | undefined {
   const v = (value ?? '').trim().toLowerCase();
   if (!v) return undefined;
@@ -629,6 +650,8 @@ export function lightOverrideClause(env: string, colour: LightColor): string {
   }
   return `entire scene drenched in heavy ${colour.phrase} neon lighting, ${colour.phrase} LED strip lights along every wall and ceiling edge, strong ${colour.phrase} color cast on skin and background, no daylight`;
 }
+
+export const HAIR_DYE_OPTIONS = ['dyed vibrant neon green', 'dyed vibrant electric purple', 'with natural colored hair'];
 
 export const HUSBAND_GROOMING_OPTIONS = [
   'chest hair trimmed into a cannabis leaf shape, neatly edged',
@@ -713,8 +736,17 @@ export const ANIME_HEADER_STANDARD =
  * purpose: one fixed line would make every background the same jars-and-a-bong
  * shelf. Placement changes too, so the anchor sits in the room instead of on top.
  */
+export const STAND_SUBJECT_TAGS: Record<SubjectMode, string> = {
+  wife: 'ashley, round wireframe glasses, ((hip-length dark cherry red hair, sleek and straight:1.3)), (voluptuous curvy figure:1.1), (wide hips:1.25), (thick plush thighs:1.1), (soft curvy waist:1.25), (soft lower belly:1.3), (plush soft lower abdomen:1.35), (moderate bust:1.10)',
+  husband: 'mbboi, (broad shoulders:1.15), (solid build:1.1)',
+  couple:
+    'ashley with glasses and ((hip-length dark cherry red hair, sleek and straight:1.3)), (voluptuous curvy figure:1.1), (wide hips:1.25), (thick plush thighs:1.1), (soft curvy waist:1.25), (soft lower belly:1.3), (plush soft lower abdomen:1.35), and mbboi, (broad shoulders:1.15)',
+};
+
+export const ANIME_HEADER_STAND =
+  'score_9, score_8_up, score_7_up, source_anime, (anime style, 2d cel shading, clean bold lineart, vibrant colors:1.45)';
 export const SQUAT_SUBJECT_TAGS: Record<SubjectMode, string> = {
-  wife: 'ashley, round wireframe glasses, ((hip-length dark cherry red hair, sleek and straight:1.3)), (voluptuous curvy figure:1.1), (wide hips:1.15), (thick plush thighs:1.2), (soft curvy waist:1.15), (soft lower belly:1), (plush soft lower abdomen:1.1), (moderate bust:1.10)',
+  wife: 'ashley, round wireframe glasses, ((hip-length dark cherry red hair, sleek and straight:1.3)), (voluptuous curvy figure:1.0), (wide hips:1.1), (thick plush thighs:1.1), (soft curvy waist:1.15), (soft lower belly:0.95), (plush soft lower abdomen:1.0), (moderate bust:1.05)',
   husband: 'mbboi, (broad shoulders:1.15), (solid build:1.1)',
   couple:
     'ashley with glasses and ((hip-length dark cherry red hair, sleek and straight:1.3)), (voluptuous curvy figure:1.1), (wide hips:1.15), (thick plush thighs:1.2), (soft curvy waist:1.15), (soft lower belly:1), (plush soft lower abdomen:1.1), and mbboi, (broad shoulders:1.15)',
@@ -907,7 +939,8 @@ export function generateFinalOpenCodePayload(
   subjectTraits?: string,
   wide?: boolean,
   pose?: string,
-  lightColor?: string
+  lightColor?: string,
+  posePresetOverride?: string
 ) {
   const style = STYLE_DEFINITIONS[styleId];
   if (!style) throw new Error(`Unknown style: ${styleId}`);
@@ -1005,29 +1038,59 @@ export function generateFinalOpenCodePayload(
   // Weed room and hardware sit early � before the easter egg � so they land inside
   // the first CLIP chunk instead of being buried at token 130.
   const traits = (subjectTraits ?? '').replace(/[\r\n\t]+/g, ' ').replace(/[{}]/g, '').trim().slice(0, 120);
+  // The posture word goes into the subject anchor too: one mention at 1.35 inside the
+  // pose clause was losing to the character tags, which is how kneeling rendered as
+  // lying on her side.
+  const poseKeyword = pose
+    ? /kneel/i.test(pose)
+      ? 'kneeling'
+      : /squat/i.test(pose)
+        ? 'squatting'
+        : /all fours/i.test(pose)
+          ? 'on all fours'
+          : /crouch/i.test(pose)
+            ? 'crouching'
+            : /lying|on her back|on her side|on her stomach/i.test(pose)
+              ? 'lying down'
+              : /sitting|seated/i.test(pose)
+                ? 'sitting'
+                : /standing/i.test(pose)
+                  ? 'standing'
+                  : ''
+    : '';
   const poseAnchor = pose
     ? subject === 'couple'
-      ? '1girl and 1man, two people, nude'
+      ? `1girl and 1man, two people, nude${poseKeyword ? `, ${poseKeyword}` : ''}`
       : subject === 'husband'
-        ? '1man, solo, nude man'
-        : '1girl, solo, nude woman'
+        ? `1man, solo, nude man${poseKeyword ? `, ${poseKeyword}` : ''}`
+        : `1girl, solo, nude woman${poseKeyword ? `, ${poseKeyword}` : ''}`
     : SUBJECT_ANCHOR[subject];
   const poseIsOverhead = pose
     ? /overhead|top-down|from directly above|bird.?s eye|from above|above her/i.test(pose)
     : false;
-  const posePreset = posePresetFor(pose);
+  const posePreset =
+    posePresetOverride === 'squat' || posePresetOverride === 'standard'
+      ? posePresetOverride
+      : posePresetFor(pose);
   const poseIsSquat = posePreset === 'squat';
+  // Style-specific medium lead and body block from the 99-style spec. Declared before
+  // the subject block so the body override is available to it.
+  const styleOverride = pose ? STYLE_OVERRIDES[style.id] : undefined;
   const subjectTagText = pose
-    ? (poseIsSquat ? SQUAT_SUBJECT_TAGS : POSE_SUBJECT_TAGS)[subject]
+    ? (poseIsSquat
+        ? SQUAT_SUBJECT_TAGS
+        : posePresetOverride === 'stand'
+          ? STAND_SUBJECT_TAGS
+          : POSE_SUBJECT_TAGS)[subject]
     : SUBJECT_TAGS[subject];
   const poseIsFloor = pose
     ? /kneel|squat|crouch|lying|sitting|all fours|sprawled|curled|astride|on the floor/i.test(pose)
     : false;
   // Squat keeps the floor anchor at 1.35; the standard preset is proof2, pose at 1.15
   // with no added surface text.
-  const poseWeight = poseIsSquat ? 1.35 : 1.15;
+  const poseWeight = poseIsSquat || (poseIsFloor && /kneel|crouch|all fours/i.test(pose ?? '')) ? 1.35 : 1.15;
   const posedText = pose
-    ? poseIsSquat && !/floor|rug|mat|ground/i.test(pose)
+    ? (poseIsSquat || /kneel|crouch|all fours/i.test(pose)) && !/floor|rug|mat|ground/i.test(pose)
       ? `${pose}, on a plush floor rug, weight resting on the floor`
       : pose
     : '';
@@ -1065,10 +1128,20 @@ export function generateFinalOpenCodePayload(
   // window instead of being sliced at token 77. Chunk 1 carries the anime header,
   // identity, pose and camera; chunk 2 the style and body; chunk 3 the light, room
   // and props.
-  const animeHeader = posePreset === 'squat' ? ANIME_HEADER_SQUAT : ANIME_HEADER_STANDARD;
+  // One master anime style for every pose. Only the body block and anchoring vary.
+  // GTA always runs the gta_25d look: standard header, no screencap, no lineart.
+  const animeHeader = style.id === 'gta' ? ANIME_HEADER_STANDARD : ANIME_HEADER_SQUAT;
+  // styleOverride is declared above, next to the subject block.
+  const headerText = styleOverride ? styleOverride.lead : animeHeader;
+  // Style LoRAs only in pose mode, never for gta (that runs gta_25d untouched).
+  const baseLora = pose && style.id !== 'gta' ? styleLoraFor(style.id) : undefined;
+  const styleLora = baseLora
+    ? { ...baseLora, strength: styleOverride?.loraStrength ?? baseLora.strength }
+    : undefined;
+  const loraTags = styleLora ? `, (${styleLora.triggers.join(', ')}:1.25)` : '';
   const chunk1 =
     pose && style.bucket === 'anime_2d_toon'
-      ? `${animeHeader}, ${cameraLead}${poseLead}${posePropClause}${poseAnchor}, ${subjectTagText}${traits ? `, ${traits}` : ''}`
+      ? `${headerText}${loraTags}, ${cameraLead}${poseLead}${posePropClause}${poseAnchor}, ${subjectTagText}${traits ? `, ${traits}` : ''}`
       : `${SCORE_TAGS}, ${mediumText}, ${cameraLead}${poseLead}${posePropClause}${poseAnchor}, ${subjectTagText}${traits ? `, ${traits}` : ''}`;
   const chunk2 = pose ? `${styleTextLit}${bodyDetailPrompt}` : `${lightLead}${styleTextLit}${bodyDetailPrompt}`;
   // belly2x behaviour: one weed prop, always placed behind her in frame.
@@ -1080,9 +1153,7 @@ export function generateFinalOpenCodePayload(
   const envClean = env.split(',').slice(0, 3).join(',').trim();
   const poseRoom = `${envClean}${sceneProps ? `, ${sceneProps}` : ''}`;
   const chunk3 = pose
-    ? poseIsSquat
-      ? `${poseRoom}, ${lightLead}`
-      : `${lightLead}${poseRoom}`
+    ? `${poseRoom}, ${lightLead}`
     : `surrounded by ${env}, ${sceneProps}, ${easterEgg}${framingText}`;
   const positive = pose ? `${chunk1} BREAK ${chunk2} BREAK ${chunk3}` : `${chunk1}, ${chunk2}, ${chunk3}`;
   // Pass-2 positive, in Pony's required order: score tags and source_anime must be
@@ -1096,7 +1167,11 @@ export function generateFinalOpenCodePayload(
         poseIsOverhead
           ? 'extreme low angle, worm\'s eye view, fisheye lens, distorted perspective'
           : 'extreme low angle, worm\'s eye view, fisheye lens, distorted perspective, extreme high angle, bird\'s eye view, top-down close-up'
-      }, blonde hair, light hair, blue hair, black hair, dark hair, green hair on head, pink hair, wavy hair, curly hair, frizzy hair, hair bun, ponytail, updo, short hair, bob cut, pixie cut, cropped hair, close-up, cropped legs, cropped feet, upper body only, skinny, slender, thin, petite, narrow hips, flat hips, ribcage showing`
+      }, blonde hair, light hair, blue hair, black hair, dark hair, green hair on head, pink hair, wavy hair, curly hair, frizzy hair, hair bun, ponytail, updo, short hair, bob cut, pixie cut, cropped hair, close-up, cropped legs, cropped feet, upper body only, skinny, slender, thin, petite, narrow hips, flat hips, ribcage showing${
+        /kneel|squat|crouch|all fours/i.test(pose)
+          ? ', lying down, lying on her side, reclining, face down, on her stomach, curled up, sitting on the floor'
+          : ''
+      }`
     : '';
   // The traced lineart comes off a rendered frame, so without these the restyle reads
   // as watercolour or pencil rather than flat cel.
@@ -1107,13 +1182,15 @@ export function generateFinalOpenCodePayload(
   const nudeNegative = isNude
     ? ', clothing, bra, panties, underwear, lingerie, bikini, swimsuit, bodysuit, covered breasts, shoes, heels, flats, sandals, ribbon'
     : '';
-  const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only, plain background, gray background, simple background, freckles, freckled skin${chosenLight ? ', multicolored lighting, rainbow lighting, mixed color lighting, neutral lighting, white lighting, daylight' : ''}${poseNegative}${mediumNegative}${nudeNegative}`;
+  const styleNegative = styleOverride?.negative ? `, ${styleOverride.negative}` : '';
+  const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only, plain background, gray background, simple background, freckles, freckled skin${chosenLight ? ', multicolored lighting, rainbow lighting, mixed color lighting, neutral lighting, white lighting, daylight' : ''}${poseNegative}${mediumNegative}${nudeNegative}${styleNegative}`;
 
   return {
     checkpoint: bucket.checkpoint,
     positive,
     negative,
     restylePositive,
+    styleLora,
     denoise: style.denoiseOverride ?? bucket.defaultDenoise,
     cfg: bucket.defaultCfg,
   };

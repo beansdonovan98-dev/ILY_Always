@@ -713,6 +713,8 @@ export type BucketStyleWorkflowOptions = {
   poseRestylePositive?: string;
   /** Pose mode: drop FaceID and RMBG entirely; the LoRA carries her. */
   dropFaceId?: boolean;
+  /** Style LoRA stacked after the subject LoRA (checkpoint -> ashley -> style). */
+  styleLora?: { file: string; strength: number };
   /** Sampler CFG from the bucket config. */
   cfgScale?: number;
   faceIdWeight: number;
@@ -895,6 +897,31 @@ export function buildBucketStyleWorkflow(
     workflow['201'] = { class_type: 'VAEEncode', inputs: { pixels: ['84', 0], vae: ['72', 2] } };
   } else {
     workflow['201'] = { class_type: 'EmptyLatentImage', inputs: { width, height, batch_size: 1 } };
+  }
+
+  // Style LoRA stacks on top of the subject LoRA: checkpoint -> ashley -> style.
+  // Only in pose mode, where the sampler runs straight off the LoRA chain.
+  if (options.styleLora) {
+    workflow['170'] = {
+      class_type: 'LoraLoader',
+      inputs: {
+        model: ['71', 0],
+        clip: ['71', 1],
+        lora_name: options.styleLora.file,
+        strength_model: options.styleLora.strength,
+        strength_clip: options.styleLora.strength,
+      },
+    };
+    const clipNode = workflow['81'] as { inputs?: Record<string, unknown> } | undefined;
+    if (clipNode?.inputs) clipNode.inputs.clip = ['170', 1];
+    const faceLoader = workflow['85'] as { inputs?: Record<string, unknown> } | undefined;
+    if (faceLoader?.inputs && !options.dropFaceId && options.useFaceId !== false) {
+      // FaceID stacks on the style-tuned model, so the sampler's 86 still resolves.
+      faceLoader.inputs.model = ['170', 0];
+    } else {
+      const sampler = workflow['77'] as { inputs?: Record<string, unknown> } | undefined;
+      if (sampler?.inputs) sampler.inputs.model = ['170', 0];
+    }
   }
 
   // ControlNets stack on the masked subject, not on the raw photo.

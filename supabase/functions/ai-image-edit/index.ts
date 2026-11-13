@@ -272,6 +272,17 @@ const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
 // probably died before RunPod answered. Allow a later retry to claim it.
 const STALE_PENDING_MS = 2 * 60_000;
 
+/** Deterministic PRNG (mulberry32) used only by lockedAudit. */
+function makeSeededRng(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function json(status: number, payload: Record<string, unknown>) {
   return new Response(JSON.stringify(payload), {
     status,
@@ -1218,7 +1229,15 @@ async function handleStyleStart(
     poseMode?: string;
     posePrompt?: string;
     lightColor?: string;
+    posePreset?: string;
     restylePass2?: boolean;
+    lockedAudit?: {
+      seed?: number;
+      room?: string;
+      pose?: string;
+      lightColor?: string;
+      vary?: string;
+    };
   }
 ): Promise<Response> {
   const db = getDb();
@@ -1300,26 +1319,85 @@ async function handleStyleStart(
       (overrides?.subjectTraits ?? '').trim() || DEFAULT_SUBJECT_TRAITS[subject];
     const wide = overrides?.wide === true;
     const poseMode = String(overrides?.poseMode ?? 'match_photo');
-    const poseText =
+    let poseText =
       poseMode === 'match_photo'
         ? ''
         : poseMode === 'random'
           ? pickRandomPose()
           : (overrides?.posePrompt ?? '').trim();
+    // Locked audit: every random selection is resolved from one seed, and the pose,
+    // room, colour and seed come from the caller. Production never sets this.
+    const locked = overrides?.lockedAudit;
+    const lockedAudit = locked && typeof locked === 'object' ? locked : undefined;
+    let lockedRoom = '';
+    let lockedLight = String(overrides?.lightColor ?? '');
+    if (lockedAudit) {
+      if (lockedAudit.pose) poseText = String(lockedAudit.pose).trim();
+      lockedRoom = String(lockedAudit.room ?? '').trim();
+      if (lockedAudit.lightColor) lockedLight = String(lockedAudit.lightColor);
+    }
+    const effectiveBackground = lockedRoom || backgroundPrompt;
     // Pose mode always renders landscape. A 832x1216 portrait pins the camera to a
     // close-up and leaves no room for the environment, which is a must-have here.
     const landscape = poseText ? true : wide;
     const neonSignEnabled = (Deno.env.get('COMFY_EASTER_EGG') ?? '1') !== '0';
-    const payload = generateFinalOpenCodePayload(
-      styleMode,
-      subject,
-      isNude,
-      backgroundPrompt,
-      subjectTraits,
-      landscape,
-      poseText,
-      String(overrides?.lightColor ?? '')
-    );
+    const seedOverride = Number(overrides?.seed);
+    const auditSeed = Number(lockedAudit?.seed);
+    const resolvedSeed =
+      Number.isFinite(auditSeed) && auditSeed > 0
+        ? auditSeed
+        : Number.isFinite(seedOverride) && seedOverride > 0
+          ? seedOverride
+          : undefined;
+    // Everything downstream that calls Math.random() is pinned for the audit window.
+    const previousRandom = Math.random;
+    if (lockedAudit && resolvedSeed) Math.random = makeSeededRng(resolvedSeed);
+    let payload: ReturnType<typeof generateFinalOpenCodePayload>;
+    try {
+      payload = generateFinalOpenCodePayload(
+        styleMode,
+        subject,
+        isNude,
+        effectiveBackground,
+        subjectTraits,
+        landscape,
+        poseText,
+        lockedLight,
+        overrides?.posePreset
+      );
+    } finally {
+      if (lockedAudit && resolvedSeed) Math.random = previousRandom;
+    }
+    if (lockedAudit) {
+      const auditConfig = {
+        mode: 'lockedAudit',
+        seed: resolvedSeed ?? null,
+        room: effectiveBackground,
+        pose: poseText,
+        lightColor: lockedLight || null,
+        styleMode,
+        subject,
+        isNude,
+        vary: lockedAudit.vary ?? null,
+      };
+      console.log('[lockedAudit] ' + JSON.stringify(auditConfig));
+      console.log('[lockedAudit] positive=' + payload.positive);
+      console.log('[lockedAudit] negative=' + payload.negative);
+      (overrides as Record<string, unknown>).__auditConfig = auditConfig;
+      (overrides as Record<string, unknown>).__auditPrompt = payload.positive;
+      // Persist the resolved configuration with the job so the render can be replayed.
+      await db
+        .from('ai_image_jobs')
+        .update({
+          final_prompt: JSON.stringify({
+            auditConfig,
+            positive: payload.positive,
+            negative: payload.negative,
+          }),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('request_id', requestId);
+    }
 
     // Optional pose reference: uploaded and fed to OpenPose so the body adopts
     // that skeleton while the LoRA and style keep her face and the medium.
@@ -1349,12 +1427,11 @@ async function handleStyleStart(
       positive,
       negative,
       seed:
-        Number.isFinite(Number(overrides?.seed)) && Number(overrides?.seed) > 0
-          ? Number(overrides?.seed)
-          : bucketForStyle(styleMode) === 'realism_composite' ||
-              bucketForStyle(styleMode) === 'realism_outfit_nsfw'
-            ? Math.floor(Math.random() * 2_147_483_647)
-            : GOLDEN_SEED,
+        resolvedSeed ??
+        (bucketForStyle(styleMode) === 'realism_composite' ||
+        bucketForStyle(styleMode) === 'realism_outfit_nsfw'
+          ? Math.floor(Math.random() * 2_147_483_647)
+          : GOLDEN_SEED),
       filenamePrefix: `ily_${requestId}`,
       checkpoint: Deno.env.get('COMFY_CHECKPOINT') || undefined,
       width,
@@ -1369,6 +1446,7 @@ async function handleStyleStart(
     // belly2 is the reference look: single pass. Pass 2 only runs with restylePass2: true.
     const poseRestyle =
       Boolean(poseText) &&
+      styleMode !== 'gta' &&
       overrides?.restylePass2 === true &&
       ['anime_2d_toon', 'framed_card', 'fine_art_medium', 'toy_3d_sculpt'].includes(bucketId);
     const restyleCfg =
@@ -1380,10 +1458,24 @@ async function handleStyleStart(
     if (bucketId !== 'realism_composite') {
       workflow = buildBucketStyleWorkflow({
         ...common,
-        controlNet: poseText ? 'none' : poseImage ? 'openpose' : cfg.controlNet,
+        controlNet: poseText
+          ? 'none'
+          : poseImage
+            ? 'openpose'
+            : cfg.controlNet,
         poseImage,
-        controlNetStrength: landscape ? 0.32 : cfg.controlNetStrength,
-        controlNetEndPercent: landscape ? 0.45 : cfg.controlNetEndPercent,
+        controlNetStrength:
+          poseText && bucketId === 'anime_2d_toon'
+            ? 0.4
+            : landscape
+              ? 0.32
+              : cfg.controlNetStrength,
+        controlNetEndPercent:
+          poseText && bucketId === 'anime_2d_toon'
+            ? 0.5
+            : landscape
+              ? 0.45
+              : cfg.controlNetEndPercent,
         lineartStrength: cfg.lineartStrength,
         lineartEndPercent: cfg.lineartEndPercent,
         faceIdWeight:
@@ -1400,13 +1492,14 @@ async function handleStyleStart(
         loraName: LORA_FILES.wife,
         loraStrength:
           poseText && bucketId === 'anime_2d_toon'
-            ? posePresetFor(poseText) === 'squat'
-              ? 0.72
-              : 0.85
+            ? styleMode === 'gta'
+              ? 0.85
+              : 0.72
             : poseText && bucketId.startsWith('realism')
               ? 0.78
               : cfg.loraStrength,
-        loraClipStrength: cfg.loraClipStrength,
+        loraClipStrength:
+          poseText && bucketId === 'anime_2d_toon' ? 0.72 : cfg.loraClipStrength,
         useFaceId: cfg.useFaceId,
         cfgScale: cfg.cfgScale,
         neonSign: neonSignEnabled,
@@ -1418,7 +1511,10 @@ async function handleStyleStart(
         poseRestyleControl: restyleCfg.control,
         poseRestyleControlStrength: restyleCfg.strength,
         poseRestylePositive: payload.restylePositive,
-        dropFaceId: Boolean(poseText),
+        styleLora: payload.styleLora
+          ? { file: payload.styleLora.file, strength: payload.styleLora.strength }
+          : undefined,
+        dropFaceId: Boolean(poseText) && bucketId !== 'anime_2d_toon',
       });
     } else if (bucketForStyle(styleMode) === 'realism_outfit_nsfw') {
       workflow = buildRealismOutfitWorkflow({
@@ -2279,6 +2375,9 @@ serve(async (req) => {
         lightColor: typeof body.lightColor === 'string' ? body.lightColor : undefined,
         restylePass2:
           typeof body.restylePass2 === 'boolean' ? body.restylePass2 : undefined,
+        posePreset: typeof body.posePreset === 'string' ? body.posePreset : undefined,
+        lockedAudit:
+          body.lockedAudit && typeof body.lockedAudit === 'object' ? body.lockedAudit : undefined,
         bodyTags: typeof body.bodyTags === 'string' ? body.bodyTags : undefined,
       });
     }
