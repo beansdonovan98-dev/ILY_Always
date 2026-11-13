@@ -831,7 +831,7 @@ export const POSE_OPTIONS = [
   'standing with her legs apart and her back arched, looking back over her shoulder, the heart-shaped base of a buttplug showing, a black collar around her neck',
   'lying on her stomach with her hips raised, a dab rig in one hand, face turned to the camera, oily skin',
   'sitting with her back to the viewer and her legs spread, a lit joint in one hand, glancing back over her shoulder, the heart-shaped base of a buttplug showing',
-  'crouched with her knees wide, a mason jar of buds in one hand, the other between her legs',
+  'crouched with a grinder in one hand, a rolling tray on the floor between her feet, the other hand spreading herself',
   'kneeling with her thighs apart, pouring body oil over her chest from a bottle, mouth open, oily skin',
   'lying on her back with one leg hooked over her arm, a lit blunt between her lips, smoke curling from her nose',
   'standing before the mirror, oily skin, a dab rig in one hand, watching her own reflection, one hand between her legs',
