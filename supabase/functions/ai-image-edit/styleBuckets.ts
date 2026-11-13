@@ -1,4 +1,4 @@
-﻿export type SubjectMode = 'wife' | 'husband' | 'couple';
+export type SubjectMode = 'wife' | 'husband' | 'couple';
 
 export type BucketId =
   | 'realism_composite'
@@ -511,14 +511,14 @@ export const SMOKING_HARDWARE_PROPS: Array<() => string> = [
  * a bong in the room without the two being the same piece.
  */
 export const BACKGROUND_WEED_PROPS: Array<() => string> = [
-  () => `in the background a ${getRandomItem(GLASS_COLORS)} beaker bong sits on a low table beside a jar of cured buds and a loaded ashtray`,
-  () => `behind her, a ${getRandomItem(GLASS_COLORS)} straight-tube bong and a row of mason jars of buds line the shelf`,
-  () => `in the background a ${getRandomItem(GLASS_COLORS)} recycler dab rig and a grinder sit on a stack of rolling trays`,
-  () => `behind her, a ${getRandomItem(GLASS_COLORS)} bubbler and open packs of ${getRandomItem(FLAVORED_WRAPS)} are scattered across a side table`,
-  () => `in the background a heavy ${getRandomItem(GLASS_COLORS)} hand pipe rests on an ashtray next to a half-rolled blunt`,
-  () => `behind her, a ${getRandomItem(GLASS_COLORS)} bong and a cluster of glass jars of top-shelf flower catch the light`,
-  () => `in the background a long ${getRandomItem(GLASS_COLORS)} steamroller and a tipped-over jar of buds sit on a low crate`,
-  () => `behind her, a ${getRandomItem(GLASS_COLORS)} gravity bong and a tangle of ${getRandomItem(FLAVORED_WRAPS)} wrappers sit on the floor`,
+  () => `directly behind her in frame, a large ${getRandomItem(GLASS_COLORS)} beaker bong and a mason jar packed with cannabis buds on a low shelf`,
+  () => `directly behind her in frame, a ${getRandomItem(GLASS_COLORS)} straight-tube bong and three mason jars of cannabis buds on a shelf`,
+  () => `directly behind her in frame, a ${getRandomItem(GLASS_COLORS)} dab rig and a jar of cannabis buds beside a grinder`,
+  () => `directly behind her in frame, a bubbling ${getRandomItem(GLASS_COLORS)} bong and a row of jars of cannabis buds`,
+  () => `directly behind her in frame, a ${getRandomItem(GLASS_COLORS)} hand pipe and a jar of cannabis buds on an ashtray`,
+  () => `directly behind her in frame, a ${getRandomItem(GLASS_COLORS)} bong and a leafy cannabis plant in a pot`,
+  () => `directly behind her in frame, a ${getRandomItem(GLASS_COLORS)} steamroller and two jars of cannabis buds`,
+  () => `directly behind her in frame, a ${getRandomItem(GLASS_COLORS)} gravity bong and a jar of cannabis buds on a crate`,
 ];
 
 export const HIDDEN_TEAM_NO_LACKIN_ELEMENTS = [
@@ -686,11 +686,30 @@ const WIDE_FRAMING =
 
 /** Same as SUBJECT_TAGS without the body-weight nudges, used in pose mode. */
 export const POSE_SUBJECT_TAGS: Record<SubjectMode, string> = {
-  wife: 'ashley, round wireframe glasses, ((long straight dark cherry red hair:1.25)), (voluptuous curvy figure:1.35), (wide hips:1.3), (thick plush thighs:1.35), (soft curvy waist:1.2), (soft lower belly:1.2), (moderate bust:1.15)',
+  wife: 'ashley, round wireframe glasses, ((hip-length dark cherry red hair, sleek and straight:1.3)), (voluptuous curvy figure:1.25), (wide hips:1.25), (thick plush thighs:1.2), (soft curvy waist:1.25), (soft lower belly:1.3), (plush soft lower abdomen:1.25), (moderate bust:1.10)',
   husband: 'mbboi, (broad shoulders:1.15), (solid build:1.1)',
   couple:
-    'ashley with glasses and ((long straight dark cherry red hair:1.25)), (voluptuous curvy figure:1.35), (wide hips:1.3), (thick plush thighs:1.35), (soft curvy waist:1.2), (soft lower belly:1.2), and mbboi, (broad shoulders:1.15)',
+    'ashley with glasses and ((hip-length dark cherry red hair, sleek and straight:1.3)), (voluptuous curvy figure:1.2), (wide hips:1.2), (thick plush thighs:1.15), (soft curvy waist:1.15), (soft lower belly:1.3), (plush soft lower abdomen:1.15), and mbboi, (broad shoulders:1.15)',
 };
+
+/**
+ * Weed anchors for rooms that do not already name any weed object. Varied on
+ * purpose: one fixed line would make every background the same jars-and-a-bong
+ * shelf. Placement changes too, so the anchor sits in the room instead of on top.
+ */
+export const POSE_WEED_ANCHORS = [
+  'a glass bong sitting on the floor beside her',
+  'mason jars of cannabis buds on a shelf behind her',
+  'a leafy cannabis plant in the corner of frame',
+  'a rolling tray and grinder on a low table beside her',
+  'cannabis buds hanging to dry overhead in frame',
+  'an open stash box with bags of buds on the floor',
+  'an ashtray and lighter at her knee, a joint resting in it',
+  'a tall glass bong on a crate behind her',
+];
+
+const ENV_HAS_WEED =
+  /\b(bong|buds?|blunts?|joints?|cannabis|weed|marijuana|grinders?|rolling trays?|ashtray|dab rig|stash|kief)\b/i;
 
 export const SUBJECT_TAGS_PLAIN: Record<SubjectMode, string> = {
   wife: 'ashley, long straight cherry red hair falling past the shoulders, round wireframe glasses',
@@ -798,7 +817,7 @@ export const POSE_OPTIONS = [
   'sprawled out on her back, one arm above her head holding a bottle of body oil, oil pooling on her stomach, legs hanging loose, biting her lip, a dildo in the hand between her thighs',
   'sitting with her shoulders slumped and her chin on her chest, a lit joint dangling from her fingers, ash falling',
   'sitting back on one hip, one leg draped over the other, hand between her thighs, a dab rig in her other hand, smirk',
-  'squatting deep over a suction-cup dildo, riding it hands-free, palms braced on her knees, mouth open, looking at the viewer',
+  'squatting deep over a suction-cup dildo, (glossy silicone adult toy, molded toy standing upright between her feet, clearly visible:1.3), riding it hands-free, palms braced on her knees, mouth open, looking at the viewer',
   'half-kneeling with one knee up and the other down, a lit blunt between two fingers, smoke drifting past her face',
   'standing in profile with her back arched, a mason jar of buds held against her stomach, oily skin catching the light',
   'kneeling with her forehead resting on her folded arms and her hips up, a lit joint resting between her shoulder blades',
@@ -849,7 +868,7 @@ export const POSE_OPTIONS = [
   'sitting with her knees up and apart, rolling a blunt on her thigh, a grinder and scattered stems between her feet',
   'standing with her weight on one leg, a lit joint in one hand, the other between her thighs, bare feet a little dirty',
   'lying on her side with both knees pulled up and apart, a pink bullet vibrator in one hand, oily skin, the other behind her head',
-  'kneeling over a suction-cup dildo, easing down onto it, hands on her own thighs, eyes closed',
+  'kneeling over a suction-cup dildo, (glossy silicone adult toy, molded toy standing upright beneath her, clearly visible:1.3), easing down onto it, hands on her own thighs, eyes closed',
 ];
 
 /** Uniform draw. The pool is 3:2 SFW to NSFW by construction (59/39). */
@@ -873,7 +892,8 @@ export function generateFinalOpenCodePayload(
 
   // Universal environments: any room can be pushed into any of the 98 styles
   // natively, because the bucket basePrefix carries the medium.
-  const rawEnv = customBackground?.trim() || getRandomItem(MASSIVE_AUTHENTIC_WEED_ENVIRONMENTS);
+  const rawEnv =
+    customBackground?.trim() || getRandomItem(MASSIVE_AUTHENTIC_WEED_ENVIRONMENTS);
   // A chosen light colour replaces the room's baked-in lighting. realism_composite
   // is img2img from her photo, so its light comes from the source and is left alone.
   const chosenLight = style.bucket === 'realism_composite' ? undefined : findLightColor(lightColor);
@@ -910,7 +930,7 @@ export function generateFinalOpenCodePayload(
     const draped = /draped/i.test(nudeBody);
 
     // Grooming is subject-specific: a wife-only render must not inherit his.
-    // The dye belongs to the pubic styling only â€” head hair stays cherry red
+    // The dye belongs to the pubic styling only — head hair stays cherry red
     // from SUBJECT_TAGS.
     if (subject === 'wife') {
       bodyDetailPrompt = `, ${nudeBody}, wife intimate styling: ${wifePubic}, pubic hair ${pubicDye}`;
@@ -959,7 +979,7 @@ export function generateFinalOpenCodePayload(
   const lightLead = chosenLight
     ? `(${lightOverrideClause(rawEnv, chosenLight)}:1.4), `
     : '';
-  // Weed room and hardware sit early ï¿½ before the easter egg ï¿½ so they land inside
+  // Weed room and hardware sit early � before the easter egg � so they land inside
   // the first CLIP chunk instead of being buried at token 130.
   const traits = (subjectTraits ?? '').replace(/[\r\n\t]+/g, ' ').replace(/[{}]/g, '').trim().slice(0, 120);
   const poseAnchor = pose
@@ -990,22 +1010,27 @@ export function generateFinalOpenCodePayload(
   // window instead of being sliced at token 77. Chunk 1 carries the anime header,
   // identity, pose and camera; chunk 2 the style and body; chunk 3 the light, room
   // and props.
-  const animeHeader = 'score_9, score_8_up, score_7_up, source_anime, (anime screencap, flat 2d cel shading, bold black ink outlines, flat solid color blocks:1.35)';
+  const animeHeader = 'score_9, score_8_up, score_7_up, source_anime, (anime style, 2d cel shading, clean bold lineart, vibrant colors:1.3)';
   const chunk1 =
     pose && style.bucket === 'anime_2d_toon'
       ? `${animeHeader}, ${cameraLead}${poseLead}${poseAnchor}, ${subjectTagText}${traits ? `, ${traits}` : ''}`
       : `${SCORE_TAGS}, ${mediumText}, ${cameraLead}${poseLead}${poseAnchor}, ${subjectTagText}${traits ? `, ${traits}` : ''}`;
   const chunk2 = pose ? `${styleTextLit}${bodyDetailPrompt}` : `${lightLead}${styleTextLit}${bodyDetailPrompt}`;
-  // Scene props only in chunk 3. An action here ("rolling a joint") would compete
-  // with the pose action already fixed in chunk 1.
-  const sceneProps = pose ? backgroundProp : `${hardwareProp}, ${backgroundProp}`;
+  // Only add a weed anchor when the room does not already name one, and vary the
+  // anchor so backgrounds do not all become the same shelf of jars.
+  const envHasWeed = ENV_HAS_WEED.test(env);
+  const sceneProps = pose
+    ? envHasWeed
+      ? ''
+      : getRandomItem(POSE_WEED_ANCHORS)
+    : `${hardwareProp}, ${backgroundProp}`;
   // Pose mode carries the light and the room in chunk 3 so the environment and its
   // colour cast render together. The room is trimmed to its defining clauses and the
-  // easter-egg text is left out — the composited banner already guarantees the sign,
+  // easter-egg text is left out � the composited banner already guarantees the sign,
   // and the extra props were what made the background busy.
   const envClean = env.split(',').slice(0, 3).join(',').trim();
   const chunk3 = pose
-    ? `${lightLead}${envClean}, ${sceneProps}${framingText}`
+    ? `${lightLead}${envClean}${sceneProps ? `, ${sceneProps}` : ""}${framingText}`
     : `surrounded by ${env}, ${sceneProps}, ${easterEgg}${framingText}`;
   const positive = pose ? `${chunk1} BREAK ${chunk2} BREAK ${chunk3}` : `${chunk1}, ${chunk2}, ${chunk3}`;
   // Pass-2 positive, in Pony's required order: score tags and source_anime must be
@@ -1019,13 +1044,13 @@ export function generateFinalOpenCodePayload(
         poseIsOverhead
           ? 'extreme low angle, worm\'s eye view, fisheye lens, distorted perspective'
           : 'extreme low angle, worm\'s eye view, fisheye lens, distorted perspective, extreme high angle, bird\'s eye view, top-down close-up'
-      }, blonde hair, light hair, blue hair, black hair, dark hair, green hair on head, pink hair, close-up, cropped legs, cropped feet, upper body only, skinny, slender, thin, petite, narrow hips, flat hips, ribcage showing`
+      }, blonde hair, light hair, blue hair, black hair, dark hair, green hair on head, pink hair, wavy hair, curly hair, frizzy hair, hair bun, ponytail, updo, short hair, bob cut, pixie cut, cropped hair, close-up, cropped legs, cropped feet, upper body only, skinny, slender, thin, petite, narrow hips, flat hips, ribcage showing`
     : '';
   // The traced lineart comes off a rendered frame, so without these the restyle reads
   // as watercolour or pencil rather than flat cel.
   const mediumNegative =
     pose && style.bucket === 'anime_2d_toon'
-      ? ', watercolor, watercolour, oil painting, gouache, brush strokes, painterly, soft shading, airbrush, sketch, pencil lines, cross-hatching, 3d render'
+      ? ', watercolor, watercolour, oil painting, gouache, brush strokes, painterly, soft shading, airbrush, sketch, pencil lines, cross-hatching, 3d render, teddy bear, plush toy, stuffed animal, glossy skin, shiny skin, plastic skin, specular highlights, realistic skin texture, photorealistic, photograph'
       : '';
   const nudeNegative = isNude
     ? ', clothing, bra, panties, underwear, lingerie, bikini, swimsuit, bodysuit, covered breasts, shoes, heels, flats, sandals, ribbon'

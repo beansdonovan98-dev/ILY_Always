@@ -1365,10 +1365,10 @@ async function handleStyleStart(
     // Pass-2 settings per bucket: ink styles restyle hardest, sculpts convert via
     // depth, fine art keeps brush texture instead of hard linework.
     // The anime25 look is the default for the 2D buckets in pose mode. Pass 2 can be
-    // switched off per request with restylePass2: false (that is the gta_25d preset).
+    // belly2 is the reference look: single pass. Pass 2 only runs with restylePass2: true.
     const poseRestyle =
       Boolean(poseText) &&
-      overrides?.restylePass2 !== false &&
+      overrides?.restylePass2 === true &&
       ['anime_2d_toon', 'framed_card', 'fine_art_medium', 'toy_3d_sculpt'].includes(bucketId);
     const restyleCfg =
       bucketId === 'toy_3d_sculpt'
@@ -2269,7 +2269,8 @@ serve(async (req) => {
         poseMode: typeof body.poseMode === 'string' ? body.poseMode : undefined,
         posePrompt: typeof body.posePrompt === 'string' ? body.posePrompt : undefined,
         lightColor: typeof body.lightColor === 'string' ? body.lightColor : undefined,
-        restylePass2: body.restylePass2 === true,
+        restylePass2:
+          typeof body.restylePass2 === 'boolean' ? body.restylePass2 : undefined,
         bodyTags: typeof body.bodyTags === 'string' ? body.bodyTags : undefined,
       });
     }
