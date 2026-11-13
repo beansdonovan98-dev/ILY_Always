@@ -522,21 +522,21 @@ export const BACKGROUND_WEED_PROPS: Array<() => string> = [
 ];
 
 export const HIDDEN_TEAM_NO_LACKIN_ELEMENTS = [
-  'a vintage military-style canvas flag hanging on the wall clearly bearing the bold stenciled text "Team No Lackin"',
-  'a framed poster hanging in the background with clean typography reading "Team No Lackin"',
-  'spray-painted graffiti art on a wall or surface in the room clearly spelling out "Team No Lackin"',
-  'an embroidered decorative banner hanging across a shelf or mantelpiece with the words "Team No Lackin"',
-  'a glowing neon wall sign casting ambient light and spelling out "Team No Lackin"',
-  'a custom sticker slapped onto a rolling tray or storage box with legible text reading "Team No Lackin"',
-  'a handwritten sticky note stuck to a computer monitor or tabletop with bold marker writing saying "Team No Lackin"',
-  'a woven throw pillow on a couch featuring bold embroidered text that reads "Team No Lackin"',
-  'a custom matchbox sitting on the table with crisp vintage branding reading "Team No Lackin"',
-  'a brass plaque screwed onto a wooden shelf or box engraved with the words "Team No Lackin"',
-  'a screen-printed graphic on a skateboard deck leaned up against the wall reading "Team No Lackin"',
-  'chalkboard menu lettering on the wall cleanly written out to say "Team No Lackin"',
-  'a custom pin badge attached to a clothing collar or bag strap reading "Team No Lackin"',
-  'embossed metallic foil text stamped onto the cover of a rolling paper booklet reading "Team No Lackin"',
-  'a neon light-box decoration resting on a bookshelf spelling out "Team No Lackin"',
+  'a small vintage military-style canvas flag hung among the clutter in the background, bearing the stenciled text "Team No Lackin"',
+  'a small framed poster in the background among the shelves, typography reading "Team No Lackin"',
+  'a small stenciled tag spray-painted on a background surface reading "Team No Lackin"',
+  'a small embroidered banner hanging from a shelf in the background reading "Team No Lackin"',
+  'a small glowing neon sign tucked into the background reading "Team No Lackin"',
+  'a small sticker on a rolling tray in the background reading "Team No Lackin"',
+  'a small handwritten note stuck to a surface in the background reading "Team No Lackin"',
+  'a small embroidered throw pillow in the background reading "Team No Lackin"',
+  'a small matchbox on a background table with vintage branding reading "Team No Lackin"',
+  'a small brass plaque on a background shelf engraved with "Team No Lackin"',
+  'a small screen-printed graphic on a skateboard deck in the background reading "Team No Lackin"',
+  'a small chalkboard sign propped on a background shelf reading "Team No Lackin"',
+  'a small pin badge on a bag strap in the background reading "Team No Lackin"',
+  'a small rolling paper booklet in the background with foil text reading "Team No Lackin"',
+  'a small light-box decoration on a background shelf reading "Team No Lackin"',
 ];
 
 export const CLOTHED_OUTFIT_OPTIONS = [
@@ -685,6 +685,13 @@ const WIDE_FRAMING =
   ', wide establishing shot, full room interior visible, subject standing to one side, environment prominent';
 
 /** Same as SUBJECT_TAGS without the body-weight nudges, used in pose mode. */
+export const POSE_SUBJECT_TAGS: Record<SubjectMode, string> = {
+  wife: 'ashley, round wireframe glasses, ((long straight dark cherry red hair:1.25)), (thick thighs:1.10), (soft lower belly:1.05), (curvy figure:1.05), (moderate bust:1.1)',
+  husband: 'mbboi, (broad shoulders:1.15), (solid build:1.1)',
+  couple:
+    'ashley with glasses and ((long straight dark cherry red hair:1.25)), (thick thighs:1.10), (soft lower belly:1.05), (curvy figure:1.05), and mbboi, (broad shoulders:1.15)',
+};
+
 export const SUBJECT_TAGS_PLAIN: Record<SubjectMode, string> = {
   wife: 'ashley, long straight cherry red hair falling past the shoulders, round wireframe glasses',
   husband: 'mbboi',
@@ -880,6 +887,13 @@ export function generateFinalOpenCodePayload(
         .filter((clause) => !/\blighting\s*$/i.test(clause.trim()))
         .join(', ')
     : MEDIUM_FRONT[style.bucket];
+  // Pose mode drops the lineart ControlNet so the body can actually change pose.
+  // Without it the realistic LoRA pulls the render photographic, so the 2D medium
+  // is restated here instead of relying on the control net to carry it.
+  const mediumText =
+    pose && style.bucket === 'anime_2d_toon'
+      ? `${mediumFront}, anime illustration, cel shading, clean bold lineart, flat colors`
+      : mediumFront;
   const hardwareProp = getRandomItem(SMOKING_HARDWARE_PROPS);
   const backgroundProp = getRandomItem(BACKGROUND_WEED_PROPS);
   const easterEgg = getRandomItem(HIDDEN_TEAM_NO_LACKIN_ELEMENTS);
@@ -922,7 +936,7 @@ export function generateFinalOpenCodePayload(
         .join(', ')
     : styleText;
   const lightLead = chosenLight
-    ? `, (${lightOverrideClause(rawEnv, chosenLight)}:1.15)`
+    ? `(${lightOverrideClause(rawEnv, chosenLight)}:1.25), `
     : '';
   // Weed room and hardware sit early ï¿½ before the easter egg ï¿½ so they land inside
   // the first CLIP chunk instead of being buried at token 130.
@@ -934,19 +948,35 @@ export function generateFinalOpenCodePayload(
         ? '1man, solo, nude man'
         : '1girl, solo, nude woman'
     : SUBJECT_ANCHOR[subject];
-  const subjectTagText = pose
-    ? `${SUBJECT_TAGS_PLAIN[subject]}, proportional body, moderate bust`
-    : SUBJECT_TAGS[subject];
-  const poseLead = pose ? `(${pose}:1.25), ` : '';
+  // Pose mode uses the heavier identity block: hair and curves are weighted up front
+  // because the anime checkpoint defaults to a slender frame and light hair once the
+  // character tags fall past the first chunk.
+  const subjectTagText = pose ? POSE_SUBJECT_TAGS[subject] : SUBJECT_TAGS[subject];
+  const poseLead = pose ? `(${pose}:1.15), ` : '';
+  // Camera first, pose second: a pose clause at full strength was dragging the
+  // camera with it, which is how a "breaking down a bud" pose became a top-down
+  // fisheye. Anchoring the frame before the pose keeps her in the room.
+  const cameraLead = pose
+    ? `(${wide ? 'wide shot, ' : ''}full body from head to toe, feet visible:1.35), eye-level camera, natural perspective, `
+    : '';
   const framingText = pose
-    ? wide
-      ? ', wide shot, full body in frame, the room visible around her, eye-level camera, natural perspective'
-      : ', full scene, environment visible around her, natural perspective'
+    ? ', the environment visible around her'
     : wide
       ? WIDE_FRAMING
       : FRAMING_BY_BUCKET[style.bucket];
-  const positive = `${SCORE_TAGS}, ${mediumFront}, ${poseLead}${poseAnchor}, ${subjectTagText}${lightLead}${traits ? `, ${traits}` : ''}${bodyDetailPrompt}, ${styleTextLit}, ${hardwareProp}, surrounded by ${env}, with ${easterEgg}, ${backgroundProp}${framingText}`;
-  const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only, plain background, gray background, simple background, freckles, freckled skin${chosenLight ? ', multicolored lighting, rainbow lighting, mixed color lighting, neutral lighting, white lighting, daylight' : ''}${pose ? ', extreme low angle, worm\'s eye view, fisheye lens, distorted perspective, blonde hair, light hair' : ''}`;
+  // Prompt is chunked on BREAK so each block gets its own full-strength CLIP
+  // window instead of being sliced at token 77. Chunk 1 carries identity, pose and
+  // camera; chunk 2 the medium, light and body; chunk 3 the room, props and sign.
+  const chunk1 = `${SCORE_TAGS}, ${mediumText}, ${cameraLead}${poseLead}${poseAnchor}, ${subjectTagText}${traits ? `, ${traits}` : ''}`;
+  // The sign leads chunk 2 so its text has the strongest position of its own window;
+  // the neon asset is composited on top as well, so the lettering is guaranteed.
+  const signLead = pose
+    ? '(framed neon sign on the wall clearly reading "TEAM NO LACKIN" in bold capital letters:1.35), '
+    : '';
+  const chunk2 = `${signLead}${lightLead}${styleTextLit}${bodyDetailPrompt}`;
+  const chunk3 = `surrounded by ${env}, ${hardwareProp}, ${backgroundProp}${pose ? '' : `, ${easterEgg}`}${framingText}`;
+  const positive = pose ? `${chunk1} BREAK ${chunk2} BREAK ${chunk3}` : `${chunk1}, ${chunk2}, ${chunk3}`;
+  const negative = `${bucket.baseNegative}, no humans, empty scene, plants only, flowers only, no person, scenery only, plain background, gray background, simple background, freckles, freckled skin${chosenLight ? ', multicolored lighting, rainbow lighting, mixed color lighting, neutral lighting, white lighting, daylight' : ''}${pose ? ', extreme low angle, worm\'s eye view, fisheye lens, distorted perspective, extreme high angle, bird\'s eye view, top-down close-up, blonde hair, light hair, blue hair, black hair, dark hair, green hair on head, pink hair, close-up, cropped legs, cropped feet, upper body only, skinny, slender, thin, petite, flat hips' : ''}`;
 
   return {
     checkpoint: bucket.checkpoint,

@@ -699,6 +699,12 @@ export type BucketStyleWorkflowOptions = {
   poseImage?: string;
   /** Composite the Team No Lackin neon sign and blend it into the scene. */
   neonSign?: boolean;
+  /** Pose mode: restyle the finished frame as 2D in a second sampling pass. */
+  poseRestyle?: boolean;
+  /** Pass-2 denoise. Higher = more cel shading, lower = closer to pass 1. */
+  poseRestyleDenoise?: number;
+  /** Pass-2 LoRA strength. Lower than pass 1 so the photo LoRA stops fighting cel shading. */
+  poseRestyleLora?: number;
   /** Sampler CFG from the bucket config. */
   cfgScale?: number;
   faceIdWeight: number;
@@ -1020,6 +1026,69 @@ export function buildBucketStyleWorkflow(
   (workflow['77'] as { inputs: Record<string, unknown> }).inputs.positive = posRef;
   (workflow['77'] as { inputs: Record<string, unknown> }).inputs.negative = negRef;
 
+  // ---- Pass 2: restyle the pose frame as 2D -----------------------------------
+  // Pose mode drops the lineart ControlNet so the body can actually change pose,
+  // which also drops the 2D medium. This pass traces the finished frame and redraws
+  // it with the same lineart trick the golden recipe uses, at a lower LoRA strength
+  // so the photo-trained LoRA stops fighting cel shading. FaceID is deliberately not
+  // re-applied here: a photo face embedding at this stage pulls skin back to photo.
+  let finalImageRef: [string, number] = ['78', 0];
+  if (options.poseRestyle) {
+    const restyleDenoise = options.poseRestyleDenoise ?? 0.58;
+    const restyleLora = options.poseRestyleLora ?? 0.68;
+    workflow['400'] = { class_type: 'AnimeLineArtPreprocessor', inputs: { image: ['78', 0] } };
+    workflow['401'] = { class_type: 'ImageInvert', inputs: { image: ['400', 0] } };
+    workflow['402'] = {
+      class_type: 'ControlNetLoader',
+      inputs: { control_net_name: 'diffusers_xl_canny_full.safetensors' },
+    };
+    workflow['403'] = {
+      class_type: 'ControlNetApplyAdvanced',
+      inputs: {
+        positive: posRef,
+        negative: negRef,
+        control_net: ['402', 0],
+        image: ['401', 0],
+        strength: 0.5,
+        start_percent: 0,
+        end_percent: 0.55,
+      },
+    };
+    let restyleModel: [string, number] = ['72', 0];
+    if (options.loraName) {
+      workflow['404'] = {
+        class_type: 'LoraLoader',
+        inputs: {
+          model: ['72', 0],
+          clip: ['72', 1],
+          lora_name: options.loraName,
+          strength_model: restyleLora,
+          strength_clip: restyleLora,
+        },
+      };
+      restyleModel = ['404', 0];
+    }
+    workflow['405'] = { class_type: 'VAEEncode', inputs: { pixels: ['78', 0], vae: ['72', 2] } };
+    workflow['406'] = {
+      class_type: 'KSampler',
+      inputs: {
+        seed: options.seed + 7,
+        steps: 24,
+        cfg: options.cfgScale ?? 6.5,
+        sampler_name: 'dpmpp_2m',
+        scheduler: 'karras',
+        denoise: restyleDenoise,
+        model: restyleModel,
+        positive: ['403', 0],
+        negative: ['403', 1],
+        latent_image: ['405', 0],
+      },
+    };
+    workflow['407'] = { class_type: 'VAEDecode', inputs: { samples: ['406', 0], vae: ['72', 2] } };
+    (workflow['79'] as { inputs: Record<string, unknown> }).inputs.images = ['407', 0];
+    finalImageRef = ['407', 0];
+  }
+
   // Team No Lackin neon sign: composited from a real asset so the text is always
   // legible, then a masked 0.18 pass pulls the tube glow into the wall lighting.
   if (options.neonSign) {
@@ -1046,7 +1115,7 @@ export function buildBucketStyleWorkflow(
     workflow['146'] = {
       class_type: 'ImageCompositeMasked',
       inputs: {
-        destination: ['78', 0],
+        destination: finalImageRef,
         source: ['141', 0],
         x: Math.round(width * 0.06),
         y: Math.round(height * 0.07),
@@ -1075,7 +1144,11 @@ export function buildBucketStyleWorkflow(
         denoise: 0.05,
         model:
           options.useFaceId === false
-            ? (options.loraName ? ['71', 0] : ['72', 0])
+            ? workflow['404']
+              ? ['404', 0]
+              : options.loraName
+                ? ['71', 0]
+                : ['72', 0]
             : ['86', 0],
         positive: posRef,
         negative: negRef,

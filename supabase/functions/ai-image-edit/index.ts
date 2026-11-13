@@ -1304,15 +1304,9 @@ async function handleStyleStart(
         : poseMode === 'random'
           ? pickRandomPose()
           : (overrides?.posePrompt ?? '').trim();
-    // Horizontal poses on a 832x1216 portrait canvas get cropped to the torso, which
-    // also crops the room out. Any pose that lies down or spreads across the frame
-    // flips to landscape on its own, so the environment survives.
-    const poseIsHorizontal = poseText
-      ? /lying|all fours|sprawled|scissored|squatting|straddling|bent (?:forward|over)|legs (?:up|folded|behind)|from directly above|overhead|top-down|hips (?:raised|lifted)/i.test(
-          poseText
-        )
-      : false;
-    const landscape = wide || poseIsHorizontal;
+    // Pose mode always renders landscape. A 832x1216 portrait pins the camera to a
+    // close-up and leaves no room for the environment, which is a must-have here.
+    const landscape = poseText ? true : wide;
     const neonSignEnabled = (Deno.env.get('COMFY_EASTER_EGG') ?? '1') !== '0';
     const payload = generateFinalOpenCodePayload(
       styleMode,
@@ -1390,6 +1384,12 @@ async function handleStyleStart(
         useFaceId: cfg.useFaceId,
         cfgScale: cfg.cfgScale,
         neonSign: neonSignEnabled,
+        // Pose mode on the 2D buckets: pose first, then restyle the finished frame.
+        poseRestyle:
+          Boolean(poseText) &&
+          ['anime_2d_toon', 'fine_art_medium', 'framed_card'].includes(bucketForStyle(styleMode)),
+        poseRestyleDenoise: 0.58,
+        poseRestyleLora: 0.68,
       });
     } else if (bucketForStyle(styleMode) === 'realism_outfit_nsfw') {
       workflow = buildRealismOutfitWorkflow({
