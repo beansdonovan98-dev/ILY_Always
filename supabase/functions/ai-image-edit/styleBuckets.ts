@@ -600,7 +600,6 @@ export const SUBJECT_TAGS_PLAIN: Record<SubjectMode, string> = {
 };
 
 /** Large pose pool. Pose mode is always randomized from this list. */
-export const POSE_OPTIONS = [
 export const POSE_OPTIONS_SFW = [
   'sitting cross-legged on a velvet couch, leaning forward, holding a glowing bong',
   'lounging on a bed propped on one elbow, legs relaxed, looking at the viewer',
