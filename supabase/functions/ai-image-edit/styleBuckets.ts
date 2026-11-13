@@ -673,6 +673,9 @@ export const POSE_OPTIONS = [
   'kneeling, hand between legs, masturbation, fingers slick',
   'crouching, spread legs, spreading pussy, two fingers, head back',
   'lying on back, spread legs, fingers inside, masturbation, one leg up',
+  'viewed from directly above, lying on her back, head toward the bottom of the frame, body stretched out',
+  'top-down overhead shot, lying on her back on the floor, arms above her head, legs toward the top of frame',
+  'lying on her back with her head at the bottom of frame, looking up at the camera, one knee raised',
 ];
 
 export function generateFinalOpenCodePayload(
