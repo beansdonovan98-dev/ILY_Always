@@ -54,3 +54,9 @@ Canny 0.50 / 0.55, subject tags with `(thick thighs:1.10) (soft lower belly:1.05
 - Pod `64g74uxnppd82i`, ComfyUI on `/workspace/runpod-slim/ComfyUI` (persists on stop).
 - LoRAs live only on the pod: `models/loras/ashley_v1_…`, `mbboi_v1_…`.
 - Assets to re-upload after a pod rebuild: see `assets/ai/README.md`.
+
+## Unrelated project — do not mix
+
+A separate PC app (the two of them, LAN only, no cloud) is being planned in
+`C:\ILY\`. Its notes live in `C:\ILY\RESUME.md`, outside this repo. Trigger phrase:
+"back to the ILY PC app". Nothing there affects this function or this app.
